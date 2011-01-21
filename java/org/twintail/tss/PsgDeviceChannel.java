@@ -13,6 +13,8 @@ package org.twintail.tss;
 public final class PsgDeviceChannel implements Device, Channel {
     public static final int CLOCK_4MHZ = 4000000;
     public static final int CLOCK_3_58MHZ = 3579545;
+    public static final int MODE_UNSIGNED = 0;
+    public static final int MODE_SIGNED = 1;
     public static final int REGISTER_CH_A_TP_LOW = 0;
     public static final int REGISTER_CH_A_TP_HIGH = 1;
     public static final int REGISTER_CH_B_TP_LOW = 2;
@@ -63,7 +65,7 @@ public final class PsgDeviceChannel implements Device, Channel {
     private static final int CH_C = 2;
     private static final int CLOCK_BIAS = 16000;
     private static final int STEP_BIAS = 18;
-    private static final int VOLUME_BIAS = 5;
+    private static final int VOLUME_BIAS = 3;
     private static final short DEFAULT_SEED = -1;
     private static final short UPDATE_SEED_MASK = 0x0009;
     private static final int UPDATE_SEED_RSHIFT = 3;
@@ -77,6 +79,7 @@ public final class PsgDeviceChannel implements Device, Channel {
     };
 
     private int clock = CLOCK_3_58MHZ;
+    private int mode = MODE_UNSIGNED;
     private int baseStep = 0;
     private short[] buffer = null;
     private int[] register = new int[REGISTERS];
@@ -126,6 +129,18 @@ public final class PsgDeviceChannel implements Device, Channel {
     }
 
     /**
+     * Set wave form mode.
+     * Original device generates unsigned square wave,
+     * but it's not match with signed PCM one.
+     * Signed mode generates signed square wave aligned to center,
+     * and produces double height wave form.
+     * @param newMode generate signed or unsigned wave
+     */
+    public void setMode(final int newMode) {
+        mode = newMode;
+    }
+
+    /**
      * @see Channel
      * @param length buffer length or size in shorts
      */
@@ -167,6 +182,10 @@ public final class PsgDeviceChannel implements Device, Channel {
                 if ((mixerTone[channel] && active[channel])
                         || (mixerNoise[channel] && noise)) {
                     value += volume[channel];
+                } else if (mixerTone[channel] &&
+                        mixerNoise[channel] &&
+                        mode == MODE_SIGNED) {
+                    value -= volume[channel];
                 }
             }
             buffer[offset + 0] = value;

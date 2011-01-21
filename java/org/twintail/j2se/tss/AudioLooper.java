@@ -108,6 +108,7 @@ public final class AudioLooper extends Thread {
             AudioLooper loop = new AudioLooper();
             MasterChannel master = new MasterChannel();
             PsgDeviceChannel psg = new PsgDeviceChannel();
+            psg.setMode(PsgDeviceChannel.MODE_SIGNED);
             master.addChannel(psg);
 
             // prepare input audio data

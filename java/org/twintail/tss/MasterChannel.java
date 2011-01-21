@@ -18,6 +18,7 @@ public final class MasterChannel implements Channel {
     private static final int MAX_WAVE_VALUE = 32767;
     private static final int MIN_WAVE_VALUE = -32767;
     private static final int MSEC_PER_SEC = 1000;
+    private static final int DEFAULT_VOLUME = 8;
     private final List<Channel> channels = new LinkedList<Channel>();
     private short[][] buffers = null;
     private short[] buffer = null;
@@ -25,6 +26,7 @@ public final class MasterChannel implements Channel {
     private Player player = null;
     private int intervalLength = 0;
     private int intervalRestLength = 0;
+    private int volume = DEFAULT_VOLUME;
 
     /**
      * Reconstruct slave buffer references.
@@ -37,6 +39,18 @@ public final class MasterChannel implements Channel {
             newBuffers[i] = channel.getBuffer();
         }
         buffers = newBuffers;
+    }
+
+    /**
+     * Set mixing volume.
+     * Every device sets maximum volume of each sound channel
+     * as one sixteenth to avoid sound saturation.
+     * If you want to maximize sounds set sixteen as volume.
+     * It is the default value.
+     * @param newVolume volume
+     */
+    public void setVolume(int newVolume) {
+        volume = newVolume;
     }
 
     /**
@@ -111,6 +125,7 @@ public final class MasterChannel implements Channel {
             for (int channel = 0; channel < size; channel++) {
                 value += (int) buffers[channel][offset];
             }
+            value *= volume;
             if (value > MAX_WAVE_VALUE) { value = MAX_WAVE_VALUE; }
             if (value < MIN_WAVE_VALUE) { value = MIN_WAVE_VALUE; }
             buffer[base + offset] = (short) value;
