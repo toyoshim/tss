@@ -15,6 +15,11 @@ public final class PsgDeviceChannel implements Device, Channel {
     public static final int CLOCK_3_58MHZ = 3579545;
     public static final int MODE_UNSIGNED = 0;
     public static final int MODE_SIGNED = 1;
+    public static final int DEVICE_PSG = 0;
+    public static final int DEVICE_SSG = 1;
+    public static final int DEVICE_AY_3_8910 = 0;
+    public static final int DEVICE_YM_2149 = 1;
+    public static final int DEVICE_SN76489 = 2;
     public static final int REGISTER_CH_A_TP_LOW = 0;
     public static final int REGISTER_CH_A_TP_HIGH = 1;
     public static final int REGISTER_CH_B_TP_LOW = 2;
@@ -71,15 +76,31 @@ public final class PsgDeviceChannel implements Device, Channel {
     private static final int UPDATE_SEED_RSHIFT = 3;
     private static final int UPDATE_SEED_LSHIFT = 15;
     private static final int SHORT_MASK = 0xffff;
-    private static final short[] VOLUME_TABLE = {
-        0x00, 0x01, 0x01, 0x02, 0x02, 0x03, 0x03, 0x04,
-        0x05, 0x06, 0x07, 0x09, 0x0B, 0x0D, 0x0F, 0x12,
-        0x16, 0x1A, 0x1F, 0x25, 0x2D, 0x35, 0x3F, 0x4C,
-        0x5A, 0x6A, 0x7F, 0x97, 0xB4, 0xD6, 0xFF, 0xFF,
+    private static final short[][] VOLUME_TABLE = {
+        { // DEVICE_AY_3_8910
+            0x00, 0x01, 0x01, 0x02, 0x02, 0x03, 0x03, 0x04,
+            0x05, 0x06, 0x07, 0x09, 0x0B, 0x0D, 0x0F, 0x12,
+            0x16, 0x1A, 0x1F, 0x25, 0x2D, 0x35, 0x3F, 0x4C,
+            0x5A, 0x6A, 0x7F, 0x97, 0xB4, 0xD6, 0xFF, 0xFF,
+        },
+        { // DEVICE_YM_2149
+            0x00, 0x01, 0x01, 0x02, 0x02, 0x03, 0x03, 0x04,
+            0x05, 0x06, 0x07, 0x09, 0x0B, 0x0D, 0x0F, 0x12,
+            0x16, 0x1A, 0x1F, 0x25, 0x2D, 0x35, 0x3F, 0x4C,
+            0x5A, 0x6A, 0x7F, 0x97, 0xB4, 0xD6, 0xFF, 0xFF,
+        },
+        { // DEVICE_SN76489
+            0xFF, 0xCB, 0xA1, 0x80, 0x65, 0x50, 0x40, 0x33,
+            0x28, 0x20, 0x19, 0x14, 0x10, 0x0C, 0x0A, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        },
     };
 
     private int clock = CLOCK_3_58MHZ;
     private int mode = MODE_UNSIGNED;
+    private int device = DEVICE_AY_3_8910;
+    private short[] volumeTable = VOLUME_TABLE[DEVICE_AY_3_8910];
     private int baseStep = 0;
     private short[] buffer = null;
     private int[] register = new int[REGISTERS];
@@ -99,6 +120,8 @@ public final class PsgDeviceChannel implements Device, Channel {
      */
     public PsgDeviceChannel() {
         setClock(CLOCK_3_58MHZ);
+        setMode(MODE_UNSIGNED);
+        setDevice(DEVICE_AY_3_8910);
         for (int i = 0; i < CHANNELS; i++) {
             active[i] = true;
         }
@@ -141,6 +164,14 @@ public final class PsgDeviceChannel implements Device, Channel {
     }
 
     /**
+     * Set emulated device target.
+     */
+    public void setDevice(final int target) {
+        device = target;
+        volumeTable = VOLUME_TABLE[target];
+    }
+
+    /**
      * @see Channel
      * @param length buffer length or size in shorts
      */
@@ -157,11 +188,12 @@ public final class PsgDeviceChannel implements Device, Channel {
     }
 
     /**
-     * Generate specified length sound stream into internal buffer.
-     * @see Channel
+     * Generate specified length sound stream into internal buffer
+     * of AY-3-8910 or YM-2149.
+     * @see generate
      * @param length sound length in short to generate
      */
-    public void generate(final int length) {
+    private void generateAY(final int length) {
         for (int offset = 0; offset < length; offset += 2) {
             countNoise += baseStep;
             if (countNoise > stepNoise) {
@@ -194,11 +226,25 @@ public final class PsgDeviceChannel implements Device, Channel {
     }
 
     /**
-     * @see Device
+     * Generate specified length sound stream into internal buffer.
+     * @see Channel
+     * @param length sound length in short to generate
+     */
+    public void generate(final int length) {
+        if (device == DEVICE_SN76489) {
+            // TODO
+        } else {
+            generateAY(length);
+        }
+    }
+
+    /**
+     * Write to AY-3-8910 or YM-2149 register.
+     * @see writeRegister
      * @param address register address to write
      * @param value register value to write
      */
-    public void writeRegister(final int address, final int value) {
+    public void writeRegisterAY(final int address, final int value) {
         if ((address > REGISTERS)
                 || (value < REGISTER_MIN_VALUE)
                 || (REGISTER_MAX_VALUE < value)) {
@@ -238,17 +284,17 @@ public final class PsgDeviceChannel implements Device, Channel {
             mixerNoise[CH_C] = 0 == (value & MIXER_CH_C_NOISE);
             break;
         case REGISTER_CH_A_VOLUME:
-            volume[CH_A] = (short) (VOLUME_TABLE[(value & VOLUME_MASK) << 1]
+            volume[CH_A] = (short) (volumeTable[(value & VOLUME_MASK) << 1]
                                                  << VOLUME_BIAS);
             envelope[CH_A] = 0 != (value & ENVELOPE_MASK);
             break;
         case REGISTER_CH_B_VOLUME:
-            volume[CH_B] = (short) (VOLUME_TABLE[(value & VOLUME_MASK) << 1]
+            volume[CH_B] = (short) (volumeTable[(value & VOLUME_MASK) << 1]
                                                  << VOLUME_BIAS);
             envelope[CH_B] = 0 != (value & ENVELOPE_MASK);
             break;
         case REGISTER_CH_C_VOLUME:
-            volume[CH_C] = (short) (VOLUME_TABLE[(value & VOLUME_MASK) << 1]
+            volume[CH_C] = (short) (volumeTable[(value & VOLUME_MASK) << 1]
                                                  << VOLUME_BIAS);
             envelope[CH_C] = 0 != (value & ENVELOPE_MASK);
             break;
@@ -267,6 +313,19 @@ public final class PsgDeviceChannel implements Device, Channel {
             break;
         default:
             break;
+        }
+    }
+
+    /**
+     * @see Device
+     * @param address register address to write
+     * @param value register value to write
+     */
+    public void writeRegister(final int address, final int value) {
+        if (device == DEVICE_SN76489) {
+            // TODO
+        } else {
+            writeRegisterAY(address, value);
         }
     }
 
