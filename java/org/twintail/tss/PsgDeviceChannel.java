@@ -20,37 +20,59 @@ public final class PsgDeviceChannel implements Device, Channel {
     public static final int DEVICE_AY_3_8910 = 0;
     public static final int DEVICE_YM_2149 = 1;
     public static final int DEVICE_SN76489 = 2;
-    public static final int REGISTER_CH_A_TP_LOW = 0;
-    public static final int REGISTER_CH_A_TP_HIGH = 1;
-    public static final int REGISTER_CH_B_TP_LOW = 2;
-    public static final int REGISTER_CH_B_TP_HIGH = 3;
-    public static final int REGISTER_CH_C_TP_LOW = 4;
-    public static final int REGISTER_CH_C_TP_HIGH = 5;
-    public static final int REGISTER_NOISE_TP = 6;
-    public static final int REGISTER_MIXER = 7;
-    public static final int REGISTER_CH_A_VOLUME = 8;
-    public static final int REGISTER_CH_B_VOLUME = 9;
-    public static final int REGISTER_CH_C_VOLUME = 10;
-    public static final int REGISTER_EP_LOW = 11;
-    public static final int REGISTER_EP_HIGH = 12;
-    public static final int REGISTER_EP_CONTROL = 13;
-    public static final int REGISTER_IO_A = 14;
-    public static final int REGISTER_IO_B = 15;
+    public static final int REGISTER_AY_CH_A_TP_LOW = 0;
+    public static final int REGISTER_AY_CH_A_TP_HIGH = 1;
+    public static final int REGISTER_AY_CH_B_TP_LOW = 2;
+    public static final int REGISTER_AY_CH_B_TP_HIGH = 3;
+    public static final int REGISTER_AY_CH_C_TP_LOW = 4;
+    public static final int REGISTER_AY_CH_C_TP_HIGH = 5;
+    public static final int REGISTER_AY_NOISE_TP = 6;
+    public static final int REGISTER_AY_MIXER = 7;
+    public static final int REGISTER_AY_CH_A_VOLUME = 8;
+    public static final int REGISTER_AY_CH_B_VOLUME = 9;
+    public static final int REGISTER_AY_CH_C_VOLUME = 10;
+    public static final int REGISTER_AY_EP_LOW = 11;
+    public static final int REGISTER_AY_EP_HIGH = 12;
+    public static final int REGISTER_AY_EP_CONTROL = 13;
+    public static final int REGISTER_AY_IO_A = 14;
+    public static final int REGISTER_AY_IO_B = 15;
+    public static final int REGISTER_SN_CH_A_TP = 8;
+    public static final int REGISTER_SN_CH_A_VOLUME = 9;
+    public static final int REGISTER_SN_CH_B_TP = 10;
+    public static final int REGISTER_SN_CH_B_VOLUME = 11;
+    public static final int REGISTER_SN_CH_C_TP = 12;
+    public static final int REGISTER_SN_CH_C_VOLUME = 13;
+    public static final int REGISTER_SN_NOISE_CONTROL = 14;
+    public static final int REGISTER_SN_NOISE_VOLUME = 15;
+    public static final int REGISTER_SN_CH_A_TP_HIGH = 0;
+    public static final int REGISTER_SN_CH_B_TP_HIGH = 2;
+    public static final int REGISTER_SN_CH_C_TP_HIGH = 4;
 
-    private static final int DEFAULT_CH_A_TP_LOW = 0x55;
-    private static final int DEFAULT_CH_A_TP_HIGH = 0x00;
-    private static final int DEFAULT_CH_B_TP_LOW = 0x00;
-    private static final int DEFAULT_CH_B_TP_HIGH = 0x00;
-    private static final int DEFAULT_CH_C_TP_LOW = 0x00;
-    private static final int DEFAULT_CH_C_TP_HIGH = 0x00;
-    private static final int DEFAULT_NOISE_TP = 0x00;
-    private static final int DEFAULT_MIXER = 0xb8;
-    private static final int DEFAULT_CH_A_VOLUME = 0x00;
-    private static final int DEFAULT_CH_B_VOLUME = 0x00;
-    private static final int DEFAULT_CH_C_VOLUME = 0x00;
-    private static final int DEFAULT_EP_LOW = 0x0b;
-    private static final int DEFAULT_EP_HIGH = 0x00;
-    private static final int DEFAULT_EP_CONTROL = 0x00;
+    private static final int DEFAULT_AY_CH_A_TP_LOW = 0x55;
+    private static final int DEFAULT_AY_CH_A_TP_HIGH = 0x00;
+    private static final int DEFAULT_AY_CH_B_TP_LOW = 0x00;
+    private static final int DEFAULT_AY_CH_B_TP_HIGH = 0x00;
+    private static final int DEFAULT_AY_CH_C_TP_LOW = 0x00;
+    private static final int DEFAULT_AY_CH_C_TP_HIGH = 0x00;
+    private static final int DEFAULT_AY_NOISE_TP = 0x00;
+    private static final int DEFAULT_AY_MIXER = 0xb8;
+    private static final int DEFAULT_AY_CH_A_VOLUME = 0x00;
+    private static final int DEFAULT_AY_CH_B_VOLUME = 0x00;
+    private static final int DEFAULT_AY_CH_C_VOLUME = 0x00;
+    private static final int DEFAULT_AY_EP_LOW = 0x0b;
+    private static final int DEFAULT_AY_EP_HIGH = 0x00;
+    private static final int DEFAULT_AY_EP_CONTROL = 0x00;
+    private static final int DEFAULT_SN_CH_A_TP = 0x00;
+    private static final int DEFAULT_SN_CH_A_VOLUME = 0x0f;
+    private static final int DEFAULT_SN_CH_B_TP = 0x00;
+    private static final int DEFAULT_SN_CH_B_VOLUME = 0x0f;
+    private static final int DEFAULT_SN_CH_C_TP = 0x00;
+    private static final int DEFAULT_SN_CH_C_VOLUME = 0x0f;
+    private static final int DEFAULT_SN_NOISE_CONTROL = 0xe0;
+    private static final int DEFAULT_SN_NOISE_VOLUME = 0xff;
+    private static final int DEFAULT_SN_CH_A_TP_HIGH = 0x00;
+    private static final int DEFAULT_SN_CH_B_TP_HIGH = 0x00;
+    private static final int DEFAULT_SN_CH_C_TP_HIGH = 0x00;
     private static final int REGISTERS = 16;
     private static final int CHANNELS = 3;
     private static final int REGISTER_MIN_VALUE = 0;
@@ -71,11 +93,18 @@ public final class PsgDeviceChannel implements Device, Channel {
     private static final int CLOCK_BIAS = 16000;
     private static final int STEP_BIAS = 18;
     private static final int VOLUME_BIAS = 3;
-    private static final short DEFAULT_SEED = -1;
+    private static final short DEFAULT_AY_SEED = -1;
+    private static final short DEFAULT_SN_SEED = -32768;
     private static final short UPDATE_SEED_MASK = 0x0009;
     private static final int UPDATE_SEED_RSHIFT = 3;
     private static final int UPDATE_SEED_LSHIFT = 15;
     private static final int SHORT_MASK = 0xffff;
+    private static final int HALF_MASK = 0x0f;
+    private static final int HALF_SHIFT = 4;
+    private static final int BYTE_MSB_MASK = 0x80;
+    private static final int ADDRESS_MASK = 0x07;
+    private static final int VALUE_MASK = 0x3f;
+    private static final int LOWER_TWO_BITS_MASK = 0x03;
     private static final short[][] VOLUME_TABLE = {
         { // DEVICE_AY_3_8910
             0x00, 0x01, 0x01, 0x02, 0x02, 0x03, 0x03, 0x04,
@@ -96,10 +125,14 @@ public final class PsgDeviceChannel implements Device, Channel {
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
         },
     };
+    private static final int[] NOISE_TP_TABLE = {
+        128, 256, 512, 0,
+    };
 
     private int clock = CLOCK_3_58MHZ;
     private int mode = MODE_UNSIGNED;
     private int device = DEVICE_AY_3_8910;
+    private int activeRegister = 0;
     private short[] volumeTable = VOLUME_TABLE[DEVICE_AY_3_8910];
     private int baseStep = 0;
     private short[] buffer = null;
@@ -107,13 +140,15 @@ public final class PsgDeviceChannel implements Device, Channel {
     private short[] volume = new short[CHANNELS];
     private boolean[] envelope = new boolean[CHANNELS];
     private boolean[] active = new boolean[CHANNELS];
-    private short seed = DEFAULT_SEED;
+    private short seed = DEFAULT_AY_SEED;
     private int[] stepTone = new int[CHANNELS];
     private int[] countTone = new int[CHANNELS];
     private boolean[] mixerTone = new boolean[CHANNELS];
     private int stepNoise = 0;
     private int countNoise = 0;
     private boolean[] mixerNoise = new boolean[CHANNELS];
+    private boolean feedback = false;
+    private int volumeNoise = 0;
 
     /**
      * Class constructor.
@@ -122,23 +157,6 @@ public final class PsgDeviceChannel implements Device, Channel {
         setClock(CLOCK_3_58MHZ);
         setMode(MODE_UNSIGNED);
         setDevice(DEVICE_AY_3_8910);
-        for (int i = 0; i < CHANNELS; i++) {
-            active[i] = true;
-        }
-        writeRegister(REGISTER_CH_A_TP_HIGH, DEFAULT_CH_A_TP_HIGH);
-        writeRegister(REGISTER_CH_A_TP_LOW, DEFAULT_CH_A_TP_LOW);
-        writeRegister(REGISTER_CH_B_TP_HIGH, DEFAULT_CH_B_TP_HIGH);
-        writeRegister(REGISTER_CH_B_TP_LOW, DEFAULT_CH_B_TP_LOW);
-        writeRegister(REGISTER_CH_C_TP_HIGH, DEFAULT_CH_C_TP_HIGH);
-        writeRegister(REGISTER_CH_C_TP_LOW, DEFAULT_CH_C_TP_LOW);
-        writeRegister(REGISTER_NOISE_TP, DEFAULT_NOISE_TP);
-        writeRegister(REGISTER_MIXER, DEFAULT_MIXER);
-        writeRegister(REGISTER_CH_A_VOLUME, DEFAULT_CH_A_VOLUME);
-        writeRegister(REGISTER_CH_B_VOLUME, DEFAULT_CH_B_VOLUME);
-        writeRegister(REGISTER_CH_C_VOLUME, DEFAULT_CH_C_VOLUME);
-        writeRegister(REGISTER_EP_LOW, DEFAULT_EP_LOW);
-        writeRegister(REGISTER_EP_HIGH, DEFAULT_EP_HIGH);
-        writeRegister(REGISTER_EP_CONTROL, DEFAULT_EP_CONTROL);
     }
 
     /**
@@ -164,11 +182,76 @@ public final class PsgDeviceChannel implements Device, Channel {
     }
 
     /**
+     * Set SN76489 register.
+     * @param address register address
+     * @param valueLow lower four bits to write
+     * @param valueHigh higher six bits to write
+     */
+    private void setRegisterSN(final int address, final int valueLow,
+            final int valueHigh) {
+        writeRegisterSN(0, (address << HALF_SHIFT) | valueLow);
+        if ((address == REGISTER_SN_CH_A_TP)
+                || (address == REGISTER_SN_CH_B_TP)
+                || (address == REGISTER_SN_CH_C_TP)) {
+            writeRegisterSN(0, valueHigh);
+        }
+
+    }
+    /**
+     * Initialize SN76489 registers.
+     */
+    private void initRegisterSN() {
+        setRegisterSN(REGISTER_SN_CH_A_TP, DEFAULT_SN_CH_A_TP,
+                DEFAULT_SN_CH_A_TP_HIGH);
+        setRegisterSN(REGISTER_SN_CH_A_VOLUME, DEFAULT_SN_CH_A_VOLUME, 0);
+        setRegisterSN(REGISTER_SN_CH_B_TP, DEFAULT_SN_CH_B_TP,
+                DEFAULT_SN_CH_B_TP_HIGH);
+        setRegisterSN(REGISTER_SN_CH_B_VOLUME, DEFAULT_SN_CH_B_VOLUME, 0);
+        setRegisterSN(REGISTER_SN_CH_C_TP, DEFAULT_SN_CH_C_TP,
+                DEFAULT_SN_CH_C_TP_HIGH);
+        setRegisterSN(REGISTER_SN_CH_C_VOLUME, DEFAULT_SN_CH_C_VOLUME, 0);
+        setRegisterSN(REGISTER_SN_NOISE_CONTROL, DEFAULT_SN_NOISE_CONTROL, 0);
+        setRegisterSN(REGISTER_SN_NOISE_VOLUME, DEFAULT_SN_NOISE_VOLUME, 0);
+        activeRegister = 0;
+        seed = DEFAULT_SN_SEED;
+    }
+
+    /**
+     * Initialize AY-3-8910 and YM-2419 registers.
+     */
+    private void initRegisterAY() {
+        writeRegister(REGISTER_AY_CH_A_TP_HIGH, DEFAULT_AY_CH_A_TP_HIGH);
+        writeRegister(REGISTER_AY_CH_A_TP_LOW, DEFAULT_AY_CH_A_TP_LOW);
+        writeRegister(REGISTER_AY_CH_B_TP_HIGH, DEFAULT_AY_CH_B_TP_HIGH);
+        writeRegister(REGISTER_AY_CH_B_TP_LOW, DEFAULT_AY_CH_B_TP_LOW);
+        writeRegister(REGISTER_AY_CH_C_TP_HIGH, DEFAULT_AY_CH_C_TP_HIGH);
+        writeRegister(REGISTER_AY_CH_C_TP_LOW, DEFAULT_AY_CH_C_TP_LOW);
+        writeRegister(REGISTER_AY_NOISE_TP, DEFAULT_AY_NOISE_TP);
+        writeRegister(REGISTER_AY_MIXER, DEFAULT_AY_MIXER);
+        writeRegister(REGISTER_AY_CH_A_VOLUME, DEFAULT_AY_CH_A_VOLUME);
+        writeRegister(REGISTER_AY_CH_B_VOLUME, DEFAULT_AY_CH_B_VOLUME);
+        writeRegister(REGISTER_AY_CH_C_VOLUME, DEFAULT_AY_CH_C_VOLUME);
+        writeRegister(REGISTER_AY_EP_LOW, DEFAULT_AY_EP_LOW);
+        writeRegister(REGISTER_AY_EP_HIGH, DEFAULT_AY_EP_HIGH);
+        writeRegister(REGISTER_AY_EP_CONTROL, DEFAULT_AY_EP_CONTROL);
+        seed = DEFAULT_AY_SEED;
+    }
+
+    /**
      * Set emulated device target.
+     * @param target target device
      */
     public void setDevice(final int target) {
         device = target;
         volumeTable = VOLUME_TABLE[target];
+        for (int i = 0; i < CHANNELS; i++) {
+            active[i] = true;
+        }
+        if (device == DEVICE_SN76489) {
+            initRegisterSN();
+        } else {
+            initRegisterAY();
+        }
     }
 
     /**
@@ -185,6 +268,55 @@ public final class PsgDeviceChannel implements Device, Channel {
      */
     public short[] getBuffer() {
         return buffer;
+    }
+
+    /**
+     * Generate specified length sound stream into internal buffer
+     * of SN76489.
+     * @see generate
+     * @param length sound length in short to generate
+     */
+    private void generateSN(final int length) {
+        final int step;
+        if (0 == stepNoise) {
+            step = stepTone[CH_C];
+        } else {
+            step = stepNoise;
+        }
+        for (int offset = 0; offset < length; offset += 2) {
+            short value = 0;
+            for (int channel = 0; channel < CHANNELS; channel++) {
+                countTone[channel] += baseStep;
+                if (countTone[channel] > stepTone[channel]) {
+                    countTone[channel] -= stepTone[channel];
+                    active[channel] = !active[channel];
+                }
+                if (active[channel]) {
+                    value += volume[channel];
+                } else if (mode == MODE_SIGNED) {
+                    value -= volume[channel];
+                }
+            }
+            countNoise += baseStep;
+            if (countNoise > step) {
+                if (feedback) {
+                    short v = (short) (seed & UPDATE_SEED_MASK);
+                    v ^= (v >>> UPDATE_SEED_RSHIFT);
+                    seed = (short) (((int) seed & SHORT_MASK) >> 1);
+                    seed |= ((v << UPDATE_SEED_LSHIFT) & SHORT_MASK);
+                } else {
+                    seed = (short) (((int) seed & SHORT_MASK) >> 1);
+                    seed |= ((seed << UPDATE_SEED_LSHIFT) & SHORT_MASK);
+                }
+            }
+            if (0 != (seed & 1)) {
+                value += volumeNoise;
+            } else if (mode == MODE_SIGNED) {
+                value -= volumeNoise;
+            }
+            buffer[offset + 0] = value;
+            buffer[offset + 1] = value;
+        }
     }
 
     /**
@@ -214,9 +346,9 @@ public final class PsgDeviceChannel implements Device, Channel {
                 if ((mixerTone[channel] && active[channel])
                         || (mixerNoise[channel] && noise)) {
                     value += volume[channel];
-                } else if (mixerTone[channel] &&
-                        mixerNoise[channel] &&
-                        mode == MODE_SIGNED) {
+                } else if (mixerTone[channel]
+                                     && mixerNoise[channel]
+                                                   && mode == MODE_SIGNED) {
                     value -= volume[channel];
                 }
             }
@@ -232,14 +364,78 @@ public final class PsgDeviceChannel implements Device, Channel {
      */
     public void generate(final int length) {
         if (device == DEVICE_SN76489) {
-            // TODO
+            generateSN(length);
         } else {
             generateAY(length);
         }
     }
 
     /**
-     * Write to AY-3-8910 or YM-2149 register.
+     * Write to SN76489 registers.
+     * If MSB of value byte is high, from bit six to four represent
+     * register address, and other bits is lower four bits of
+     * the register value.
+     *  bit 7  6  5  4  3  2  1  0
+     *      1 R2 R1 R0 V3 V2 V1 V0 (write lower bits to R register)
+     * MSB being low, target register is the last accessed one, and
+     * bit five to zero represent higher six bits of the value.
+     *  bit 7  6  5  4  3  2  1  0
+     *      0  x V9 V8 V7 V6 V5 V4 (write higher bits)
+     * @see writeRegister
+     * @param address not used
+     * @param value address and value to write
+     */
+    public void writeRegisterSN(final int address, final int value) {
+        int pseudoAddress = 0;
+        if (0 != (value & BYTE_MSB_MASK)) {
+            // lower values is stored to register[address + 8]
+            pseudoAddress = value >> HALF_SHIFT;
+            register[pseudoAddress] = value & HALF_MASK;
+            // set next accessed register to address
+            activeRegister = pseudoAddress & ADDRESS_MASK;
+        } else {
+            register[activeRegister] = value & VALUE_MASK;
+        }
+        switch (activeRegister) {
+        case REGISTER_SN_CH_A_TP:
+            stepTone[CH_A] = ((register[REGISTER_SN_CH_A_TP_HIGH] << HALF_SHIFT)
+                    | register[REGISTER_SN_CH_A_TP]) << STEP_BIAS;
+            break;
+        case REGISTER_SN_CH_A_VOLUME:
+            volume[CH_A] = (short) (volumeTable[register[activeRegister] << 1]
+                                                << VOLUME_BIAS);
+            break;
+        case REGISTER_SN_CH_B_TP:
+            stepTone[CH_B] = ((register[REGISTER_SN_CH_B_TP_HIGH] << HALF_SHIFT)
+                    | register[REGISTER_SN_CH_B_TP]) << STEP_BIAS;
+            break;
+        case REGISTER_SN_CH_B_VOLUME:
+            volume[CH_B] = (short) (volumeTable[register[activeRegister] << 1]
+                                                << VOLUME_BIAS);
+            break;
+        case REGISTER_SN_CH_C_TP:
+            stepTone[CH_C] = ((register[REGISTER_SN_CH_C_TP_HIGH] << HALF_SHIFT)
+                    | register[REGISTER_SN_CH_C_TP]) << STEP_BIAS;
+            break;
+        case REGISTER_SN_CH_C_VOLUME:
+            volume[CH_C] = (short) (volumeTable[register[activeRegister] << 1]
+                                                << VOLUME_BIAS);
+            break;
+        case REGISTER_SN_NOISE_CONTROL:
+            stepNoise = NOISE_TP_TABLE[value & LOWER_TWO_BITS_MASK]
+                                       << STEP_BIAS;
+            feedback = 1 == (value >> 2);
+            break;
+        case REGISTER_SN_NOISE_VOLUME:
+            volumeNoise = volumeTable[register[activeRegister]];
+            break;
+        default:
+            break;
+        }
+    }
+
+    /**
+     * Write to AY-3-8910 or YM-2149 registers.
      * @see writeRegister
      * @param address register address to write
      * @param value register value to write
@@ -254,28 +450,34 @@ public final class PsgDeviceChannel implements Device, Channel {
         register[address] = value;
 
         switch(address) {
-        case REGISTER_CH_A_TP_LOW:
-        case REGISTER_CH_A_TP_HIGH:
-            stepTone[CH_A] = ((register[REGISTER_CH_A_TP_HIGH] << BITS_PER_BYTE)
-                    | (register[REGISTER_CH_A_TP_LOW])) << STEP_BIAS;
+        case REGISTER_AY_CH_A_TP_LOW:
+        case REGISTER_AY_CH_A_TP_HIGH:
+            stepTone[CH_A] = ((register[REGISTER_AY_CH_A_TP_HIGH]
+                                        << BITS_PER_BYTE)
+                                        | (register[REGISTER_AY_CH_A_TP_LOW]))
+                                        << STEP_BIAS;
             break;
-        case REGISTER_CH_B_TP_LOW:
-        case REGISTER_CH_B_TP_HIGH:
-            stepTone[CH_B] = ((register[REGISTER_CH_B_TP_HIGH] << BITS_PER_BYTE)
-                    | (register[REGISTER_CH_B_TP_LOW])) << STEP_BIAS;
+        case REGISTER_AY_CH_B_TP_LOW:
+        case REGISTER_AY_CH_B_TP_HIGH:
+            stepTone[CH_B] = ((register[REGISTER_AY_CH_B_TP_HIGH]
+                                        << BITS_PER_BYTE)
+                                        | (register[REGISTER_AY_CH_B_TP_LOW]))
+                                        << STEP_BIAS;
             break;
-        case REGISTER_CH_C_TP_LOW:
-        case REGISTER_CH_C_TP_HIGH:
-            stepTone[CH_C] = ((register[REGISTER_CH_C_TP_HIGH] << BITS_PER_BYTE)
-                    | (register[REGISTER_CH_C_TP_LOW])) << STEP_BIAS;
+        case REGISTER_AY_CH_C_TP_LOW:
+        case REGISTER_AY_CH_C_TP_HIGH:
+            stepTone[CH_C] = ((register[REGISTER_AY_CH_C_TP_HIGH]
+                                        << BITS_PER_BYTE)
+                                        | (register[REGISTER_AY_CH_C_TP_LOW]))
+                                        << STEP_BIAS;
             break;
-        case REGISTER_NOISE_TP:
+        case REGISTER_AY_NOISE_TP:
             stepNoise = ((value & NOISE_TP_MASK) << 1) << (STEP_BIAS + 1);
             if (stepNoise < baseStep) {
                 stepNoise = baseStep;
             }
             break;
-        case REGISTER_MIXER:
+        case REGISTER_AY_MIXER:
             mixerTone[CH_A] = 0 == (value & MIXER_CH_A_TONE);
             mixerTone[CH_B] = 0 == (value & MIXER_CH_B_TONE);
             mixerTone[CH_C] = 0 == (value & MIXER_CH_C_TONE);
@@ -283,33 +485,33 @@ public final class PsgDeviceChannel implements Device, Channel {
             mixerNoise[CH_B] = 0 == (value & MIXER_CH_B_NOISE);
             mixerNoise[CH_C] = 0 == (value & MIXER_CH_C_NOISE);
             break;
-        case REGISTER_CH_A_VOLUME:
+        case REGISTER_AY_CH_A_VOLUME:
             volume[CH_A] = (short) (volumeTable[(value & VOLUME_MASK) << 1]
                                                  << VOLUME_BIAS);
             envelope[CH_A] = 0 != (value & ENVELOPE_MASK);
             break;
-        case REGISTER_CH_B_VOLUME:
+        case REGISTER_AY_CH_B_VOLUME:
             volume[CH_B] = (short) (volumeTable[(value & VOLUME_MASK) << 1]
                                                  << VOLUME_BIAS);
             envelope[CH_B] = 0 != (value & ENVELOPE_MASK);
             break;
-        case REGISTER_CH_C_VOLUME:
+        case REGISTER_AY_CH_C_VOLUME:
             volume[CH_C] = (short) (volumeTable[(value & VOLUME_MASK) << 1]
                                                  << VOLUME_BIAS);
             envelope[CH_C] = 0 != (value & ENVELOPE_MASK);
             break;
-        case REGISTER_EP_LOW:
+        case REGISTER_AY_EP_LOW:
             // TODO
             break;
-        case REGISTER_EP_HIGH:
+        case REGISTER_AY_EP_HIGH:
             // TODO
             break;
-        case REGISTER_EP_CONTROL:
+        case REGISTER_AY_EP_CONTROL:
             // TODO
             break;
-        case REGISTER_IO_A:
+        case REGISTER_AY_IO_A:
             break;
-        case REGISTER_IO_B:
+        case REGISTER_AY_IO_B:
             break;
         default:
             break;
@@ -323,7 +525,7 @@ public final class PsgDeviceChannel implements Device, Channel {
      */
     public void writeRegister(final int address, final int value) {
         if (device == DEVICE_SN76489) {
-            // TODO
+            writeRegisterSN(address, value);
         } else {
             writeRegisterAY(address, value);
         }
