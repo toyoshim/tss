@@ -3,6 +3,8 @@
  */
 package org.twintail.tss;
 
+import java.io.InputStream;
+
 /**
  * interface Player
  *
@@ -12,7 +14,19 @@ package org.twintail.tss;
  */
 public interface Player {
     /**
+     * Set master channel to write output stream.
+     * @param channel master channel
+     */
+    void setMasterChannel(MasterChannel channel);
+
+    /**
      * Channel reach to periodical call back point.
      */
     void updateDevice();
+
+    /**
+     *  Decode and play.
+     * @param input InputStream to play
+     */
+    void play(InputStream input);
 }

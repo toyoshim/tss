@@ -10,14 +10,6 @@ import javax.sound.sampled.SourceDataLine;
 import javax.sound.sampled.LineUnavailableException;
 import org.twintail.tss.Channel;
 
-import java.io.InputStream;
-import java.io.BufferedInputStream;
-import java.net.URL;
-import java.net.HttpURLConnection;
-import org.twintail.tss.MasterChannel;
-import org.twintail.tss.PsgDeviceChannel;
-import org.twintail.tss.PsglogPlayer;
-
 /**
  * class AudioPlayback
  *
@@ -94,40 +86,6 @@ public final class AudioLooper extends Thread {
                 }
                 line.write(buffer, 0, BUFFER_SIZE_IN_SHORTS * 2);
             }
-        }
-    }
-
-    /**
-     * Main to run simple test.
-     * @param args arguments (not used)
-     */
-    public static void main(final String[] args) {
-        final int psglogPlayerInterval = 33;
-        try {
-            // prepare sound related objects
-            AudioLooper loop = new AudioLooper();
-            MasterChannel master = new MasterChannel();
-            PsgDeviceChannel psg = new PsgDeviceChannel();
-            psg.setMode(PsgDeviceChannel.MODE_SIGNED);
-            psg.setDevice(PsgDeviceChannel.DEVICE_YM_2149);
-            master.addChannel(psg);
-
-            // prepare input audio data
-            URL url = new URL("http://chiyo.twintail.org/psglog.1");
-            HttpURLConnection urlConnection =
-                (HttpURLConnection) url.openConnection();
-            InputStream in =
-                new BufferedInputStream(urlConnection.getInputStream());
-
-            // play it!
-            PsglogPlayer play = new PsglogPlayer(in, psg);
-            master.setPlayer(play);
-            master.setPlayerInterval(psglogPlayerInterval);
-            loop.setChannel(master);
-            loop.run();
-        } catch (Exception e) {
-            Logger.getLogger(Logger.GLOBAL_LOGGER_NAME).warning(TAG
-                    + "> Exception: " + e.toString());
         }
     }
 }

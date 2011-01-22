@@ -17,21 +17,11 @@ public final class PsglogPlayer implements Player {
     private static final int PKT_VALUE = 1;
     private static final byte PKT_SYNC = -1;
     private static final int BYTE_MASK = 0xff;
+    private static final int PLAYER_INTERVAL = 33;
     private InputStream input = null;
     private PsgDeviceChannel psg = null;
     private Exception lastException = null;
     private int sync = 0;
-
-    /**
-     * Class constructor.
-     * @param inputStream data input stream
-     * @param psgDeviceChannel AY-3-8910 device to control
-     */
-    public PsglogPlayer(final InputStream inputStream,
-            final PsgDeviceChannel psgDeviceChannel) {
-        input = inputStream;
-        psg = psgDeviceChannel;
-    }
 
     /**
      * Get last happened exception.
@@ -43,8 +33,25 @@ public final class PsglogPlayer implements Player {
 
     /**
      * @see Player
+     * @param channel master channel
+     */
+    public void setMasterChannel(final MasterChannel channel) {
+        psg = new PsgDeviceChannel();
+        psg.setMode(PsgDeviceChannel.MODE_SIGNED);
+        psg.setDevice(PsgDeviceChannel.DEVICE_AY_3_8910);
+        channel.clearChannel();
+        channel.addChannel(psg);
+        channel.setPlayer(this);
+        channel.setPlayerInterval(PLAYER_INTERVAL);
+    }
+
+    /**
+     * @see Player
      */
     public void updateDevice() {
+        if (null == input) {
+            return;
+        }
         if (0 != sync) {
             sync--;
             return;
@@ -70,5 +77,13 @@ public final class PsglogPlayer implements Player {
         } catch (IOException e) {
             lastException = e;
         }
+    }
+
+    /**
+     * @see Player
+     * @param newInput InputStream to play
+     */
+    public void play(final InputStream newInput) {
+        input = newInput;
     }
 }
