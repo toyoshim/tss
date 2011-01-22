@@ -49,7 +49,7 @@ public final class MasterChannel implements Channel {
      * It is the default value.
      * @param newVolume volume
      */
-    public void setVolume(int newVolume) {
+    public void setVolume(final int newVolume) {
         volume = newVolume;
     }
 
