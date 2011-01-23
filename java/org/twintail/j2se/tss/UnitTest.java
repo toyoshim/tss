@@ -9,6 +9,7 @@ import java.io.BufferedInputStream;
 import java.net.URL;
 import java.net.HttpURLConnection;
 import java.util.logging.Logger;
+import org.twintail.tss.Log;
 import org.twintail.tss.MasterChannel;
 import org.twintail.tss.PsglogPlayer;
 import org.twintail.tss.VgmPlayer;
@@ -72,6 +73,7 @@ public final class UnitTest {
         } catch (Exception e) {
             Logger.getLogger(Logger.GLOBAL_LOGGER_NAME).warning("TEST01"
                     + "> Exception: " + e.toString());
+            e.printStackTrace();
         }
     }
 
@@ -80,6 +82,7 @@ public final class UnitTest {
      * @param args arguments (not used)
      */
     public static void main(final String[] args) {
+        Log.setLog(new J2SELog());
         UnitTest test = new UnitTest();
         //test.test00();
         test.test01();
