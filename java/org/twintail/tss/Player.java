@@ -27,6 +27,7 @@ public interface Player {
     /**
      *  Decode and play.
      * @param input InputStream to play
+     * @return success or not
      */
-    void play(InputStream input);
+    boolean play(InputStream input);
 }

@@ -82,8 +82,10 @@ public final class PsglogPlayer implements Player {
     /**
      * @see Player
      * @param newInput InputStream to play
+     * @return success or not
      */
-    public void play(final InputStream newInput) {
+    public boolean play(final InputStream newInput) {
         input = newInput;
+        return true;
     }
 }
