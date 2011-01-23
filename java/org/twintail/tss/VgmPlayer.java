@@ -5,6 +5,7 @@ package org.twintail.tss;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.BufferedInputStream;
 import java.util.zip.GZIPInputStream;
 
 /**
@@ -38,20 +39,31 @@ public final class VgmPlayer implements Player {
     private static final int LSHIFT_2_BYTE = 16;
     private static final int LSHIFT_3_BYTE = 24;
     private static final int PLAYER_INTERVAL_NTSC = 17;
-    //private static final int PLAYER_INTERVAL_PAL = 20;
+    private static final int PLAYER_INTERVAL_PAL = 20;
     private static final int VGM_DEFAULT_DATA_OFFSET = 0x40;
     private static final int VGM_1_00_EOH = 0x24;
     private static final byte CMD_WRITE_GG = (byte) 0x4f;
     private static final byte CMD_WRITE_SN = (byte) 0x50;
+    private static final byte CMD_WRITE_YM2413 = (byte) 0x51;
+    private static final byte CMD_WRITE_YM2612A = (byte) 0x52;
+    private static final byte CMD_WRITE_YM2612B = (byte) 0x53;
+    private static final byte CMD_WRITE_YM2151 = (byte) 0x54;
     private static final byte CMD_WAIT_NNNN = (byte) 0x61;
     private static final byte CMD_WAIT_735 = (byte) 0x62;
+    private static final byte CMD_WAIT_882 = (byte) 0x63;
+    private static final byte CMD_EOD = (byte) 0x66;
     private static final int WAIT_735 = 735;
+    private static final int WAIT_882 = 882;
 
+    private MasterChannel masterChannel = null;
     private InputStream inputStream = null;
     private PsgDeviceChannel psg = null;
     private int minorVersion = 0;
-    private long snClock = 3579545;
+    private long snClock = PsgDeviceChannel.CLOCK_3_58MHZ;
     private boolean error = false;
+    private boolean loop = false;
+    private long loopSkipOffset = 0;
+    private int interval = PLAYER_INTERVAL_NTSC;
     private int wait = 0;
     private int writtenSamples = 0;
 
@@ -86,6 +98,9 @@ public final class VgmPlayer implements Player {
         channel.setPlayer(this);
         // TODO: msec is not sufficient for NTSC (16.6... is not 17!)
         channel.setPlayerInterval(PLAYER_INTERVAL_NTSC);
+        interval = WAIT_735;
+        Log.getLog().info("VGM: assume as NTSC");
+        masterChannel = channel;
     }
 
     /**
@@ -95,13 +110,12 @@ public final class VgmPlayer implements Player {
         if (error || (inputStream == null)) {
             return;
         }
-        if (0 != wait) {
-            wait--;
+        if (wait > 0) {
+            wait -= interval;
             return;
         }
         try {
-            boolean loop = true;
-            while (loop) {
+            while (true) {
                 byte[] command = new byte[1];
                 byte[] arguments = new byte[2];
                 inputStream.read(command, 0, 1);
@@ -116,27 +130,52 @@ public final class VgmPlayer implements Player {
                     psg.writeRegister(0, (int) ((long) command[0] & BYTE_MASK));
                     writtenSamples++;
                     break;
+                case CMD_WRITE_YM2413:
+                case CMD_WRITE_YM2612A:
+                case CMD_WRITE_YM2612B:
+                case CMD_WRITE_YM2151:
+                    error = true;
+                    Log.getLog().warn("VGM: FM sound is not supported");
+                    return;
                 case CMD_WAIT_NNNN:
                     inputStream.read(arguments, 0, 2);
-                    wait = (int) (((long) arguments[0] & BYTE_MASK)
-                            | (((long) arguments[1] & BYTE_MASK) << LSHIFT_1_BYTE));
-                    loop = false;
-                    wait = 1;
-                    //Log.getLog().info("wait NNNN");
-                    break;
+                    wait += (int) (((long) arguments[0] & BYTE_MASK)
+                            | (((long) arguments[1] & BYTE_MASK)
+                                    << LSHIFT_1_BYTE));
+                    return;
                 case CMD_WAIT_735:
-                    wait = WAIT_735;
-                    loop = false;
-                    wait = 1;
-                    //Log.getLog().info("wait 735");
+                    wait += WAIT_735;
+                    masterChannel.setPlayerInterval(PLAYER_INTERVAL_NTSC);
+                    if (interval != WAIT_735) {
+                        Log.getLog().info("VGM: detect as NTSC");
+                        interval = WAIT_735;
+                    }
+                    return;
+                case CMD_WAIT_882:
+                    wait += WAIT_882;
+                    masterChannel.setPlayerInterval(PLAYER_INTERVAL_PAL);
+                    if (interval != WAIT_882) {
+                        Log.getLog().info("VGM: detect as PAL");
+                        interval = WAIT_882;
+                    }
+                    return;
+                case CMD_EOD:
+                    if (loop) {
+                        inputStream.reset();
+                        inputStream.skip(loopSkipOffset);
+                        Log.getLog().info("VGM: loop");
+                    } else {
+                        // set error flag to stop music
+                        error = true;
+                        return;
+                    }
                     break;
                 default:
-                    Log.getLog().warn("CMD: "
+                    Log.getLog().warn("VGM: unknown command 0x"
                             + Integer.toHexString((int)
                                     ((long) command[0] & BYTE_MASK)));
                     Log.getLog().warn("written samples = " + writtenSamples);
-                    error = true;
-                    loop = false;
+                    return;
                 }
             }
         } catch (Exception e) {
@@ -162,7 +201,7 @@ public final class VgmPlayer implements Player {
             InputStream in = input;
             if ((GZ_ID1 == gzHeader[0]) && (GZ_ID2 == gzHeader[1])) {
                 Log.getLog().info("VGM: GZip compressed, aka VGZ");
-                in = new GZIPInputStream(input);
+                in = new BufferedInputStream(new GZIPInputStream(input));
             }
 
             // check vgm header
@@ -244,6 +283,10 @@ public final class VgmPlayer implements Player {
             Log.getLog().info("VGM: Total # samples = " + totalSamples);
             Log.getLog().info("VGM: Loop offset = " + loopOffset);
             Log.getLog().info("VGM: Loop # samples = " + loopSamples);
+            if (0 != loopOffset) {
+                loop = true;
+                loopSkipOffset = loopOffset - VGM_DEFAULT_DATA_OFFSET;
+            }
 
             // 1.00 complete
             if (minorVersion == VERSION_1_00) {
