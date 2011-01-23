@@ -394,31 +394,35 @@ public final class PsgDeviceChannel implements Device, Channel {
             // set next accessed register to address
             activeRegister = pseudoAddress & ADDRESS_MASK;
         } else {
-            register[activeRegister] = value & VALUE_MASK;
+            pseudoAddress = activeRegister;
+            register[pseudoAddress] = value & VALUE_MASK;
         }
-        switch (activeRegister) {
+        switch (pseudoAddress) {
         case REGISTER_SN_CH_A_TP:
+        case REGISTER_SN_CH_A_TP_HIGH:
             stepTone[CH_A] = ((register[REGISTER_SN_CH_A_TP_HIGH] << HALF_SHIFT)
                     | register[REGISTER_SN_CH_A_TP]) << STEP_BIAS;
             break;
         case REGISTER_SN_CH_A_VOLUME:
-            volume[CH_A] = (short) (volumeTable[register[activeRegister] << 1]
+            volume[CH_A] = (short) (volumeTable[register[pseudoAddress]]
                                                 << VOLUME_BIAS);
             break;
         case REGISTER_SN_CH_B_TP:
+        case REGISTER_SN_CH_B_TP_HIGH:
             stepTone[CH_B] = ((register[REGISTER_SN_CH_B_TP_HIGH] << HALF_SHIFT)
                     | register[REGISTER_SN_CH_B_TP]) << STEP_BIAS;
             break;
         case REGISTER_SN_CH_B_VOLUME:
-            volume[CH_B] = (short) (volumeTable[register[activeRegister] << 1]
+            volume[CH_B] = (short) (volumeTable[register[pseudoAddress]]
                                                 << VOLUME_BIAS);
             break;
         case REGISTER_SN_CH_C_TP:
+        case REGISTER_SN_CH_C_TP_HIGH:
             stepTone[CH_C] = ((register[REGISTER_SN_CH_C_TP_HIGH] << HALF_SHIFT)
                     | register[REGISTER_SN_CH_C_TP]) << STEP_BIAS;
             break;
         case REGISTER_SN_CH_C_VOLUME:
-            volume[CH_C] = (short) (volumeTable[register[activeRegister] << 1]
+            volume[CH_C] = (short) (volumeTable[register[pseudoAddress]]
                                                 << VOLUME_BIAS);
             break;
         case REGISTER_SN_NOISE_CONTROL:
@@ -427,7 +431,7 @@ public final class PsgDeviceChannel implements Device, Channel {
             feedback = 1 == (value >> 2);
             break;
         case REGISTER_SN_NOISE_VOLUME:
-            volumeNoise = volumeTable[register[activeRegister]];
+            volumeNoise = volumeTable[register[pseudoAddress]];
             break;
         default:
             break;
