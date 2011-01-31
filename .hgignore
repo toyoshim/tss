@@ -1,5 +1,6 @@
 build
 data
+tmp
 .class
 .checkstyle
 .project
