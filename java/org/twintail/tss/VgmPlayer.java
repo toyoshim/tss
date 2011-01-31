@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.BufferedInputStream;
 import java.util.zip.GZIPInputStream;
+import org.twintail.Log;
 
 /**
  * class VgmPlayer

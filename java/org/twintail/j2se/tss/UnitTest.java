@@ -9,7 +9,7 @@ import java.io.BufferedInputStream;
 import java.net.URL;
 import java.net.HttpURLConnection;
 import java.util.logging.Logger;
-import org.twintail.tss.Log;
+import org.twintail.Log;
 import org.twintail.tss.MasterChannel;
 import org.twintail.tss.PsglogPlayer;
 import org.twintail.tss.VgmPlayer;

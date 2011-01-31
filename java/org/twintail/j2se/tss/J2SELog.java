@@ -5,7 +5,7 @@ package org.twintail.j2se.tss;
 
 import java.util.logging.Logger;
 import java.util.logging.Level;
-import org.twintail.tss.Log;
+import org.twintail.Log;
 
 /**
  * class J2SELog

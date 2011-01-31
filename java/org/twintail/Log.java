@@ -1,7 +1,7 @@
 /**
- * T'SoundSystem for Java
+ * TOYOSHIMA-HOUSE Libraries for Java
  */
-package org.twintail.tss;
+package org.twintail;
 
 /**
  * class Log
