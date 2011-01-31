@@ -30,7 +30,7 @@ public final class Cpu6502 implements Cpu {
     private static final int INST_BBR0_BP = 0x0f;
 
     private static final int[] CYCLES = {
-        7, 6,
+        7, 5, 2, 2, 4, 3, 4, 4, 3, 2, 1, 1, 5, 4, 5, 4,
     };
 
     private static final int BYTE_MASK = 0xff;
