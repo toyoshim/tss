@@ -230,6 +230,17 @@ public final class Cpu6502 implements Cpu {
     }
 
     /**
+     * Get relative address.
+     * @return relative address
+     */
+    private int getWordRelativeAddress() {
+        int low = ((int) fetch()) & BYTE_MASK;
+        int high = ((int) fetch()) & BYTE_MASK;
+        int offset = (short) ((high << BYTE_SHIFT) | low);
+        return (registerPC + offset) & WORD_MASK;
+    }
+
+    /**
      * Get indexed indirect addressing value by X.
      * @return indexed indirect addressing value
      */
@@ -345,10 +356,26 @@ public final class Cpu6502 implements Cpu {
 
     /**
      * Execute TSB operation.
+     * This operation realizes test and set bit.
      * @param address operand address
      */
     private void executeTsb(final int address) {
         int result = registerA | memory.readChar(address);
+        if (0 == result) {
+            setStatus(P_Z);
+        } else {
+            resetStatus(P_Z);
+        }
+        memory.writeChar(address, (char) result);
+    }
+
+    /**
+     * Execute TRB operation.
+     * This operation realizes test and reset bit.
+     * @param address operand address
+     */
+    private void executeTrb(final int address) {
+        int result = ~registerA & memory.readChar(address);
         if (0 == result) {
             setStatus(P_Z);
         } else {
@@ -392,6 +419,22 @@ public final class Cpu6502 implements Cpu {
     }
 
     /**
+     * Execute INC operation.
+     * @param source operand
+     * @return result
+     */
+    private char executeInc(final char source) {
+        char result = (char) (source + 1);
+        resetStatus(P_N | P_Z);
+        if (0 == result) {
+            setStatus(P_Z);
+        } else if (0 != (result & BIT7)) {
+            setStatus(P_N);
+        }
+        return result;
+    }
+
+    /**
      * Execute BBR operation.
      * @param mask bit mask to test
      * @param address address to test
@@ -401,6 +444,17 @@ public final class Cpu6502 implements Cpu {
             final int target) {
         int value = memory.readChar(address);
         if (0 == (mask & value)) {
+            registerPC = (short) target;
+        }
+    }
+
+    /**
+     * Execute B** operation.
+     * @param taken execute branch on true
+     * @param target branch target
+     */
+    public void executeBxx(final boolean taken, final int target) {
+        if (taken) {
             registerPC = (short) target;
         }
     }
@@ -467,8 +521,7 @@ public final class Cpu6502 implements Cpu {
             executeBbr(BIT0, getBasePageAddress(0), getRelativeAddress());
             break;
         case INST_BPL_REL:
-            Log.getLog().error("6502: BPL REL"); // TODO
-            fetch();
+            executeBxx(0 == (registerP & P_N), getRelativeAddress());
             break;
         case INST_ORA_IND_Y:
             executeOra(getIndirectIndexedValue(registerY));
@@ -477,13 +530,10 @@ public final class Cpu6502 implements Cpu {
             executeOra(getIndirectIndexedValue(registerZ));
             break;
         case INST_BPL_W_REL:
-            Log.getLog().error("6502: BPL W REL"); // TODO
-            fetch();
-            fetch();
+            executeBxx(0 == (registerP & P_N), getWordRelativeAddress());
             break;
         case INST_TRB_BP:
-            Log.getLog().error("6502: TRB BP"); // TODO
-            fetch();
+            executeTrb(getBasePageAddress(0));
             break;
         case INST_ORA_BP_X:
             executeOra(getBasePageValue(registerX));
@@ -495,21 +545,19 @@ public final class Cpu6502 implements Cpu {
             executeRmb(getBasePageAddress(0), BIT1);
             break;
         case INST_CLC:
-            Log.getLog().error("6502: CRC"); // TODO
+            resetStatus(P_C);
             break;
         case INST_ORA_ABS_Y:
             executeOra(getAbsoluteValue(registerY));
             break;
         case INST_INC:
-            Log.getLog().error("6502: INC"); // TODO
+            registerA = executeInc(registerA);
             break;
         case INST_INZ:
-            Log.getLog().error("6502: INZ"); // TODO
+            registerZ = executeInc(registerZ);
             break;
         case INST_TRB_ABS:
-            Log.getLog().error("6502: TRB ABS"); // TODO
-            fetch();
-            fetch();
+            executeTrb(getAbsoluteAddress(0));
             break;
         case INST_ORA_ABS_X:
             executeOra(getAbsoluteValue(registerX));
