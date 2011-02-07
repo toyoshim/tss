@@ -60,8 +60,23 @@ public final class Cpu6502 implements Cpu {
     private static final int INST_AND_ABS = 0x2d;
     private static final int INST_ROL_ABS = 0x2e;
     private static final int INST_BBR2_BP = 0x2f;
+    private static final int INST_BMI_REL = 0x30;
+    private static final int INST_AND_IND_Y = 0x31;
+    private static final int INST_AND_IND_Z = 0x32;
+    private static final int INST_BMI_W_REL = 0x33;
+    private static final int INST_BIT_BP_X = 0x34;
+    private static final int INST_AND_BP_X = 0x35;
+    private static final int INST_ROL_BP_X = 0x36;
     private static final int INST_RMB3_BP = 0x37;
+    private static final int INST_SEC = 0x38;
+    private static final int INST_AND_ABS_Y = 0x39;
+    private static final int INST_DEC_ACCUM = 0x3a;
+    private static final int INST_DEZ = 0x3b;
+    private static final int INST_BIT_ABS_X = 0x3c;
+    private static final int INST_AND_ABS_X = 0x3d;
+    private static final int INST_ROL_ABS_X = 0x3e;
     private static final int INST_BBR3_BP = 0x3f;
+
     private static final int INST_RMB4_BP = 0x47;
     private static final int INST_BBR4_BP = 0x4f;
     private static final int INST_RMB5_BP = 0x57;
@@ -171,6 +186,44 @@ public final class Cpu6502 implements Cpu {
     }
 
     /**
+     * Get absolute address.
+     * @param index address index
+     * @return absolute address
+     */
+    private int getAbsoluteAddress(final char index) {
+        int low = ((int) fetch()) & BYTE_MASK;
+        int high = ((int) fetch()) & BYTE_MASK;
+        int address = (high << BYTE_SHIFT) | low;
+        address = (address + (((int) index) & BYTE_MASK)) & WORD_MASK;
+        return address;
+    }
+
+    /**
+     * Get absolute indirect address.
+     * @return absolute indirect address
+     */
+    private int getAbsoluteIndirectAddress() {
+        int low = ((int) fetch()) & BYTE_MASK;
+        int high = ((int) fetch()) & BYTE_MASK;
+        int address = ((high << BYTE_SHIFT) | low) & WORD_MASK;
+        low = ((int) memory.readChar(address + 0)) & BYTE_MASK;
+        high = ((int) memory.readChar(address + 1)) & BYTE_MASK;
+        address = ((high << BYTE_SHIFT) | low) & WORD_MASK;
+        return address;
+    }
+
+    /**
+     * Get base page address.
+     * @param index address index
+     * @return base page address
+     */
+    private int getBasePageAddress(final char index) {
+        int address = fetch() & BYTE_MASK;
+        address = (address + (((int) index) & BYTE_MASK)) & WORD_MASK;
+        return address;
+    }
+
+    /**
      * Get indexed indirect address by X.
      * @return indexed indirect address
      */
@@ -187,36 +240,12 @@ public final class Cpu6502 implements Cpu {
      * @param index address index
      * @return indirect address
      */
-    private int getIndirectIndexedAddress(final int index) {
+    private int getIndirectIndexedAddress(final char index) {
         int address = fetch() & BYTE_MASK;
         int low = ((int) memory.readChar(address + 0)) & BYTE_MASK;
         int high = ((int) memory.readChar(address + 1)) & BYTE_MASK;
         address = (high << BYTE_SHIFT) | low;
-        address = (address + index) & WORD_MASK;
-        return address;
-    }
-
-    /**
-     * Get base page address.
-     * @param index address index
-     * @return base page address
-     */
-    private int getBasePageAddress(final int index) {
-        int address = fetch() & BYTE_MASK;
-        address = (address + index) & WORD_MASK;
-        return address;
-    }
-
-    /**
-     * Get absolute address.
-     * @param index address index
-     * @return absolute address
-     */
-    private int getAbsoluteAddress(final int index) {
-        int low = ((int) fetch()) & BYTE_MASK;
-        int high = ((int) fetch()) & BYTE_MASK;
-        int address = (high << BYTE_SHIFT) | low;
-        address = (address + index) & WORD_MASK;
+        address = (address + (((int) index) & BYTE_MASK)) & WORD_MASK;
         return address;
     }
 
@@ -225,6 +254,7 @@ public final class Cpu6502 implements Cpu {
      * @return relative address
      */
     private int getRelativeAddress() {
+        // relative offset is signed value exceptionally
         char offset = (char) fetch();
         return (registerPC + offset) & WORD_MASK;
     }
@@ -236,37 +266,9 @@ public final class Cpu6502 implements Cpu {
     private int getWordRelativeAddress() {
         int low = ((int) fetch()) & BYTE_MASK;
         int high = ((int) fetch()) & BYTE_MASK;
-        int offset = (short) ((high << BYTE_SHIFT) | low);
+        // relative offset is signed value exceptionally
+        short offset = (short) ((high << BYTE_SHIFT) | low);
         return (registerPC + offset) & WORD_MASK;
-    }
-
-    /**
-     * Get indexed indirect addressing value by X.
-     * @return indexed indirect addressing value
-     */
-    private int getIndexedIndirectValue() {
-        int address = getIndexedIndirectAddress();
-        return ((int) memory.readChar(address)) & BYTE_MASK;
-    }
-
-    /**
-     * Get indexed indirect addressing value by Y or Z.
-     * @param index offset value (Y or Z)
-     * @return indexed indirect addressing value
-     */
-    private int getIndirectIndexedValue(final int index) {
-        int address = getIndirectIndexedAddress(index);
-        return ((int) memory.readChar(address)) & BYTE_MASK;
-    }
-
-    /**
-     * Get base page addressing value.
-     * @param index address index
-     * @return base page addressing value
-     */
-    private int getBasePageValue(final int index) {
-        int address = getBasePageAddress(index);
-        return ((int) memory.readChar(address)) & BYTE_MASK;
     }
 
     /**
@@ -274,18 +276,47 @@ public final class Cpu6502 implements Cpu {
      * @param index address index
      * @return absolute addressing value
      */
-    private int getAbsoluteValue(final int index) {
+    private char getAbsoluteValue(final char index) {
         int address = getAbsoluteAddress(index);
-        return ((int) memory.readChar(address)) & BYTE_MASK;
+        return memory.readChar(address);
 
+    }
+
+    /**
+     * Get base page addressing value.
+     * @param index address index
+     * @return base page addressing value
+     */
+    private char getBasePageValue(final char index) {
+        int address = getBasePageAddress(index);
+        return memory.readChar(address);
     }
 
     /**
      * Get immediate addressing value.
      * @return immediate addressing value
      */
-    private int getImmediateValue() {
-        return fetch();
+    private char getImmediateValue() {
+        return (char) (fetch() & BYTE_MASK);
+    }
+
+    /**
+     * Get indexed indirect addressing value by X.
+     * @return indexed indirect addressing value
+     */
+    private char getIndexedIndirectValue() {
+        int address = getIndexedIndirectAddress();
+        return memory.readChar(address);
+    }
+
+    /**
+     * Get indexed indirect addressing value by Y or Z.
+     * @param index offset value (Y or Z)
+     * @return indexed indirect addressing value
+     */
+    private char getIndirectIndexedValue(final char index) {
+        int address = getIndirectIndexedAddress(index);
+        return memory.readChar(address);
     }
 
     /**
@@ -305,12 +336,11 @@ public final class Cpu6502 implements Cpu {
     }
 
     /**
-     * Execute ORA operation.
-     * A = A | value
+     * Execute AND operation.
      * @param value operand
      */
-    private void executeOra(final int value) {
-        registerA |= value;
+    private void executeAnd(final char value) {
+        registerA = (char) (registerA & value);
         resetStatus(P_Z | P_N);
         if (0 == registerA) {
             setStatus(P_Z);
@@ -355,86 +385,6 @@ public final class Cpu6502 implements Cpu {
     }
 
     /**
-     * Execute TSB operation.
-     * This operation realizes test and set bit.
-     * @param address operand address
-     */
-    private void executeTsb(final int address) {
-        int result = registerA | memory.readChar(address);
-        if (0 == result) {
-            setStatus(P_Z);
-        } else {
-            resetStatus(P_Z);
-        }
-        memory.writeChar(address, (char) result);
-    }
-
-    /**
-     * Execute TRB operation.
-     * This operation realizes test and reset bit.
-     * @param address operand address
-     */
-    private void executeTrb(final int address) {
-        int result = ~registerA & memory.readChar(address);
-        if (0 == result) {
-            setStatus(P_Z);
-        } else {
-            resetStatus(P_Z);
-        }
-        memory.writeChar(address, (char) result);
-    }
-
-    /**
-     * Execute RMB operation.
-     * @param address operand address
-     * @param mask bit mask to reset
-     */
-    private void executeRmb(final int address, final int mask) {
-        int value = memory.readChar(address);
-        value = value & ~mask;
-        memory.writeChar(address, (char) value);
-    }
-
-    /**
-     * Execute PH* operation.
-     * @param value operand
-     */
-    private void executePh(final int value) {
-        memory.writeChar(registerS, (char) value);
-        registerS--;
-    }
-
-    /**
-     * Execute TS* operation.
-     * @return result
-     */
-    private char executeTs() {
-        resetStatus(P_N | P_Z);
-        if (0 == registerS) {
-            setStatus(P_Z);
-        } else if (0 != (registerS & BIT7)) {
-            setStatus(P_N);
-        }
-        return registerS;
-    }
-
-    /**
-     * Execute INC operation.
-     * @param source operand
-     * @return result
-     */
-    private char executeInc(final char source) {
-        char result = (char) (source + 1);
-        resetStatus(P_N | P_Z);
-        if (0 == result) {
-            setStatus(P_Z);
-        } else if (0 != (result & BIT7)) {
-            setStatus(P_N);
-        }
-        return result;
-    }
-
-    /**
      * Execute BBR operation.
      * @param mask bit mask to test
      * @param address address to test
@@ -457,6 +407,106 @@ public final class Cpu6502 implements Cpu {
         if (taken) {
             registerPC = (short) target;
         }
+    }
+
+    /**
+     * Execute INC operation.
+     * @param source operand
+     * @return result
+     */
+    private char executeInc(final char source) {
+        char result = (char) (source + 1);
+        resetStatus(P_N | P_Z);
+        if (0 == result) {
+            setStatus(P_Z);
+        } else if (0 != (result & BIT7)) {
+            setStatus(P_N);
+        }
+        return result;
+    }
+
+    /**
+     * Execute JSR operation.
+     * @param target subroutine address
+     */
+    public void executeJsr(final int target) {
+        registerPC--;
+        executePh((char) registerPC);
+        executePh((char) (registerPC >> BYTE_SHIFT));
+        registerPC = (short) target;
+    }
+
+    /**
+     * Execute ORA operation.
+     * @param value operand
+     */
+    private void executeOra(final char value) {
+        registerA |= value;
+        resetStatus(P_Z | P_N);
+        if (0 == registerA) {
+            setStatus(P_Z);
+        } else if (0 != (registerA & BIT7)) {
+            setStatus(P_N);
+        }
+    }
+
+    /**
+     * Execute PH* operation.
+     * @param value operand
+     */
+    private void executePh(final char value) {
+        memory.writeChar(registerS, value);
+        registerS--;
+    }
+
+    /**
+     * Execute RMB operation.
+     * @param address operand address
+     * @param mask bit mask to reset
+     */
+    private void executeRmb(final int address, final int mask) {
+        int value = memory.readChar(address);
+        value = value & ~mask;
+        memory.writeChar(address, (char) value);
+    }
+
+    /**
+     * Execute TRB operation.
+     * This operation realizes test and reset bit.
+     * @param address operand address
+     */
+    private void executeTrb(final int address) {
+        int result = ~registerA & memory.readChar(address);
+        if (0 == result) {
+            setStatus(P_Z);
+        } else {
+            resetStatus(P_Z);
+        }
+        memory.writeChar(address, (char) result);
+    }
+
+    /**
+     * Execute TS* operation.
+     * @return result
+     */
+    private char executeTs() {
+        // how does flags should be changed? (N, Z)
+        return registerS;
+    }
+
+    /**
+     * Execute TSB operation.
+     * This operation realizes test and set bit.
+     * @param address operand address
+     */
+    private void executeTsb(final int address) {
+        int result = registerA | memory.readChar(address);
+        if (0 == result) {
+            setStatus(P_Z);
+        } else {
+            resetStatus(P_Z);
+        }
+        memory.writeChar(address, (char) result);
     }
 
     /**
@@ -485,16 +535,16 @@ public final class Cpu6502 implements Cpu {
                     "6502 not impl: SEt Extend disable (8-bit SP mode)");
             break;
         case INST_TSB_BP:
-            executeTsb(getBasePageAddress(0));
+            executeTsb(getBasePageAddress((char) 0));
             break;
         case INST_ORA_BP:
-            executeOra(getBasePageValue(0));
+            executeOra(getBasePageValue((char) 0));
             break;
         case INST_ASL_BP:
-            executeAsl(getBasePageAddress(0));
+            executeAsl(getBasePageAddress((char) 0));
             break;
         case INST_RMB0_BP:
-            executeRmb(getBasePageAddress(0), BIT0);
+            executeRmb(getBasePageAddress((char) 0), BIT0);
             break;
         case INST_PHP:
             executePh(registerP);
@@ -509,16 +559,17 @@ public final class Cpu6502 implements Cpu {
             registerY = executeTs();
             break;
         case INST_TSB_ABS:
-            executeTsb(getAbsoluteAddress(0));
+            executeTsb(getAbsoluteAddress((char) 0));
             break;
         case INST_ORA_ABS:
-            executeOra(getAbsoluteValue(0));
+            executeOra(getAbsoluteValue((char) 0));
             break;
         case INST_ASL_ABS:
-            executeAsl(getAbsoluteAddress(0));
+            executeAsl(getAbsoluteAddress((char) 0));
             break;
         case INST_BBR0_BP:
-            executeBbr(BIT0, getBasePageAddress(0), getRelativeAddress());
+            executeBbr(BIT0, getBasePageAddress((char) 0),
+                    getRelativeAddress());
             break;
         case INST_BPL_REL:
             executeBxx(0 == (registerP & P_N), getRelativeAddress());
@@ -533,7 +584,7 @@ public final class Cpu6502 implements Cpu {
             executeBxx(0 == (registerP & P_N), getWordRelativeAddress());
             break;
         case INST_TRB_BP:
-            executeTrb(getBasePageAddress(0));
+            executeTrb(getBasePageAddress((char) 0));
             break;
         case INST_ORA_BP_X:
             executeOra(getBasePageValue(registerX));
@@ -542,7 +593,7 @@ public final class Cpu6502 implements Cpu {
             executeAsl(getBasePageAddress(registerX));
             break;
         case INST_RMB1_BP:
-            executeRmb(getBasePageAddress(0), BIT1);
+            executeRmb(getBasePageAddress((char) 0), BIT1);
             break;
         case INST_CLC:
             resetStatus(P_C);
@@ -557,7 +608,7 @@ public final class Cpu6502 implements Cpu {
             registerZ = executeInc(registerZ);
             break;
         case INST_TRB_ABS:
-            executeTrb(getAbsoluteAddress(0));
+            executeTrb(getAbsoluteAddress((char) 0));
             break;
         case INST_ORA_ABS_X:
             executeOra(getAbsoluteValue(registerX));
@@ -566,45 +617,137 @@ public final class Cpu6502 implements Cpu {
             executeAsl(getAbsoluteAddress(registerX));
             break;
         case INST_BBR1_BP:
-            executeBbr(BIT1, getBasePageAddress(0), getRelativeAddress());
+            executeBbr(BIT1, getBasePageAddress((char) 0),
+                    getRelativeAddress());
+            break;
+        case INST_JSR_ABS:
+            executeJsr(getAbsoluteAddress((char) 0));
+            break;
+        case INST_AND_IND_X:
+            executeAnd(getIndirectIndexedValue(registerX));
+            break;
+        case INST_JSR_IND:
+            executeJsr(getAbsoluteIndirectAddress());
+            break;
+        case INST_JSR_ABS_X:
+            executeJsr(getAbsoluteAddress(registerX));
+            break;
+        case INST_BIT_BP:
+            // TODO
+            break;
+        case INST_AND_BP:
+            // TODO
+            break;
+        case INST_ROL_BP:
+            // TODO
             break;
         case INST_RMB2_BP:
-            executeRmb(getBasePageAddress(0), BIT2);
+            executeRmb(getBasePageAddress((char) 0), BIT2);
+            break;
+        case INST_PLP:
+            // TODO
+            break;
+        case INST_AND_IMM:
+            // TODO
+            break;
+        case INST_ROL_ACCUM:
+            // TODO
+            break;
+        case INST_TYS:
+            // TODO
+            break;
+        case INST_BIT_ABS:
+            // TODO
+            break;
+        case INST_AND_ABS:
+            // TODO
+            break;
+        case INST_ROL_ABS:
+            // TODO
             break;
         case INST_BBR2_BP:
-            executeBbr(BIT2, getBasePageAddress(0), getRelativeAddress());
+            executeBbr(BIT2, getBasePageAddress((char) 0),
+                    getRelativeAddress());
+            break;
+        case INST_BMI_REL:
+            // TODO
+            break;
+        case INST_AND_IND_Y:
+            // TODO
+            break;
+        case INST_AND_IND_Z:
+            // TODO
+            break;
+        case INST_BMI_W_REL:
+            // TODO
+            break;
+        case INST_BIT_BP_X:
+            // TODO
+            break;
+        case INST_AND_BP_X:
+            // TODO
+            break;
+        case INST_ROL_BP_X:
+            // TODO
             break;
         case INST_RMB3_BP:
-            executeRmb(getBasePageAddress(0), BIT3);
+            executeRmb(getBasePageAddress((char) 0), BIT3);
+            break;
+        case INST_SEC:
+            // TODO
+            break;
+        case INST_AND_ABS_Y:
+            // TODO
+            break;
+        case INST_DEC_ACCUM:
+            // TODO
+            break;
+        case INST_DEZ:
+            // TODO
+            break;
+        case INST_BIT_ABS_X:
+            // TODO
+            break;
+        case INST_AND_ABS_X:
+            // TODO
+            break;
+        case INST_ROL_ABS_X:
+            // TODO
             break;
         case INST_BBR3_BP:
-            executeBbr(BIT3, getBasePageAddress(0), getRelativeAddress());
+            executeBbr(BIT3, getBasePageAddress((char) 0),
+                    getRelativeAddress());
             break;
+        // $40-
         case INST_RMB4_BP:
-            executeRmb(getBasePageAddress(0), BIT4);
+            executeRmb(getBasePageAddress((char) 0), BIT4);
             break;
         case INST_BBR4_BP:
-            executeBbr(BIT4, getBasePageAddress(0), getRelativeAddress());
+            executeBbr(BIT4, getBasePageAddress((char) 0),
+                    getRelativeAddress());
             break;
         case INST_RMB5_BP:
-            executeRmb(getBasePageAddress(0), BIT5);
+            executeRmb(getBasePageAddress((char) 0), BIT5);
             break;
         case INST_BBR5_BP:
-            executeBbr(BIT5, getBasePageAddress(0), getRelativeAddress());
+            executeBbr(BIT5, getBasePageAddress((char) 0),
+                    getRelativeAddress());
             break;
         case INST_RMB6_BP:
-            executeRmb(getBasePageAddress(0), BIT6);
+            executeRmb(getBasePageAddress((char) 0), BIT6);
             break;
         case INST_BBR6_BP:
-            executeBbr(BIT6, getBasePageAddress(0), getRelativeAddress());
+            executeBbr(BIT6, getBasePageAddress((char) 0),
+                    getRelativeAddress());
             break;
         case INST_RMB7_BP:
-            executeRmb(getBasePageAddress(0), BIT7);
+            executeRmb(getBasePageAddress((char) 0), BIT7);
             break;
         case INST_BBR7_BP:
-            executeBbr(BIT7, getBasePageAddress(0), getRelativeAddress());
+            executeBbr(BIT7, getBasePageAddress((char) 0),
+                    getRelativeAddress());
             break;
-        default:
+        default: // all your cases are belong to us!
             Log.getLog().error("6502: instruction not implemented");
             break;
         }
