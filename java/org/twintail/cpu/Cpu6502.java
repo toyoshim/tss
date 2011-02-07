@@ -399,6 +399,24 @@ public final class Cpu6502 implements Cpu {
     }
 
     /**
+     * Execute BIT operation.
+     * @param mask bit mask to test
+     */
+    public void executeBit(final int mask) {
+        int result = registerA & mask;
+        resetStatus(BIT7 | BIT6 | P_Z);
+        if (0 != (result & BIT7)) {
+            setStatus(BIT7);
+        }
+        if (0 != (result & BIT6)) {
+            setStatus(BIT6);
+        }
+        if (0 == result) {
+            setStatus(P_Z);
+        }
+    }
+
+    /**
      * Execute B** operation.
      * @param taken execute branch on true
      * @param target branch target
@@ -407,6 +425,22 @@ public final class Cpu6502 implements Cpu {
         if (taken) {
             registerPC = (short) target;
         }
+    }
+
+    /**
+     * Execute DEC operation.
+     * @param source operand
+     * @return result
+     */
+    private char executeDec(final char source) {
+        char result = (char) (source - 1);
+        resetStatus(P_N | P_Z);
+        if (0 == result) {
+            setStatus(P_Z);
+        } else if (0 != (result & BIT7)) {
+            setStatus(P_N);
+        }
+        return result;
     }
 
     /**
@@ -460,6 +494,22 @@ public final class Cpu6502 implements Cpu {
     }
 
     /**
+     * Execute PL* operation.
+     * @return result
+     */
+    private char executePl() {
+        registerS++;
+        char result = memory.readChar(registerS);
+        resetStatus(P_Z | P_N);
+        if (0 == result) {
+            setStatus(P_Z);
+        } else if (0 != (result & BIT7)) {
+            setStatus(P_N);
+        }
+        return result;
+    }
+
+    /**
      * Execute RMB operation.
      * @param address operand address
      * @param mask bit mask to reset
@@ -468,6 +518,43 @@ public final class Cpu6502 implements Cpu {
         int value = memory.readChar(address);
         value = value & ~mask;
         memory.writeChar(address, (char) value);
+    }
+
+    /**
+     * Execute ROL operation.
+     * @param address operand address
+     */
+    private void executeRol(final int address) {
+        char value = memory.readChar(address);
+        char carry = (char) (registerP & P_C);
+        resetStatus(P_N | P_Z | P_C);
+        if (0 != (value & BIT7)) {
+            setStatus(P_C);
+        }
+        value = (char) ((value << 1) & BYTE_MASK | carry);
+        if (0 == value) {
+            setStatus(P_Z);
+        } else if (0 != (value & BIT7)) {
+            setStatus(P_N);
+        }
+        memory.writeChar(address, value);
+    }
+
+    /**
+     * Execute ROL operation to A.
+     */
+    private void executeRolA() {
+        char carry = (char) (registerP & P_C);
+        resetStatus(P_N | P_Z | P_C);
+        if (0 != (registerA & BIT7)) {
+            setStatus(P_C);
+        }
+        registerA = (char) ((registerA << 1) & BYTE_MASK | carry);
+        if (0 == registerA) {
+            setStatus(P_Z);
+        } else if (0 != (registerA & BIT7)) {
+            setStatus(P_N);
+        }
     }
 
     /**
@@ -486,15 +573,6 @@ public final class Cpu6502 implements Cpu {
     }
 
     /**
-     * Execute TS* operation.
-     * @return result
-     */
-    private char executeTs() {
-        // how does flags should be changed? (N, Z)
-        return registerS;
-    }
-
-    /**
      * Execute TSB operation.
      * This operation realizes test and set bit.
      * @param address operand address
@@ -510,6 +588,34 @@ public final class Cpu6502 implements Cpu {
     }
 
     /**
+     * Execute T*S operation.
+     * @param value operand
+     */
+    private void executeTxs(final char value) {
+        registerS = value;
+        resetStatus(P_Z | P_N);
+        if (0 == registerS) {
+            setStatus(P_Z);
+        } else if (0 != (registerS & BIT7)) {
+            setStatus(P_N);
+        }
+    }
+
+    /**
+     * Execute TS* operation.
+     * @return result
+     */
+    private char executeTsx() {
+        resetStatus(P_Z | P_N);
+        if (0 == registerS) {
+            setStatus(P_Z);
+        } else if (0 != (registerS & BIT7)) {
+            setStatus(P_N);
+        }
+        return registerS;
+    }
+
+    /**
      * Execute one step.
      */
     public void runStep() {
@@ -519,7 +625,8 @@ public final class Cpu6502 implements Cpu {
         case INST_BRK:
             setStatus(P_B);
             Log.getLog().info("6502 not impl: BRK");
-            skip(); // TODO: 65CE02 data-sheet say this is two bytes operation.
+            // TODO: 65CE02 data-sheet say this is two bytes operation.
+            skip();
             break;
         case INST_ORA_IND_X:
             executeOra(getIndexedIndirectValue());
@@ -556,7 +663,7 @@ public final class Cpu6502 implements Cpu {
             executeAslA();
             break;
         case INST_TSY:
-            registerY = executeTs();
+            registerY = executeTsx();
             break;
         case INST_TSB_ABS:
             executeTsb(getAbsoluteAddress((char) 0));
@@ -633,86 +740,87 @@ public final class Cpu6502 implements Cpu {
             executeJsr(getAbsoluteAddress(registerX));
             break;
         case INST_BIT_BP:
-            // TODO
+            executeBit(getBasePageValue((char) 0));
             break;
         case INST_AND_BP:
-            // TODO
+            executeAnd(getBasePageValue((char) 0));
             break;
         case INST_ROL_BP:
-            // TODO
+            executeRol(getBasePageAddress((char) 0));
             break;
         case INST_RMB2_BP:
             executeRmb(getBasePageAddress((char) 0), BIT2);
             break;
         case INST_PLP:
-            // TODO
+            registerP = (char) ((executePl() & ~(BIT5 | BIT4))
+                    | (registerP & (BIT5 | BIT4)));
             break;
         case INST_AND_IMM:
-            // TODO
+            executeAnd(getImmediateValue());
             break;
         case INST_ROL_ACCUM:
-            // TODO
+            executeRolA();
             break;
         case INST_TYS:
-            // TODO
+            executeTxs(registerY);
             break;
         case INST_BIT_ABS:
-            // TODO
+            executeBit(getAbsoluteValue((char) 0));
             break;
         case INST_AND_ABS:
-            // TODO
+            executeAnd(getAbsoluteValue((char) 0));
             break;
         case INST_ROL_ABS:
-            // TODO
+            executeRol(getAbsoluteAddress((char) 0));
             break;
         case INST_BBR2_BP:
             executeBbr(BIT2, getBasePageAddress((char) 0),
                     getRelativeAddress());
             break;
         case INST_BMI_REL:
-            // TODO
+            executeBxx(0 != (registerP & P_N), getRelativeAddress());
             break;
         case INST_AND_IND_Y:
-            // TODO
+            executeAnd(getIndirectIndexedValue(registerY));
             break;
         case INST_AND_IND_Z:
-            // TODO
+            executeAnd(getIndirectIndexedValue(registerZ));
             break;
         case INST_BMI_W_REL:
-            // TODO
+            executeBxx(0 != (registerP & P_N), getWordRelativeAddress());
             break;
         case INST_BIT_BP_X:
-            // TODO
+            executeBit(getBasePageValue(registerX));
             break;
         case INST_AND_BP_X:
-            // TODO
+            executeAnd(getBasePageValue(registerX));
             break;
         case INST_ROL_BP_X:
-            // TODO
+            executeRol(getBasePageAddress(registerX));
             break;
         case INST_RMB3_BP:
             executeRmb(getBasePageAddress((char) 0), BIT3);
             break;
         case INST_SEC:
-            // TODO
+            setStatus(P_C);
             break;
         case INST_AND_ABS_Y:
-            // TODO
+            executeAnd(getAbsoluteValue(registerY));
             break;
         case INST_DEC_ACCUM:
-            // TODO
+            registerA = executeDec(registerA);
             break;
         case INST_DEZ:
-            // TODO
+            registerZ = executeDec(registerZ);
             break;
         case INST_BIT_ABS_X:
-            // TODO
+            executeBit(getAbsoluteValue(registerX));
             break;
         case INST_AND_ABS_X:
-            // TODO
+            executeAnd(getAbsoluteValue(registerX));
             break;
         case INST_ROL_ABS_X:
-            // TODO
+            executeRol(getAbsoluteAddress(registerX));
             break;
         case INST_BBR3_BP:
             executeBbr(BIT3, getBasePageAddress((char) 0),
