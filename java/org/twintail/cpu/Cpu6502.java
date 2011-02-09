@@ -46,8 +46,8 @@ public final class Cpu6502 implements Cpu {
     private static final int INST_BBR1_BP = 0x1f;
     private static final int INST_JSR_ABS = 0x20;
     private static final int INST_AND_IND_X = 0x21;
-    private static final int INST_JSR_IND = 0x22;
-    private static final int INST_JSR_ABS_X = 0x23;
+    private static final int INST_JSR_ABS_IND = 0x22;
+    private static final int INST_JSR_ABS_IND_X = 0x23;
     private static final int INST_BIT_BP = 0x24;
     private static final int INST_AND_BP = 0x25;
     private static final int INST_ROL_BP = 0x26;
@@ -76,15 +76,198 @@ public final class Cpu6502 implements Cpu {
     private static final int INST_AND_ABS_X = 0x3d;
     private static final int INST_ROL_ABS_X = 0x3e;
     private static final int INST_BBR3_BP = 0x3f;
-
+    private static final int INST_RTI = 0x40;
+    private static final int INST_EOR_IND_X = 0x41;
+    private static final int INST_NEG_ACCUM = 0x42;
+    private static final int INST_ASR_ACCUM = 0x43;
+    private static final int INST_ASR_BP = 0x44;
+    private static final int INST_EOR_BP = 0x45;
+    private static final int INST_LSR_BP = 0x46;
     private static final int INST_RMB4_BP = 0x47;
+    private static final int INST_PHA = 0x48;
+    private static final int INST_EOR_IMM = 0x49;
+    private static final int INST_LSR_ACCUM = 0x4a;
+    private static final int INST_TAZ = 0x4b;
+    private static final int INST_JMP_ABS = 0x4c;
+    private static final int INST_EOR_ABS = 0x4d;
+    private static final int INST_LSR_ABS = 0x4e;
     private static final int INST_BBR4_BP = 0x4f;
+    private static final int INST_BVC_REL = 0x50;
+    private static final int INST_EOR_IND_Y = 0x51;
+    private static final int INST_EOR_IND_Z = 0x52;
+    private static final int INST_BVC_W_REL = 0x53;
+    private static final int INST_ASR_BP_X = 0x54;
+    private static final int INST_EOR_BP_X = 0x55;
+    private static final int INST_LSR_BP_X = 0x56;
     private static final int INST_RMB5_BP = 0x57;
+    private static final int INST_CLI = 0x58;
+    private static final int INST_EOR_ABS_Y = 0x59;
+    private static final int INST_PHY = 0x5a;
+    private static final int INST_TAB = 0x5b;
+    private static final int INST_AUG = 0x5c;
+    private static final int INST_EOR_ABS_X = 0x5d;
+    private static final int INST_LSR_ABS_X = 0x5e;
     private static final int INST_BBR5_BP = 0x5f;
+    private static final int INST_RTS = 0x60;
+    private static final int INST_ADC_IND_X = 0x61;
+    private static final int INST_RTN = 0x62;
+    private static final int INST_BSR_W_REL = 0x63;
+    private static final int INST_STZ_BP = 0x64;
+    private static final int INST_ADC_BP = 0x65;
+    private static final int INST_ROR_BP = 0x66;
     private static final int INST_RMB6_BP = 0x67;
+    private static final int INST_PLA = 0x68;
+    private static final int INST_ADC_IMM = 0x69;
+    private static final int INST_ROR_ACCUM = 0x6a;
+    private static final int INST_TZA = 0x6b;
+    private static final int INST_JMP_ABS_IND = 0x6c;
+    private static final int INST_ADC_ABS = 0x6d;
+    private static final int INST_ROR_ABS = 0x6e;
     private static final int INST_BBR6_BP = 0x6f;
+    private static final int INST_BVS_REL = 0x70;
+    private static final int INST_ADC_IND_Y = 0x71;
+    private static final int INST_ADC_IND_Z = 0x72;
+    private static final int INST_BVS_W_REL = 0x73;
+    private static final int INST_STZ_BP_X = 0x74;
+    private static final int INST_ADC_BP_X = 0x75;
+    private static final int INST_ROR_BP_X = 0x76;
     private static final int INST_RMB7_BP = 0x77;
+    private static final int INST_SEI = 0x78;
+    private static final int INST_ADC_ABS_Y = 0x79;
+    private static final int INST_PLY = 0x7a;
+    private static final int INST_TBA = 0x7b;
+    private static final int INST_JMP_ABS_IND_X = 0x7c;
+    private static final int INST_ADC_ABS_X = 0x7d;
+    private static final int INST_ROR_ABS_X = 0x7e;
     private static final int INST_BBR7_BP = 0x7f;
+    private static final int INST_BRU_REL = 0x80;
+    private static final int INST_STA_IND_X = 0x81;
+    private static final int INST_STA_DSP_Y = 0x82;
+    private static final int INST_BRU_W_REL = 0x83;
+    private static final int INST_STY_BP = 0x84;
+    private static final int INST_STA_BP = 0x85;
+    private static final int INST_STX_BP = 0x86;
+    private static final int INST_SMB0_BP = 0x87;
+    private static final int INST_DEY = 0x88;
+    private static final int INST_BIT_IMM = 0x89;
+    private static final int INST_TXA = 0x8a;
+    private static final int INST_STY_ABS_X = 0x8b;
+    private static final int INST_STY_ABS = 0x8c;
+    private static final int INST_STA_ABS = 0x8d;
+    private static final int INST_STX_ABS = 0x8e;
+    private static final int INST_STA_BBS0_BP = 0x8f;
+    private static final int INST_BCC_REL = 0x90;
+    private static final int INST_STA_IND_Y = 0x91;
+    private static final int INST_STA_IND_Z = 0x92;
+    private static final int INST_BCC_W_REL = 0x93;
+    private static final int INST_STY_BP_X = 0x94;
+    private static final int INST_STA_BP_X = 0x95;
+    private static final int INST_STX_BP_Y = 0x96;
+    private static final int INST_SMB1_BP = 0x97;
+    private static final int INST_TYA = 0x98;
+    private static final int INST_STA_ABS_Y = 0x99;
+    private static final int INST_TXS = 0x9a;
+    private static final int INST_STX_ABS_Y = 0x9b;
+    private static final int INST_STZ_ABS = 0x9c;
+    private static final int INST_STA_ABS_X = 0x9d;
+    private static final int INST_STZ_ABS_X = 0x9e;
+    private static final int INST_BBS1_BP = 0x9f;
+    private static final int INST_LDY_IMM = 0xa0;
+    private static final int INST_LDA_IND_X = 0xa1;
+    private static final int INST_LDX_IMM = 0xa2;
+    private static final int INST_LDZ_IMM = 0xa3;
+    private static final int INST_LDY_BP = 0xa4;
+    private static final int INST_LDA_BP = 0xa5;
+    private static final int INST_LDX_BP = 0xa6;
+    private static final int INST_SMB2_BP = 0xa7;
+    private static final int INST_TAY = 0xa8;
+    private static final int INST_LDA_IMM = 0xa9;
+    private static final int INST_TAX = 0xaa;
+    private static final int INST_LDZ_ABS = 0xab;
+    private static final int INST_LDY_ABS = 0xac;
+    private static final int INST_LDA_ABS = 0xad;
+    private static final int INST_LDX_ABS = 0xae;
+    private static final int INST_BBS2_BP = 0xaf;
+    private static final int INST_BLS_REL = 0xb0;
+    private static final int INST_LDA_IND_Y = 0xb1;
+    private static final int INST_LDA_IND_Z = 0xb2;
+    private static final int INST_BCS_W_REL = 0xb3;
+    private static final int INST_LDY_BP_X = 0xb4;
+    private static final int INST_LDA_BP_X = 0xb5;
+    private static final int INST_LDX_BP_Y = 0xb6;
+    private static final int INST_SMB3_BP = 0xb7;
+    private static final int INST_CLV = 0xb8;
+    private static final int INST_LDA_ABS_Y = 0xb9;
+    private static final int INST_TSX = 0xba;
+    private static final int INST_LDZ_ABS_X = 0xbb;
+    private static final int INST_LDY_ABS_X = 0xbc;
+    private static final int INST_LDA_ABS_X = 0xbd;
+    private static final int INST_LDX_ABS_Y = 0xbe;
+    private static final int INST_BBS3_BP = 0xbf;
+    private static final int INST_CPY_IMM = 0xc0;
+    private static final int INST_CMP_IND_X = 0xc1;
+    private static final int INST_CPZ_IMM = 0xc2;
+    private static final int INST_DEW_BP = 0xc3;
+    private static final int INST_CPY_BP = 0xc4;
+    private static final int INST_CMP_BP = 0xc5;
+    private static final int INST_DEC_BP = 0xc6;
+    private static final int INST_SMB4_BP = 0xc7;
+    private static final int INST_INY = 0xc8;
+    private static final int INST_CMP_IMM = 0xc9;
+    private static final int INST_DEX = 0xca;
+    private static final int INST_ASW_ABS = 0xcb;
+    private static final int INST_CPY_ABS = 0xcc;
+    private static final int INST_CMP_ABS = 0xcd;
+    private static final int INST_DEC_ABS = 0xce;
+    private static final int INST_BBS4_BP = 0xcf;
+    private static final int INST_BNE_REL = 0xd0;
+    private static final int INST_CMP_IND_Y = 0xd1;
+    private static final int INST_CMP_IND_Z = 0xd2;
+    private static final int INST_BNE_W_REL = 0xd3;
+    private static final int INST_CPZ_BP = 0xd4;
+    private static final int INST_CMP_BP_X = 0xd5;
+    private static final int INST_DEC_BP_X = 0xd6;
+    private static final int INST_SMB5_BP = 0xd7;
+    private static final int INST_CLD = 0xd8;
+    private static final int INST_CMP_ABS_Y = 0xd9;
+    private static final int INST_PHX = 0xda;
+    private static final int INST_PHZ = 0xdb;
+    private static final int INST_CPZ_ABS = 0xdc;
+    private static final int INST_CMP_ABS_X = 0xdd;
+    private static final int INST_DEC_ABS_X = 0xde;
+    private static final int INST_BBS5_BP = 0xdf;
+    private static final int INST_CPX_IMM = 0xe0;
+    private static final int INST_SBC_IND_X = 0xe1;
+    private static final int INST_LDA_DSP_Y = 0xe2;
+    private static final int INST_INW_BP = 0xe3;
+    private static final int INST_CPX_BP = 0xe4;
+    private static final int INST_SBC_BP = 0xe5;
+    private static final int INST_INC_BP = 0xe6;
+    private static final int INST_SMB6_BP = 0xe7;
+    private static final int INST_INX = 0xe8;
+    private static final int INST_SBC_IMM = 0xe9;
+    private static final int INST_NOP = 0xea;
+    private static final int INST_ROW_ABS = 0xeb;
+    private static final int INST_CPX_ABS = 0xec;
+    private static final int INST_SBC_ABS = 0xed;
+    private static final int INST_INC_ABS = 0xee;
+    private static final int INST_BBS6_BP = 0xef;
+    private static final int INST_BEQ_REL = 0xf0;
+    private static final int INST_SBC_IND_Y = 0xf1;
+    private static final int INST_SBC_IND_Z = 0xf2;
+    private static final int INST_BEQ_W_REL = 0xf3;
+    private static final int INST_PHW_IMM_W = 0xf4;
+    private static final int INST_SBC_BP_X = 0xf5;
+    private static final int INST_INC_BP_X = 0xf6;
+    private static final int INST_SMB7_BP = 0xf7;
+    private static final int INST_SED = 0xf8;
+    private static final int INST_SBC_ABS_Y = 0xf9;
+    private static final int INST_PLX = 0xfa;
+    private static final int INST_PLZ = 0xfb;
+    private static final int INST_PHW_ABS_W = 0xfc;
+    private static final int INST_SBC_ABS_X = 0xfd;
+    private static final int INST_INC_ABS_X = 0xfe;
+    private static final int INST_BBS7_BP = 0xff;
 
     private static final int[] CYCLES = {
         7, 5, 2, 2, 4, 3, 4, 4, 3, 2, 1, 1, 5, 4, 5, 4, // 0x0x
@@ -129,6 +312,7 @@ public final class Cpu6502 implements Cpu {
 
     private Memory memory;
     private char registerA;
+    private char registerB;
     private char registerX;
     private char registerY;
     private char registerZ;
@@ -158,6 +342,7 @@ public final class Cpu6502 implements Cpu {
      */
     public void init() {
         registerA = 0;
+        registerB = 0;
         registerX = 0;
         registerY = 0;
         registerZ = 0;
@@ -200,12 +385,13 @@ public final class Cpu6502 implements Cpu {
 
     /**
      * Get absolute indirect address.
+     * @param index address index
      * @return absolute indirect address
      */
-    private int getAbsoluteIndirectAddress() {
+    private int getAbsoluteIndirectAddress(final char index) {
         int low = ((int) fetch()) & BYTE_MASK;
         int high = ((int) fetch()) & BYTE_MASK;
-        int address = ((high << BYTE_SHIFT) | low) & WORD_MASK;
+        int address = (((high << BYTE_SHIFT) | low) + index) & WORD_MASK;
         low = ((int) memory.readChar(address + 0)) & BYTE_MASK;
         high = ((int) memory.readChar(address + 1)) & BYTE_MASK;
         address = ((high << BYTE_SHIFT) | low) & WORD_MASK;
@@ -218,8 +404,7 @@ public final class Cpu6502 implements Cpu {
      * @return base page address
      */
     private int getBasePageAddress(final char index) {
-        int address = fetch() & BYTE_MASK;
-        address = (address + (((int) index) & BYTE_MASK)) & WORD_MASK;
+        int address = (fetch() + index) & BYTE_MASK;
         return address;
     }
 
@@ -228,7 +413,7 @@ public final class Cpu6502 implements Cpu {
      * @return indexed indirect address
      */
     private int getIndexedIndirectAddress() {
-        int address = (registerX + fetch()) & BYTE_MASK;
+        int address = (fetch() + registerX) & BYTE_MASK;
         int low = ((int) memory.readChar(address + 0)) & BYTE_MASK;
         int high = ((int) memory.readChar(address + 1)) & BYTE_MASK;
         address = (high << BYTE_SHIFT) | low;
@@ -336,12 +521,45 @@ public final class Cpu6502 implements Cpu {
     }
 
     /**
+     * Execute ADC operation.
+     * @param value operand
+     */
+    private void executeAdc(final char value) {
+        boolean plus = true;
+        if (0 != (registerA & BIT7)) {
+            plus = false;
+        }
+        int result = 0;
+        if (0 != (registerP & P_C)) {
+            result = 1;
+        }
+        result += registerA & BYTE_MASK;
+        result += value & BYTE_MASK;
+        if (0 != (result & ~BYTE_MASK)) {
+            setStatus(P_C);
+        }
+        if (0 != (result & BIT7)) {
+            setStatus(P_N);
+            if (plus) {
+                setStatus(P_V);
+            }
+        } else {
+            if (0 == result) {
+                setStatus(P_Z);
+            }
+            if (!plus) {
+                setStatus(P_V);
+            }
+        }
+    }
+
+    /**
      * Execute AND operation.
      * @param value operand
      */
     private void executeAnd(final char value) {
         registerA = (char) (registerA & value);
-        resetStatus(P_Z | P_N);
+        resetStatus(P_N | P_Z);
         if (0 == registerA) {
             setStatus(P_Z);
         } else if (0 != (registerA & BIT7)) {
@@ -377,6 +595,49 @@ public final class Cpu6502 implements Cpu {
             setStatus(P_C);
         }
         registerA = (char) ((registerA << 1) & BYTE_MASK);
+        if (0 == registerA) {
+            setStatus(P_Z);
+        } else if (0 != (registerA & BIT7)) {
+            setStatus(P_N);
+        }
+    }
+
+    /**
+     * Execute ASR operation.
+     * @param address operand address
+     */
+    private void executeAsr(final int address) {
+        char value = memory.readChar(address);
+        int carry = 0;
+        if (0 != (registerP & P_C)) {
+            carry = BIT7;
+        }
+        resetStatus(P_N | P_Z | P_C);
+        if (0 != (value & BIT0)) {
+            setStatus(P_C);
+        }
+        value = (char) ((value >> 1) | carry);
+        if (0 == value) {
+            setStatus(P_Z);
+        } else if (0 != (value & BIT7)) {
+            setStatus(P_N);
+        }
+        memory.writeChar(address, value);
+    }
+
+    /**
+     * Execute ASR operation to A.
+     */
+    private void executeAsrA() {
+        int carry = 0;
+        if (0 != (registerP & P_C)) {
+            carry = BIT7;
+        }
+        resetStatus(P_N | P_Z | P_C);
+        if (0 != (registerA & BIT0)) {
+            setStatus(P_C);
+        }
+        registerA = (char) ((registerA >> 1) | carry);
         if (0 == registerA) {
             setStatus(P_Z);
         } else if (0 != (registerA & BIT7)) {
@@ -444,6 +705,20 @@ public final class Cpu6502 implements Cpu {
     }
 
     /**
+     * Execute EOR operation.
+     * @param value operand
+     */
+    private void executeEor(final char value) {
+        registerA = (char) (registerA ^ value);
+        resetStatus(P_N | P_Z);
+        if (0 == registerA) {
+            setStatus(P_Z);
+        } else if (0 != (registerA & BIT7)) {
+            setStatus(P_N);
+        }
+    }
+
+    /**
      * Execute INC operation.
      * @param source operand
      * @return result
@@ -471,12 +746,51 @@ public final class Cpu6502 implements Cpu {
     }
 
     /**
+     * Execute LSR operation.
+     * @param address operand address
+     */
+    private void executeLsr(final int address) {
+        char value = memory.readChar(address);
+        resetStatus(P_N | P_Z | P_C);
+        if (0 != (value & BIT0)) {
+            setStatus(P_C);
+        }
+        value = (char) (value >> 1);
+        if (0 == value) {
+            setStatus(P_Z);
+        }
+        memory.writeChar(address, value);
+    }
+
+    /**
+     * Execute LSR operation to A.
+     */
+    private void executeLsrA() {
+        resetStatus(P_N | P_Z | P_C);
+        if (0 != (registerA & BIT0)) {
+            setStatus(P_C);
+        }
+        registerA = (char) (registerA >> 1);
+        if (0 == registerA) {
+            setStatus(P_Z);
+        }
+    }
+
+    /**
+     * Execute NEG operation.
+     */
+    private void executeNeg() {
+        // TODO: -(-128) => 128 => 0 or -128?
+        registerA = (char) -registerA;
+    }
+
+    /**
      * Execute ORA operation.
      * @param value operand
      */
     private void executeOra(final char value) {
         registerA |= value;
-        resetStatus(P_Z | P_N);
+        resetStatus(P_N | P_Z);
         if (0 == registerA) {
             setStatus(P_Z);
         } else if (0 != (registerA & BIT7)) {
@@ -500,7 +814,7 @@ public final class Cpu6502 implements Cpu {
     private char executePl() {
         registerS++;
         char result = memory.readChar(registerS);
-        resetStatus(P_Z | P_N);
+        resetStatus(P_N | P_Z);
         if (0 == result) {
             setStatus(P_Z);
         } else if (0 != (result & BIT7)) {
@@ -558,6 +872,91 @@ public final class Cpu6502 implements Cpu {
     }
 
     /**
+     * Execute ROR operation.
+     * @param address operand address
+     */
+    private void executeRor(final int address) {
+        char value = memory.readChar(address);
+        char carry = (char) (registerP & P_C);
+        resetStatus(P_N | P_Z | P_C);
+        if (0 != (value & BIT0)) {
+            setStatus(P_C);
+        }
+        value = (char) ((value >> 1) & (BYTE_MASK ^ BIT7));
+        if (0 != carry) {
+            value = (char) ((value | BIT7) & BYTE_MASK);
+        }
+        if (0 == value) {
+            setStatus(P_Z);
+        } else if (0 != (value & BIT7)) {
+            setStatus(P_N);
+        }
+        memory.writeChar(address, value);
+    }
+
+    /**
+     * Execute ROR operation to A.
+     */
+    private void executeRorA() {
+        char carry = (char) (registerP & P_C);
+        resetStatus(P_N | P_Z | P_C);
+        if (0 != (registerA & BIT0)) {
+            setStatus(P_C);
+        }
+        registerA = (char) ((registerA >> 1) & (BYTE_MASK ^ BIT7));
+        if (0 != carry) {
+            registerA = (char) ((registerA | BIT7) & BYTE_MASK);
+        }
+        if (0 == registerA) {
+            setStatus(P_Z);
+        } else if (0 != (registerA & BIT7)) {
+            setStatus(P_N);
+        }
+    }
+
+    /**
+     * Execute RTI operation.
+     */
+    private void executeRti() {
+        registerP = memory.readChar(++registerS);
+        int high = memory.readChar(++registerS) & BYTE_MASK;
+        int low = memory.readChar(++registerS) & BYTE_MASK;
+        registerPC = (short) ((high << BYTE_SHIFT) | low);
+    }
+
+    /**
+     * Execute RTS operation.
+     */
+    private void executeRts() {
+        int high = memory.readChar(++registerS) & BYTE_MASK;
+        int low = memory.readChar(++registerS) & BYTE_MASK;
+        registerPC = (short) (((high << BYTE_SHIFT) | low) + 1);
+    }
+
+    /**
+     * Execute ST* operation.
+     * @param value data to write
+     * @param address address to write
+     */
+    private void executeSt(final char value, final int address) {
+        memory.writeChar(address, value);
+    }
+
+    /**
+     * Execute TA* operation.
+     * @return result
+     */
+    private char executeTax() {
+        resetStatus(P_N | P_Z);
+        if (0 == registerA) {
+            setStatus(P_Z);
+        } else if (0 != (registerA & BIT7)) {
+            setStatus(P_N);
+        }
+        return registerA;
+    }
+
+    /**
      * Execute TRB operation.
      * This operation realizes test and reset bit.
      * @param address operand address
@@ -588,31 +987,45 @@ public final class Cpu6502 implements Cpu {
     }
 
     /**
-     * Execute T*S operation.
-     * @param value operand
-     */
-    private void executeTxs(final char value) {
-        registerS = value;
-        resetStatus(P_Z | P_N);
-        if (0 == registerS) {
-            setStatus(P_Z);
-        } else if (0 != (registerS & BIT7)) {
-            setStatus(P_N);
-        }
-    }
-
-    /**
      * Execute TS* operation.
      * @return result
      */
     private char executeTsx() {
-        resetStatus(P_Z | P_N);
+        resetStatus(P_N | P_Z);
         if (0 == registerS) {
             setStatus(P_Z);
         } else if (0 != (registerS & BIT7)) {
             setStatus(P_N);
         }
         return registerS;
+    }
+
+    /**
+     * ExecuteT*A operation.
+     * @param value operand
+     */
+    private void executeTxa(final char value) {
+        registerA = value;
+        resetStatus(P_N | P_Z);
+        if (0 == registerA) {
+            setStatus(P_Z);
+        } else if (0 != (registerA & BIT7)) {
+            setStatus(P_N);
+        }
+    }
+
+    /**
+     * Execute T*S operation.
+     * @param value operand
+     */
+    private void executeTxs(final char value) {
+        registerS = value;
+        resetStatus(P_N | P_Z);
+        if (0 == registerS) {
+            setStatus(P_Z);
+        } else if (0 != (registerS & BIT7)) {
+            setStatus(P_N);
+        }
     }
 
     /**
@@ -623,8 +1036,11 @@ public final class Cpu6502 implements Cpu {
         cycles += CYCLES[inst];
         switch (inst) {
         case INST_BRK:
+            executePh((char) registerPC);
+            executePh((char) (registerPC >> BYTE_SHIFT));
+            executePh(registerP);
             setStatus(P_B);
-            Log.getLog().info("6502 not impl: BRK");
+            Log.getLog().warn("6502 not impl: BRK");
             // TODO: 65CE02 data-sheet say this is two bytes operation.
             skip();
             break;
@@ -632,11 +1048,13 @@ public final class Cpu6502 implements Cpu {
             executeOra(getIndexedIndirectValue());
             break;
         case INST_CLE:
+            // TODO: 16-bit stack mode is not implemented.
             resetStatus(P_E);
             Log.getLog().warn(
                     "6502 not impl: CLear Extend disable (16-bit SP mode)");
             break;
         case INST_SEE:
+            // TODO: 16-bit stack mode is not implemented.
             setStatus(P_E);
             Log.getLog().error(
                     "6502 not impl: SEt Extend disable (8-bit SP mode)");
@@ -733,11 +1151,11 @@ public final class Cpu6502 implements Cpu {
         case INST_AND_IND_X:
             executeAnd(getIndirectIndexedValue(registerX));
             break;
-        case INST_JSR_IND:
-            executeJsr(getAbsoluteIndirectAddress());
+        case INST_JSR_ABS_IND:
+            executeJsr(getAbsoluteIndirectAddress((char) 0));
             break;
-        case INST_JSR_ABS_X:
-            executeJsr(getAbsoluteAddress(registerX));
+        case INST_JSR_ABS_IND_X:
+            executeJsr(getAbsoluteIndirectAddress(registerX));
             break;
         case INST_BIT_BP:
             executeBit(getBasePageValue((char) 0));
@@ -826,35 +1244,209 @@ public final class Cpu6502 implements Cpu {
             executeBbr(BIT3, getBasePageAddress((char) 0),
                     getRelativeAddress());
             break;
-        // $40-
+        case INST_RTI:
+            executeRti();
+            break;
+        case INST_EOR_IND_X:
+            executeEor(getIndexedIndirectValue());
+            break;
+        case INST_NEG_ACCUM:
+            executeNeg();
+            break;
+        case INST_ASR_ACCUM:
+            executeAsrA();
+            break;
+        case INST_ASR_BP:
+            executeAsr(getBasePageAddress((char) 0));
+            break;
+        case INST_EOR_BP:
+            executeEor(getBasePageValue((char) 0));
+            break;
+        case INST_LSR_BP:
+            executeLsr(getBasePageAddress((char) 0));
+            break;
         case INST_RMB4_BP:
             executeRmb(getBasePageAddress((char) 0), BIT4);
+            break;
+        case INST_PHA:
+            executePh(registerA);
+            break;
+        case INST_EOR_IMM:
+            executeEor(getImmediateValue());
+            break;
+        case INST_LSR_ACCUM:
+            executeLsrA();
+            break;
+        case INST_TAZ:
+            registerZ = executeTax();
+            break;
+        case INST_JMP_ABS:
+            executeBxx(true, getAbsoluteValue((char) 0));
+            break;
+        case INST_EOR_ABS:
+            executeEor(getAbsoluteValue((char) 0));
+            break;
+        case INST_LSR_ABS:
+            executeLsr(getAbsoluteAddress((char) 0));
             break;
         case INST_BBR4_BP:
             executeBbr(BIT4, getBasePageAddress((char) 0),
                     getRelativeAddress());
             break;
+        case INST_BVC_REL:
+            executeBxx(0 == (registerP & P_V), getRelativeAddress());
+            break;
+        case INST_EOR_IND_Y:
+            executeEor(getIndirectIndexedValue(registerY));
+            break;
+        case INST_EOR_IND_Z:
+            executeEor(getIndirectIndexedValue(registerZ));
+            break;
+        case INST_BVC_W_REL:
+            executeBxx(0 == (registerP & P_V), getWordRelativeAddress());
+            break;
+        case INST_ASR_BP_X:
+            executeEor(getBasePageValue(registerX));
+            break;
+        case INST_EOR_BP_X:
+            executeEor(getBasePageValue(registerX));
+            break;
+        case INST_LSR_BP_X:
+            executeLsr(getBasePageAddress(registerX));
+            break;
         case INST_RMB5_BP:
             executeRmb(getBasePageAddress((char) 0), BIT5);
+            break;
+        case INST_CLI:
+            resetStatus(P_I);
+            break;
+        case INST_EOR_ABS_Y:
+            executeEor(getAbsoluteValue(registerY));
+            break;
+        case INST_PHY:
+            executePh(registerY);
+            break;
+        case INST_TAB:
+            registerB = executeTax();
+            break;
+        case INST_AUG:
+            // 4-Bytes NOP for future instruction set expansion
+            skip();
+            skip();
+            skip();
+            break;
+        case INST_EOR_ABS_X:
+            executeEor(getAbsoluteValue(registerX));
+            break;
+        case INST_LSR_ABS_X:
+            executeLsr(getAbsoluteAddress(registerX));
             break;
         case INST_BBR5_BP:
             executeBbr(BIT5, getBasePageAddress((char) 0),
                     getRelativeAddress());
             break;
+        case INST_RTS:
+            executeRts();
+            break;
+        case INST_ADC_IND_X:
+            executeAdc(getIndexedIndirectValue());
+            break;
+        case INST_RTN:
+            executeRts();
+            skip();
+            // TODO: what is the second byte?
+            Log.getLog().warn("6502 not impl: RTN");
+            break;
+        case INST_BSR_W_REL:
+            executeJsr(getWordRelativeAddress());
+            break;
+        case INST_STZ_BP:
+            executeSt(registerZ, getBasePageAddress((char) 0));
+            break;
+        case INST_ADC_BP:
+            executeAdc(getBasePageValue((char) 0));
+            break;
+        case INST_ROR_BP:
+            executeRor(getBasePageAddress((char) 0));
+            break;
         case INST_RMB6_BP:
             executeRmb(getBasePageAddress((char) 0), BIT6);
+            break;
+        case INST_PLA:
+            registerA = executePl();
+            break;
+        case INST_ADC_IMM:
+            executeAdc(getImmediateValue());
+            break;
+        case INST_ROR_ACCUM:
+            executeRorA();
+            break;
+        case INST_TZA:
+            executeTxa(registerZ);
+            break;
+        case INST_JMP_ABS_IND:
+            executeBxx(true, getAbsoluteIndirectAddress((char) 0));
+            break;
+        case INST_ADC_ABS:
+            executeAdc(getAbsoluteValue((char) 0));
+            break;
+        case INST_ROR_ABS:
+            executeRor(getAbsoluteAddress((char) 0));
             break;
         case INST_BBR6_BP:
             executeBbr(BIT6, getBasePageAddress((char) 0),
                     getRelativeAddress());
             break;
+        case INST_BVS_REL:
+            executeBxx(0 != (registerP & P_V), getRelativeAddress());
+            break;
+        case INST_ADC_IND_Y:
+            executeAdc(getIndirectIndexedValue(registerY));
+            break;
+        case INST_ADC_IND_Z:
+            executeAdc(getIndirectIndexedValue(registerZ));
+            break;
+        case INST_BVS_W_REL:
+            executeBxx(0 != (registerP & P_V), getWordRelativeAddress());
+            break;
+        case INST_STZ_BP_X:
+            executeSt(registerZ, getBasePageAddress(registerX));
+            break;
+        case INST_ADC_BP_X:
+            executeAdc(getBasePageValue(registerX));
+            break;
+        case INST_ROR_BP_X:
+            executeRor(getBasePageValue(registerX));
+            break;
         case INST_RMB7_BP:
             executeRmb(getBasePageAddress((char) 0), BIT7);
+            break;
+        case INST_SEI:
+            setStatus(P_I);
+            break;
+        case INST_ADC_ABS_Y:
+            executeAdc(getAbsoluteValue(registerY));
+            break;
+        case INST_PLY:
+            registerY = executePl();
+            break;
+        case INST_TBA:
+            executeTxa(registerB);
+            break;
+        case INST_JMP_ABS_IND_X:
+            executeBxx(true, getAbsoluteIndirectAddress(registerX));
+            break;
+        case INST_ADC_ABS_X:
+            executeAdc(getAbsoluteValue(registerX));
+            break;
+        case INST_ROR_ABS_X:
+            executeRor(getAbsoluteValue(registerX));
             break;
         case INST_BBR7_BP:
             executeBbr(BIT7, getBasePageAddress((char) 0),
                     getRelativeAddress());
             break;
+            // $80-
         default: // all your cases are belong to us!
             Log.getLog().error("6502: instruction not implemented");
             break;
