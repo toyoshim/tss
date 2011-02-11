@@ -188,7 +188,7 @@ public final class Cpu6502 implements Cpu {
     private static final int INST_LDA_ABS = 0xad;
     private static final int INST_LDX_ABS = 0xae;
     private static final int INST_BBS2_BP = 0xaf;
-    private static final int INST_BLS_REL = 0xb0;
+    private static final int INST_BCS_REL = 0xb0;
     private static final int INST_LDA_IND_Y = 0xb1;
     private static final int INST_LDA_IND_Z = 0xb2;
     private static final int INST_BCS_W_REL = 0xb3;
@@ -293,6 +293,7 @@ public final class Cpu6502 implements Cpu {
     private static final int BYTE_SHIFT = 8;
     private static final int STACK_BASE = 0x0100;
 
+    private static final int BIT15 = 0x8000;
     private static final char BIT7 = (char) 0x80;
     private static final char BIT6 = (char) 0x40;
     private static final char BIT5 = (char) 0x20;
@@ -469,7 +470,18 @@ public final class Cpu6502 implements Cpu {
     }
 
     /**
-     * Get relative address.
+     * Get absolute word address.
+     * @return absolute address
+     */
+    private int getWordAbsoluteAddress() {
+        int low = ((int) fetch()) & BYTE_MASK;
+        int high = ((int) fetch()) & BYTE_MASK;
+        int address = (high << BYTE_SHIFT) | low;
+        return address;
+    }
+
+    /**
+     * Get relative byte address.
      * @return relative address
      */
     private int getWordRelativeAddress() {
@@ -507,6 +519,16 @@ public final class Cpu6502 implements Cpu {
      */
     private char getImmediateValue() {
         return (char) (fetch() & BYTE_MASK);
+    }
+
+    /**
+     * Get immediate addressing word value.
+     * @return immediate addressing value
+     */
+    private short getImmediateWordValue() {
+        int low = ((int) fetch()) & BYTE_MASK;
+        int high = ((int) fetch()) & BYTE_MASK;
+        return (short) ((high << BYTE_SHIFT) | low);
     }
 
     /**
@@ -559,6 +581,7 @@ public final class Cpu6502 implements Cpu {
         }
         result += registerA & BYTE_MASK;
         result += value & BYTE_MASK;
+        resetStatus(P_N | P_V | P_Z | P_C);
         if (0 != (result & ~BYTE_MASK)) {
             setStatus(P_C);
         }
@@ -670,6 +693,28 @@ public final class Cpu6502 implements Cpu {
     }
 
     /**
+     * Execute ASW operation.
+     * @param address operand address
+     */
+    private void executeAsw(final int address) {
+        int low = ((int) memory.readChar(address + 0)) & BYTE_MASK;
+        int high = ((int) memory.readChar(address + 1)) & BYTE_MASK;
+        int value = ((high << BYTE_SHIFT) | low) & WORD_MASK;
+        resetStatus(P_N | P_Z | P_C);
+        if (0 != (value & BIT15)) {
+            setStatus(P_C);
+        }
+        value = (value << 1) & WORD_MASK;
+        if (0 == value) {
+            setStatus(P_Z);
+        } else if (0 != (value & BIT15)) {
+            setStatus(P_N);
+        }
+        memory.writeChar(address + 0, (char) value);
+        memory.writeChar(address + 1, (char) (value >> BYTE_SHIFT));
+    }
+
+    /**
      * Execute BBR operation.
      * @param mask bit mask to test
      * @param address address to test
@@ -727,6 +772,24 @@ public final class Cpu6502 implements Cpu {
     }
 
     /**
+     * Execute CMP/CP* operation.
+     * @param src comparer operand
+     * @param dst compared operand
+     */
+    public void executeCmp(final char src, final char dst) {
+        char result = (char) (src - dst);
+        char carry = (char) ((src ^ dst ^ result) & BIT7);
+        resetStatus(P_N | P_Z | P_C);
+        if (0 == result) {
+            setStatus(P_Z);
+        } else if (0 != (result & BIT7)) {
+            setStatus(P_N);
+        } else if (0 != carry) {
+            setStatus(P_C);
+        }
+    }
+
+    /**
      * Execute DEC operation.
      * @param source operand
      * @return result
@@ -740,6 +803,41 @@ public final class Cpu6502 implements Cpu {
             setStatus(P_N);
         }
         return result;
+    }
+
+    /**
+     * Execute DEC operation to memory.
+     * @param address operand address
+     */
+    private void executeDecP(final int address) {
+        char value = memory.readChar(address);
+        char result = (char) (value - 1);
+        resetStatus(P_N | P_Z);
+        if (0 == result) {
+            setStatus(P_Z);
+        } else if (0 != (result & BIT7)) {
+            setStatus(P_N);
+        }
+        memory.writeChar(address, value);
+    }
+
+    /**
+     * Execute DEW operation.
+     * @param address operand address
+     */
+    private void executeDew(final int address) {
+        int low = ((int) memory.readChar(address + 0)) & BYTE_MASK;
+        int high = ((int) memory.readChar(address + 1)) & BYTE_MASK;
+        int value = (high << BYTE_SHIFT) | low;
+        value = (value - 1) & WORD_MASK;
+        resetStatus(P_N | P_Z);
+        if (0 == value) {
+            setStatus(P_Z);
+        } else if (0 != (value & BIT15)) {
+            setStatus(P_N);
+        }
+        memory.writeChar(address + 0, (char) value);
+        memory.writeChar(address + 1, (char) (value >> BYTE_SHIFT));
     }
 
     /**
@@ -773,6 +871,41 @@ public final class Cpu6502 implements Cpu {
     }
 
     /**
+     * Execute INC operation.
+     * @param address operand address
+     */
+    private void executeIncP(final int address) {
+        char value = memory.readChar(address);
+        char result = (char) (value + 1);
+        resetStatus(P_N | P_Z);
+        if (0 == result) {
+            setStatus(P_Z);
+        } else if (0 != (result & BIT7)) {
+            setStatus(P_N);
+        }
+        memory.writeChar(address, value);
+    }
+
+    /**
+     * Execute INW operation.
+     * @param address operand address
+     */
+    private void executeInw(final int address) {
+        int low = ((int) memory.readChar(address + 0)) & BYTE_MASK;
+        int high = ((int) memory.readChar(address + 1)) & BYTE_MASK;
+        int value = (high << BYTE_SHIFT) | low;
+        value = (value + 1) & WORD_MASK;
+        resetStatus(P_N | P_Z);
+        if (0 == value) {
+            setStatus(P_Z);
+        } else if (0 != (value & BIT15)) {
+            setStatus(P_N);
+        }
+        memory.writeChar(address + 0, (char) value);
+        memory.writeChar(address + 1, (char) (value >> BYTE_SHIFT));
+    }
+
+    /**
      * Execute JSR operation.
      * @param target subroutine address
      */
@@ -781,6 +914,21 @@ public final class Cpu6502 implements Cpu {
         executePh((char) registerPC);
         executePh((char) (registerPC >> BYTE_SHIFT));
         registerPC = (short) target;
+    }
+
+    /**
+     * Execute LD* operations.
+     * @param value operand
+     * @return result
+     */
+    public char executeLd(final char value) {
+        resetStatus(P_N | P_Z);
+        if (0 == value) {
+            setStatus(P_Z);
+        } else if (0 != (value & BIT7)) {
+            setStatus(P_N);
+        }
+        return value;
     }
 
     /**
@@ -818,7 +966,6 @@ public final class Cpu6502 implements Cpu {
      * Execute NEG operation.
      */
     private void executeNeg() {
-        // TODO: -(-128) => 128 => 0 or -128?
         registerA = (char) -registerA;
     }
 
@@ -841,8 +988,17 @@ public final class Cpu6502 implements Cpu {
      * @param value operand
      */
     private void executePh(final char value) {
-        memory.writeChar(getStackAddress(registerS), value);
-        registerS--;
+        memory.writeChar(getStackAddress(registerS--), value);
+    }
+
+    /**
+     * Execute PHW operation.
+     * @param value operand
+     */
+    private void executePhw(final short value) {
+        memory.writeChar(getStackAddress(registerS--),
+                (char) (value >> BYTE_SHIFT));
+        memory.writeChar(getStackAddress(registerS--), (char) value);
     }
 
     /**
@@ -953,6 +1109,29 @@ public final class Cpu6502 implements Cpu {
     }
 
     /**
+     * Execute ROW operation.
+     * @param address operand address
+     */
+    private void executeRow(final int address) {
+        int low = ((int) memory.readChar(address + 0)) & BYTE_MASK;
+        int high = ((int) memory.readChar(address + 1)) & BYTE_MASK;
+        int value = ((high << BYTE_SHIFT) | low) & WORD_MASK;
+        int carry = registerP & P_C;
+        resetStatus(P_N | P_Z | P_C);
+        if (0 != (value & BIT15)) {
+            setStatus(P_C);
+        }
+        value = (value << 1) & WORD_MASK | carry;
+        if (0 == value) {
+            setStatus(P_Z);
+        } else if (0 != (value & BIT15)) {
+            setStatus(P_N);
+        }
+        memory.writeChar(address + 0, (char) value);
+        memory.writeChar(address + 1, (char) (value >> BYTE_SHIFT));
+    }
+
+    /**
      * Execute RTI operation.
      */
     private void executeRti() {
@@ -969,6 +1148,40 @@ public final class Cpu6502 implements Cpu {
         int high = memory.readChar(getStackAddress(++registerS)) & BYTE_MASK;
         int low = memory.readChar(getStackAddress(++registerS)) & BYTE_MASK;
         registerPC = (short) (((high << BYTE_SHIFT) | low) + 1);
+    }
+
+    /**
+     * Execute SBC operation.
+     * @param value operand
+     */
+    private void executeSbc(final char value) {
+        boolean plus = true;
+        if (0 != (registerA & BIT7)) {
+            plus = false;
+        }
+        int result = 0;
+        if (0 != (registerP & P_C)) {
+            result = -1;
+        }
+        result += registerA & BYTE_MASK;
+        result -= value & BYTE_MASK;
+        resetStatus(P_N | P_V | P_Z | P_C);
+        if (0 != (result & ~BYTE_MASK)) {
+            setStatus(P_C);
+        }
+        if (0 != (result & BIT7)) {
+            setStatus(P_N);
+            if (plus) {
+                setStatus(P_V);
+            }
+        } else {
+            if (0 == result) {
+                setStatus(P_Z);
+            }
+            if (!plus) {
+                setStatus(P_V);
+            }
+        }
     }
 
     /**
@@ -1090,20 +1303,17 @@ public final class Cpu6502 implements Cpu {
             executePh(registerP);
             setStatus(P_B);
             Log.getLog().warn("6502 not impl: BRK");
-            // TODO: 65CE02 data-sheet say this is two bytes operation.
             skip();
             break;
         case INST_ORA_IND_X:
             executeOra(getIndexedIndirectValue());
             break;
         case INST_CLE:
-            // TODO: 16-bit stack mode is not implemented.
             resetStatus(P_E);
             Log.getLog().warn(
                     "6502 not impl: CLear Extend disable (16-bit SP mode)");
             break;
         case INST_SEE:
-            // TODO: 16-bit stack mode is not implemented.
             setStatus(P_E);
             Log.getLog().error(
                     "6502 not impl: SEt Extend disable (8-bit SP mode)");
@@ -1403,8 +1613,6 @@ public final class Cpu6502 implements Cpu {
         case INST_RTN:
             executeRts();
             skip();
-            // TODO: what is the second byte?
-            Log.getLog().warn("6502 not impl: RTN");
             break;
         case INST_BSR_W_REL:
             executeJsr(getWordRelativeAddress());
@@ -1593,9 +1801,301 @@ public final class Cpu6502 implements Cpu {
             executeBbs(BIT1, getBasePageAddress((char) 0),
                     getRelativeAddress());
             break;
-            // TODO: 0xa0 - 0xff
+        case INST_LDY_IMM:
+            registerY = executeLd(getImmediateValue());
+            break;
+        case INST_LDA_IND_X:
+            registerA = executeLd(getIndexedIndirectValue());
+            break;
+        case INST_LDX_IMM:
+            registerX = executeLd(getImmediateValue());
+            break;
+        case INST_LDZ_IMM:
+            registerZ = executeLd(getImmediateValue());
+            break;
+        case INST_LDY_BP:
+            registerY = executeLd(getBasePageValue((char) 0));
+            break;
+        case INST_LDA_BP:
+            registerA = executeLd(getBasePageValue((char) 0));
+            break;
+        case INST_LDX_BP:
+            registerX = executeLd(getBasePageValue((char) 0));
+            break;
+        case INST_SMB2_BP:
+            executeSmb(getBasePageAddress((char) 0), BIT2);
+            break;
+        case INST_TAY:
+            registerY = executeTax();
+            break;
+        case INST_LDA_IMM:
+            registerA = executeLd(getImmediateValue());
+            break;
+        case INST_TAX:
+            registerX = executeTax();
+            break;
+        case INST_LDZ_ABS:
+            registerZ = executeLd(getAbsoluteValue((char) 0));
+            break;
+        case INST_LDY_ABS:
+            registerY = executeLd(getAbsoluteValue((char) 0));
+            break;
+        case INST_LDA_ABS:
+            registerA = executeLd(getAbsoluteValue((char) 0));
+            break;
+        case INST_LDX_ABS:
+            registerX = executeLd(getAbsoluteValue((char) 0));
+            break;
+        case INST_BBS2_BP:
+            executeBbs(BIT2, getBasePageAddress((char) 0),
+                    getRelativeAddress());
+            break;
+        case INST_BCS_REL:
+            executeBxx(0 != (registerP & P_C), getRelativeAddress());
+            break;
+        case INST_LDA_IND_Y:
+            registerA = executeLd(getIndirectIndexedValue(registerY));
+            break;
+        case INST_LDA_IND_Z:
+            registerA = executeLd(getIndirectIndexedValue(registerZ));
+            break;
+        case INST_BCS_W_REL:
+            executeBxx(0 != (registerP & P_C), getWordRelativeAddress());
+            break;
+        case INST_LDY_BP_X:
+            registerY = executeLd(getBasePageValue(registerX));
+            break;
+        case INST_LDA_BP_X:
+            registerA = executeLd(getBasePageValue(registerX));
+            break;
+        case INST_LDX_BP_Y:
+            registerX = executeLd(getBasePageValue(registerY));
+            break;
+        case INST_SMB3_BP:
+            executeSmb(getBasePageAddress((char) 0), BIT3);
+            break;
+        case INST_CLV:
+            resetStatus(P_V);
+            break;
+        case INST_LDA_ABS_Y:
+            registerA = executeLd(getAbsoluteValue(registerY));
+            break;
+        case INST_TSX:
+            registerS = executeTax();
+            break;
+        case INST_LDZ_ABS_X:
+            registerZ = executeLd(getAbsoluteValue(registerX));
+            break;
+        case INST_LDY_ABS_X:
+            registerY = executeLd(getAbsoluteValue(registerX));
+            break;
+        case INST_LDA_ABS_X:
+            registerA = executeLd(getAbsoluteValue(registerX));
+            break;
+        case INST_LDX_ABS_Y:
+            registerX = executeLd(getAbsoluteValue(registerY));
+            break;
+        case INST_BBS3_BP:
+            executeBbs(BIT3, getBasePageAddress((char) 0),
+                    getRelativeAddress());
+            break;
+        case INST_CPY_IMM:
+            executeCmp(registerY, getImmediateValue());
+            break;
+        case INST_CMP_IND_X:
+            executeCmp(registerA, getIndexedIndirectValue());
+            break;
+        case INST_CPZ_IMM:
+            executeCmp(registerZ, getImmediateValue());
+            break;
+        case INST_DEW_BP:
+            executeDew(getBasePageAddress((char) 0));
+            break;
+        case INST_CPY_BP:
+            executeCmp(registerY, getBasePageValue((char) 0));
+            break;
+        case INST_CMP_BP:
+            executeCmp(registerA, getBasePageValue((char) 0));
+            break;
+        case INST_DEC_BP:
+            executeDecP(getBasePageAddress((char) 0));
+            break;
+        case INST_SMB4_BP:
+            executeSmb(getBasePageAddress((char) 0), BIT4);
+            break;
+        case INST_INY:
+            registerY = executeInc(registerY);
+            break;
+        case INST_CMP_IMM:
+            executeCmp(registerA, getImmediateValue());
+            break;
+        case INST_DEX:
+            registerX = executeDec(registerX);
+            break;
+        case INST_ASW_ABS:
+            executeAsw(getAbsoluteAddress((char) 0));
+            break;
+        case INST_CPY_ABS:
+            executeCmp(registerY, getAbsoluteValue((char) 0));
+            break;
+        case INST_CMP_ABS:
+            executeCmp(registerA, getAbsoluteValue((char) 0));
+            break;
+        case INST_DEC_ABS:
+            executeDecP(getAbsoluteAddress((char) 0));
+            break;
+        case INST_BBS4_BP:
+            executeBbs(BIT4, getBasePageAddress((char) 0),
+                    getRelativeAddress());
+            break;
+        case INST_BNE_REL:
+            executeBxx(0 == (registerP & P_Z), getRelativeAddress());
+            break;
+        case INST_CMP_IND_Y:
+            executeCmp(registerA, getIndirectIndexedValue(registerY));
+            break;
+        case INST_CMP_IND_Z:
+            executeCmp(registerA, getIndirectIndexedValue(registerZ));
+            break;
+        case INST_BNE_W_REL:
+            executeBxx(0 == (registerP & P_Z), getWordRelativeAddress());
+        case INST_CPZ_BP:
+            executeCmp(registerZ, getBasePageValue((char) 0));
+            break;
+        case INST_CMP_BP_X:
+            executeCmp(registerA, getBasePageValue(registerX));
+            break;
+        case INST_DEC_BP_X:
+            executeDecP(getBasePageAddress(registerX));
+            break;
+        case INST_SMB5_BP:
+            executeSmb(getBasePageAddress((char) 0), BIT5);
+            break;
+        case INST_CLD:
+            resetStatus(P_D);
+            break;
+        case INST_CMP_ABS_Y:
+            executeCmp(registerA, getAbsoluteValue(registerY));
+            break;
+        case INST_PHX:
+            executePh(registerX);
+            break;
+        case INST_PHZ:
+            executePh(registerZ);
+            break;
+        case INST_CPZ_ABS:
+            executeCmp(registerZ, getAbsoluteValue((char) 0));
+            break;
+        case INST_CMP_ABS_X:
+            executeCmp(registerA, getAbsoluteValue(registerX));
+            break;
+        case INST_DEC_ABS_X:
+            executeDecP(getAbsoluteAddress(registerX));
+            break;
+        case INST_BBS5_BP:
+            executeBbs(BIT5, getBasePageAddress((char) 0),
+                    getRelativeAddress());
+            break;
+        case INST_CPX_IMM:
+            executeCmp(registerX, getImmediateValue());
+            break;
+        case INST_SBC_IND_X:
+            executeSbc(getIndexedIndirectValue());
+            break;
+        case INST_LDA_DSP_Y:
+            registerA = executeLd(memory.readChar(
+                    getStackPageIndirectIndexedAddress(registerY)));
+            break;
+        case INST_INW_BP:
+            executeInw(getBasePageAddress((char) 0));
+            break;
+        case INST_CPX_BP:
+            executeCmp(registerX, getBasePageValue((char) 0));
+            break;
+        case INST_SBC_BP:
+            executeSbc(getBasePageValue((char) 0));
+            break;
+        case INST_INC_BP:
+            executeIncP(getBasePageAddress((char) 0));
+            break;
+        case INST_SMB6_BP:
+            executeSmb(getBasePageAddress((char) 0), BIT6);
+            break;
+        case INST_INX:
+            registerX = executeInc(registerX);
+            break;
+        case INST_SBC_IMM:
+            executeSbc(getImmediateValue());
+            break;
+        case INST_NOP:
+            break;
+        case INST_ROW_ABS:
+            executeRow(getAbsoluteAddress((char) 0));
+            break;
+        case INST_CPX_ABS:
+            executeCmp(registerX, getAbsoluteValue((char) 0));
+            break;
+        case INST_SBC_ABS:
+            executeSbc(getAbsoluteValue((char) 0));
+            break;
+        case INST_INC_ABS:
+            executeIncP(getAbsoluteAddress((char) 0));
+            break;
+        case INST_BBS6_BP:
+            executeBbs(BIT6, getBasePageAddress((char) 0),
+                    getRelativeAddress());
+            break;
+        case INST_BEQ_REL:
+            executeBxx(0 != (registerP & P_Z), getRelativeAddress());
+            break;
+        case INST_SBC_IND_Y:
+            executeSbc(getIndirectIndexedValue(registerY));
+            break;
+        case INST_SBC_IND_Z:
+            executeSbc(getIndirectIndexedValue(registerZ));
+            break;
+        case INST_BEQ_W_REL:
+            executeBxx(0 != (registerP & P_Z), getWordRelativeAddress());
+            break;
+        case INST_PHW_IMM_W:
+            executePhw(getImmediateWordValue());
+            break;
+        case INST_SBC_BP_X:
+            executeSbc(getBasePageValue(registerX));
+            break;
+        case INST_INC_BP_X:
+            executeIncP(getBasePageAddress(registerX));
+            break;
+        case INST_SMB7_BP:
+            executeSmb(getBasePageAddress((char) 0), BIT7);
+            break;
+        case INST_SED:
+            setStatus(P_D);
+            break;
+        case INST_SBC_ABS_Y:
+            executeSbc(getAbsoluteValue(registerY));
+            break;
+        case INST_PLX:
+            registerX = executePl();
+            break;
+        case INST_PLZ:
+            registerZ = executePl();
+            break;
+        case INST_PHW_ABS_W:
+            executePhw((short) getWordAbsoluteAddress());
+            break;
+        case INST_SBC_ABS_X:
+            executeSbc(getAbsoluteValue(registerX));
+            break;
+        case INST_INC_ABS_X:
+            executeIncP(getAbsoluteAddress(registerX));
+            break;
+        case INST_BBS7_BP:
+            executeBbs(BIT7, getBasePageAddress((char) 0),
+                    getRelativeAddress());
+            break;
         default: // all your cases are belong to us!
-            Log.getLog().error("6502: instruction not implemented");
+            Log.getLog().fatal("Cpu6502: should not be reached");
             break;
         }
     }
