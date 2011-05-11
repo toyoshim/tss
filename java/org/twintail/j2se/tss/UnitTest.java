@@ -45,8 +45,7 @@ public final class UnitTest {
             loop.setChannel(master);
             loop.run();
         } catch (Exception e) {
-            Logger.getLogger(Logger.GLOBAL_LOGGER_NAME).warning("TEST00"
-                    + "> Exception: " + e.toString());
+            Log.getLog().warn("TEST00" + "> Exception: " + e.toString());
         }
     }
 
@@ -71,8 +70,7 @@ public final class UnitTest {
             loop.setChannel(master);
             loop.run();
         } catch (Exception e) {
-            Logger.getLogger(Logger.GLOBAL_LOGGER_NAME).warning("TEST01"
-                    + "> Exception: " + e.toString());
+            Log.getLog().warn("TEST01" + "> Exception: " + e.toString());
             e.printStackTrace();
         }
     }
