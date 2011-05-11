@@ -12,7 +12,7 @@ import org.twintail.tss.Channel;
 
 
 /**
- * class AudioPlayback (required API Level: 3)
+ * class AudioLooper (required API Level: 3)
  *
  * This class provides an audio output stream for real time
  * sound rendering.

@@ -11,7 +11,7 @@ import javax.sound.sampled.LineUnavailableException;
 import org.twintail.tss.Channel;
 
 /**
- * class AudioPlayback
+ * class AudioLooper
  *
  * This class provides an audio output stream for real time
  * sound rendering.
