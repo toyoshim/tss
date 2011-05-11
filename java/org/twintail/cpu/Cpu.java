@@ -22,6 +22,13 @@ public interface Cpu {
     void init();
 
     /**
+     * Read internal register values.
+     * @param index register index
+     * @return register value
+     */
+    int readRegister(int index);
+
+    /**
      * Execute one step.
      */
     void runStep();

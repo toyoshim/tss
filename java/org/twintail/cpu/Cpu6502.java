@@ -12,6 +12,16 @@ import org.twintail.Log;
  * @author Takashi Toyoshima <toyoshim@gmail.com>
  */
 public final class Cpu6502 implements Cpu {
+    public static final int REG_A = 0;
+    public static final int REG_B = 1;
+    public static final int REG_X = 2;
+    public static final int REG_Y = 3;
+    public static final int REG_Z = 4;
+    public static final int REG_P = 5;
+    public static final int REG_S = 6;
+    public static final int REG_PC = 7;
+    public static final int NUM_OF_REGS = 8;
+
     private static final int INST_BRK = 0x00;
     private static final int INST_ORA_IND_X = 0x01;
     private static final int INST_CLE = 0x02;
@@ -291,6 +301,7 @@ public final class Cpu6502 implements Cpu {
     private static final int BYTE_MASK = 0xff;
     private static final int WORD_MASK = 0xffff;
     private static final int BYTE_SHIFT = 8;
+    private static final int BYTE_MAX = 0xff;
     private static final int STACK_BASE = 0x0100;
 
     private static final int BIT15 = 0x8000;
@@ -312,6 +323,11 @@ public final class Cpu6502 implements Cpu {
     private static final char P_Z = BIT1;
     private static final char P_C = BIT0;
 
+    private static final int VECTOR_NMI = 0xfffa;
+    private static final int VECTOR_RESET = 0xfffc;
+    private static final int VECTOR_IRQ = 0xfffe;
+    private static final int VECTOR_BRK = 0xfffe;
+
     private Memory memory;
     private char registerA;
     private char registerB;
@@ -323,6 +339,8 @@ public final class Cpu6502 implements Cpu {
     private short registerPC;
 
     private int cycles;
+
+    private boolean enableMos65ce02 = false;
 
     /**
      * Class constructor.
@@ -356,6 +374,34 @@ public final class Cpu6502 implements Cpu {
     }
 
     /**
+     * @see Cpu
+     * @param index register index
+     * @return register value
+     */
+    public int readRegister(final int index) {
+        switch (index) {
+        case REG_A:
+            return registerA & BYTE_MASK;
+        case REG_B:
+            return registerB & BYTE_MASK;
+        case REG_X:
+            return registerX & BYTE_MASK;
+        case REG_Y:
+            return registerY & BYTE_MASK;
+        case REG_Z:
+            return registerZ & BYTE_MASK;
+        case REG_P:
+            return registerP & BYTE_MASK;
+        case REG_S:
+            return registerS & BYTE_MASK;
+        case REG_PC:
+            return registerPC & WORD_MASK;
+        default:
+            throw new ArrayIndexOutOfBoundsException();
+        }
+    }
+
+    /**
      * Skip a byte.
      */
     private void skip() {
@@ -374,26 +420,27 @@ public final class Cpu6502 implements Cpu {
 
     /**
      * Get absolute address.
-     * @param index address index
+     * @param index address index (unsigned 8-bit offset)
      * @return absolute address
      */
     private int getAbsoluteAddress(final char index) {
         int low = ((int) fetch()) & BYTE_MASK;
         int high = ((int) fetch()) & BYTE_MASK;
         int address = (high << BYTE_SHIFT) | low;
-        address = (address + (((int) index) & BYTE_MASK)) & WORD_MASK;
+        address = (address + (index & BYTE_MASK)) & WORD_MASK;
         return address;
     }
 
     /**
      * Get absolute indirect address.
-     * @param index address index
+     * @param index address index (unsigned 8-bit offset)
      * @return absolute indirect address
      */
     private int getAbsoluteIndirectAddress(final char index) {
         int low = ((int) fetch()) & BYTE_MASK;
         int high = ((int) fetch()) & BYTE_MASK;
-        int address = (((high << BYTE_SHIFT) | low) + index) & WORD_MASK;
+        int address = (high << BYTE_SHIFT) | low;
+        address = (address + (index & BYTE_MASK)) & WORD_MASK;
         low = ((int) memory.readChar(address + 0)) & BYTE_MASK;
         high = ((int) memory.readChar(address + 1)) & BYTE_MASK;
         address = ((high << BYTE_SHIFT) | low) & WORD_MASK;
@@ -424,7 +471,7 @@ public final class Cpu6502 implements Cpu {
 
     /**
      * Get indirect indexed address by Y or Z.
-     * @param index address index
+     * @param index address index (unsigned 8-bit offset)
      * @return indirect address
      */
     private int getIndirectIndexedAddress(final char index) {
@@ -432,7 +479,7 @@ public final class Cpu6502 implements Cpu {
         int low = ((int) memory.readChar(address + 0)) & BYTE_MASK;
         int high = ((int) memory.readChar(address + 1)) & BYTE_MASK;
         address = (high << BYTE_SHIFT) | low;
-        address = (address + (((int) index) & BYTE_MASK)) & WORD_MASK;
+        address = (address + (index & BYTE_MASK)) & WORD_MASK;
         return address;
     }
 
@@ -749,15 +796,31 @@ public final class Cpu6502 implements Cpu {
     public void executeBit(final int mask) {
         int result = registerA & mask;
         resetStatus(BIT7 | BIT6 | P_Z);
-        if (0 != (result & BIT7)) {
+        if (0 != (mask & BIT7)) {
             setStatus(BIT7);
         }
-        if (0 != (result & BIT6)) {
+        if (0 != (mask & BIT6)) {
             setStatus(BIT6);
         }
         if (0 == result) {
             setStatus(P_Z);
         }
+    }
+
+    /**
+     * Execute BRK operation.
+     */
+    public void executeBrk() {
+        skip();
+        memory.writeChar(getStackAddress(registerS--),
+                ((char) (registerPC >> BYTE_SHIFT)));
+        memory.writeChar(getStackAddress(registerS--), ((char) registerPC));
+        setStatus(P_B);
+        memory.writeChar(getStackAddress(registerS--), registerP);
+        setStatus(P_I);
+        int low = memory.readChar(VECTOR_BRK + 0) & BYTE_MASK;
+        int high = memory.readChar(VECTOR_BRK + 1) & BYTE_MASK;
+        registerPC = (short) ((high << BYTE_SHIFT) | low);
     }
 
     /**
@@ -777,14 +840,14 @@ public final class Cpu6502 implements Cpu {
      * @param dst compared operand
      */
     public void executeCmp(final char src, final char dst) {
-        char result = (char) (src - dst);
-        char carry = (char) ((src ^ dst ^ result) & BIT7);
+        int result = (src & BYTE_MASK) - (dst & BYTE_MASK);
         resetStatus(P_N | P_Z | P_C);
         if (0 == result) {
             setStatus(P_Z);
         } else if (0 != (result & BIT7)) {
             setStatus(P_N);
-        } else if (0 != carry) {
+        }
+        if ((src & BYTE_MASK) >= (dst & BYTE_MASK)) {
             setStatus(P_C);
         }
     }
@@ -818,7 +881,7 @@ public final class Cpu6502 implements Cpu {
         } else if (0 != (result & BIT7)) {
             setStatus(P_N);
         }
-        memory.writeChar(address, value);
+        memory.writeChar(address, result);
     }
 
     /**
@@ -883,7 +946,7 @@ public final class Cpu6502 implements Cpu {
         } else if (0 != (result & BIT7)) {
             setStatus(P_N);
         }
-        memory.writeChar(address, value);
+        memory.writeChar(address, result);
     }
 
     /**
@@ -911,8 +974,9 @@ public final class Cpu6502 implements Cpu {
      */
     public void executeJsr(final int target) {
         registerPC--;
-        executePh((char) registerPC);
-        executePh((char) (registerPC >> BYTE_SHIFT));
+        memory.writeChar(getStackAddress(registerS--),
+                ((char) (registerPC >> BYTE_SHIFT)));
+        memory.writeChar(getStackAddress(registerS--), ((char) registerPC));
         registerPC = (short) target;
     }
 
@@ -1136,8 +1200,8 @@ public final class Cpu6502 implements Cpu {
      */
     private void executeRti() {
         registerP = memory.readChar(getStackAddress(++registerS));
-        int high = memory.readChar(getStackAddress(++registerS)) & BYTE_MASK;
         int low = memory.readChar(getStackAddress(++registerS)) & BYTE_MASK;
+        int high = memory.readChar(getStackAddress(++registerS)) & BYTE_MASK;
         registerPC = (short) ((high << BYTE_SHIFT) | low);
     }
 
@@ -1145,8 +1209,8 @@ public final class Cpu6502 implements Cpu {
      * Execute RTS operation.
      */
     private void executeRts() {
-        int high = memory.readChar(getStackAddress(++registerS)) & BYTE_MASK;
         int low = memory.readChar(getStackAddress(++registerS)) & BYTE_MASK;
+        int high = memory.readChar(getStackAddress(++registerS)) & BYTE_MASK;
         registerPC = (short) (((high << BYTE_SHIFT) | low) + 1);
     }
 
@@ -1160,13 +1224,13 @@ public final class Cpu6502 implements Cpu {
             plus = false;
         }
         int result = 0;
-        if (0 != (registerP & P_C)) {
+        if (0 == (registerP & P_C)) {
             result = -1;
         }
         result += registerA & BYTE_MASK;
         result -= value & BYTE_MASK;
         resetStatus(P_N | P_V | P_Z | P_C);
-        if (0 != (result & ~BYTE_MASK)) {
+        if (registerA >= value) {
             setStatus(P_C);
         }
         if (0 != (result & BIT7)) {
@@ -1182,6 +1246,7 @@ public final class Cpu6502 implements Cpu {
                 setStatus(P_V);
             }
         }
+        registerA = (char) result;
     }
 
     /**
@@ -1291,6 +1356,18 @@ public final class Cpu6502 implements Cpu {
     }
 
     /**
+     * Execute Unknown operation.
+     * @param inst instruction code
+     */
+    private void executeUnknown(final int inst) {
+        /*
+        Log.getLog().warn(String.format("%s: %02x",
+                "Cpu6502: unknown instruction",
+                inst));
+        */
+    }
+
+    /**
      * Execute one step.
      */
     public void runStep() {
@@ -1298,25 +1375,28 @@ public final class Cpu6502 implements Cpu {
         cycles += CYCLES[inst];
         switch (inst) {
         case INST_BRK:
-            executePh((char) registerPC);
-            executePh((char) (registerPC >> BYTE_SHIFT));
-            executePh(registerP);
-            setStatus(P_B);
-            Log.getLog().warn("6502 not impl: BRK");
-            skip();
+            executeBrk();
             break;
         case INST_ORA_IND_X:
             executeOra(getIndexedIndirectValue());
             break;
         case INST_CLE:
-            resetStatus(P_E);
-            Log.getLog().warn(
-                    "6502 not impl: CLear Extend disable (16-bit SP mode)");
+            if (enableMos65ce02) {
+                resetStatus(P_E);
+                Log.getLog().warn(
+                    "Cpu6502 not impl: CLear Extend disable (16-bit SP mode)");
+            } else {
+                executeUnknown(inst);
+            }
             break;
         case INST_SEE:
-            setStatus(P_E);
-            Log.getLog().error(
-                    "6502 not impl: SEt Extend disable (8-bit SP mode)");
+            if (enableMos65ce02) {
+                setStatus(P_E);
+                Log.getLog().error(
+                    "Cpu6502 not impl: SEt Extend disable (8-bit SP mode)");
+            } else {
+                executeUnknown(inst);
+            }
             break;
         case INST_TSB_BP:
             executeTsb(getBasePageAddress((char) 0));
@@ -1328,7 +1408,11 @@ public final class Cpu6502 implements Cpu {
             executeAsl(getBasePageAddress((char) 0));
             break;
         case INST_RMB0_BP:
-            executeRmb(getBasePageAddress((char) 0), BIT0);
+            if (enableMos65ce02) {
+                executeRmb(getBasePageAddress((char) 0), BIT0);
+            } else {
+                executeUnknown(inst);
+            }
             break;
         case INST_PHP:
             executePh(registerP);
@@ -1377,7 +1461,11 @@ public final class Cpu6502 implements Cpu {
             executeAsl(getBasePageAddress(registerX));
             break;
         case INST_RMB1_BP:
-            executeRmb(getBasePageAddress((char) 0), BIT1);
+            if (enableMos65ce02) {
+                executeRmb(getBasePageAddress((char) 0), BIT1);
+            } else {
+                executeUnknown(inst);
+            }
             break;
         case INST_CLC:
             resetStatus(P_C);
@@ -1401,8 +1489,12 @@ public final class Cpu6502 implements Cpu {
             executeAsl(getAbsoluteAddress(registerX));
             break;
         case INST_BBR1_BP:
-            executeBbr(BIT1, getBasePageAddress((char) 0),
-                    getRelativeAddress());
+            if (enableMos65ce02) {
+                executeBbr(BIT1, getBasePageAddress((char) 0),
+                        getRelativeAddress());
+            } else {
+                executeUnknown(inst);
+            }
             break;
         case INST_JSR_ABS:
             executeJsr(getAbsoluteAddress((char) 0));
@@ -1411,10 +1503,18 @@ public final class Cpu6502 implements Cpu {
             executeAnd(getIndirectIndexedValue(registerX));
             break;
         case INST_JSR_ABS_IND:
-            executeJsr(getAbsoluteIndirectAddress((char) 0));
+            if (enableMos65ce02) {
+                executeJsr(getAbsoluteIndirectAddress((char) 0));
+            } else {
+                executeUnknown(inst);
+            }
             break;
         case INST_JSR_ABS_IND_X:
-            executeJsr(getAbsoluteIndirectAddress(registerX));
+            if (enableMos65ce02) {
+                executeJsr(getAbsoluteIndirectAddress(registerX));
+            } else {
+                executeUnknown(inst);
+            }
             break;
         case INST_BIT_BP:
             executeBit(getBasePageValue((char) 0));
@@ -1426,7 +1526,11 @@ public final class Cpu6502 implements Cpu {
             executeRol(getBasePageAddress((char) 0));
             break;
         case INST_RMB2_BP:
-            executeRmb(getBasePageAddress((char) 0), BIT2);
+            if (enableMos65ce02) {
+                executeRmb(getBasePageAddress((char) 0), BIT2);
+            } else {
+                executeUnknown(inst);
+            }
             break;
         case INST_PLP:
             registerP = (char) ((executePl() & ~(BIT5 | BIT4))
@@ -1464,7 +1568,11 @@ public final class Cpu6502 implements Cpu {
             executeAnd(getIndirectIndexedValue(registerZ));
             break;
         case INST_BMI_W_REL:
-            executeBxx(0 != (registerP & P_N), getWordRelativeAddress());
+            if (enableMos65ce02) {
+                executeBxx(0 != (registerP & P_N), getWordRelativeAddress());
+            } else {
+                executeUnknown(inst);
+            }
             break;
         case INST_BIT_BP_X:
             executeBit(getBasePageValue(registerX));
@@ -1476,7 +1584,11 @@ public final class Cpu6502 implements Cpu {
             executeRol(getBasePageAddress(registerX));
             break;
         case INST_RMB3_BP:
-            executeRmb(getBasePageAddress((char) 0), BIT3);
+            if (enableMos65ce02) {
+                executeRmb(getBasePageAddress((char) 0), BIT3);
+            } else {
+                executeUnknown(inst);
+            }
             break;
         case INST_SEC:
             setStatus(P_C);
@@ -1488,7 +1600,11 @@ public final class Cpu6502 implements Cpu {
             registerA = executeDec(registerA);
             break;
         case INST_DEZ:
-            registerZ = executeDec(registerZ);
+            if (enableMos65ce02) {
+                registerZ = executeDec(registerZ);
+            } else {
+                executeUnknown(inst);
+            }
             break;
         case INST_BIT_ABS_X:
             executeBit(getAbsoluteValue(registerX));
@@ -1516,7 +1632,11 @@ public final class Cpu6502 implements Cpu {
             executeAsrA();
             break;
         case INST_ASR_BP:
-            executeAsr(getBasePageAddress((char) 0));
+            if (enableMos65ce02) {
+                executeAsr(getBasePageAddress((char) 0));
+            } else {
+                executeUnknown(inst);
+            }
             break;
         case INST_EOR_BP:
             executeEor(getBasePageValue((char) 0));
@@ -1525,7 +1645,11 @@ public final class Cpu6502 implements Cpu {
             executeLsr(getBasePageAddress((char) 0));
             break;
         case INST_RMB4_BP:
-            executeRmb(getBasePageAddress((char) 0), BIT4);
+            if (enableMos65ce02) {
+                executeRmb(getBasePageAddress((char) 0), BIT4);
+            } else {
+                executeUnknown(inst);
+            }
             break;
         case INST_PHA:
             executePh(registerA);
@@ -1574,7 +1698,11 @@ public final class Cpu6502 implements Cpu {
             executeLsr(getBasePageAddress(registerX));
             break;
         case INST_RMB5_BP:
-            executeRmb(getBasePageAddress((char) 0), BIT5);
+            if (enableMos65ce02) {
+                executeRmb(getBasePageAddress((char) 0), BIT5);
+            } else {
+                executeUnknown(inst);
+            }
             break;
         case INST_CLI:
             resetStatus(P_I);
@@ -1627,7 +1755,11 @@ public final class Cpu6502 implements Cpu {
             executeRor(getBasePageAddress((char) 0));
             break;
         case INST_RMB6_BP:
-            executeRmb(getBasePageAddress((char) 0), BIT6);
+            if (enableMos65ce02) {
+                executeRmb(getBasePageAddress((char) 0), BIT6);
+            } else {
+                executeUnknown(inst);
+            }
             break;
         case INST_PLA:
             registerA = executePl();
@@ -1651,20 +1783,36 @@ public final class Cpu6502 implements Cpu {
             executeRor(getAbsoluteAddress((char) 0));
             break;
         case INST_BBR6_BP:
-            executeBbr(BIT6, getBasePageAddress((char) 0),
-                    getRelativeAddress());
+            if (enableMos65ce02) {
+                executeBbr(BIT6, getBasePageAddress((char) 0),
+                        getRelativeAddress());
+            } else {
+                executeUnknown(inst);
+            }
             break;
         case INST_BVS_REL:
             executeBxx(0 != (registerP & P_V), getRelativeAddress());
             break;
         case INST_ADC_IND_Y:
-            executeAdc(getIndirectIndexedValue(registerY));
+            if (enableMos65ce02) {
+                executeAdc(getIndirectIndexedValue(registerY));
+            } else {
+                executeUnknown(inst);
+            }
             break;
         case INST_ADC_IND_Z:
-            executeAdc(getIndirectIndexedValue(registerZ));
+            if (enableMos65ce02) {
+                executeAdc(getIndirectIndexedValue(registerZ));
+            } else {
+                executeUnknown(inst);
+            }
             break;
         case INST_BVS_W_REL:
-            executeBxx(0 != (registerP & P_V), getWordRelativeAddress());
+            if (enableMos65ce02) {
+                executeBxx(0 != (registerP & P_V), getWordRelativeAddress());
+            } else {
+                executeUnknown(inst);
+            }
             break;
         case INST_STZ_BP_X:
             executeSt(registerZ, getBasePageAddress(registerX));
@@ -1676,7 +1824,11 @@ public final class Cpu6502 implements Cpu {
             executeRor(getBasePageValue(registerX));
             break;
         case INST_RMB7_BP:
-            executeRmb(getBasePageAddress((char) 0), BIT7);
+            if (enableMos65ce02) {
+                executeRmb(getBasePageAddress((char) 0), BIT7);
+            } else {
+                executeUnknown(inst);
+            }
             break;
         case INST_SEI:
             setStatus(P_I);
@@ -1697,7 +1849,7 @@ public final class Cpu6502 implements Cpu {
             executeAdc(getAbsoluteValue(registerX));
             break;
         case INST_ROR_ABS_X:
-            executeRor(getAbsoluteValue(registerX));
+            executeRor(getAbsoluteAddress(registerX));
             break;
         case INST_BBR7_BP:
             executeBbr(BIT7, getBasePageAddress((char) 0),
@@ -1707,7 +1859,7 @@ public final class Cpu6502 implements Cpu {
             executeBxx(true, getRelativeAddress());
             break;
         case INST_STA_IND_X:
-            executeSt(registerA, getBasePageAddress(registerX));
+            executeSt(registerA, getIndexedIndirectAddress());
             break;
         case INST_STA_DSP_Y:
             executeSt(registerA, getStackPageIndirectIndexedAddress(registerY));
@@ -1725,7 +1877,11 @@ public final class Cpu6502 implements Cpu {
             executeSt(registerX, getBasePageAddress((char) 0));
             break;
         case INST_SMB0_BP:
-            executeSmb(getBasePageAddress((char) 0), BIT0);
+            if (enableMos65ce02) {
+                executeSmb(getBasePageAddress((char) 0), BIT0);
+            } else {
+                executeUnknown(inst);
+            }
             break;
         case INST_DEY:
             registerY = executeDec(registerY);
@@ -1749,20 +1905,28 @@ public final class Cpu6502 implements Cpu {
             executeSt(registerX, getAbsoluteAddress((char) 0));
             break;
         case INST_BBS0_BP:
-            executeBbs(BIT0, getBasePageAddress((char) 0),
-                    getRelativeAddress());
+            if (enableMos65ce02) {
+                executeBbs(BIT0, getBasePageAddress((char) 0),
+                        getRelativeAddress());
+            } else {
+                executeUnknown(inst);
+            }
             break;
         case INST_BCC_REL:
             executeBxx(0 == (registerP & P_C), getRelativeAddress());
             break;
         case INST_STA_IND_Y:
-            executeSt(registerA, getIndirectIndexedValue(registerY));
+            executeSt(registerA, getIndirectIndexedAddress(registerY));
             break;
         case INST_STA_IND_Z:
-            executeSt(registerA, getIndirectIndexedValue(registerZ));
+            executeSt(registerA, getIndirectIndexedAddress(registerZ));
             break;
         case INST_BCC_W_REL:
-            executeBxx(0 == (registerP & P_C), getWordRelativeAddress());
+            if (enableMos65ce02) {
+                executeBxx(0 == (registerP & P_C), getWordRelativeAddress());
+            } else {
+                executeUnknown(inst);
+            }
             break;
         case INST_STY_BP_X:
             executeSt(registerY, getBasePageAddress(registerX));
@@ -1774,7 +1938,11 @@ public final class Cpu6502 implements Cpu {
             executeSt(registerX, getBasePageAddress(registerY));
             break;
         case INST_SMB1_BP:
-            executeSmb(getBasePageAddress((char) 0), BIT1);
+            if (enableMos65ce02) {
+                executeSmb(getBasePageAddress((char) 0), BIT1);
+            } else {
+                executeUnknown(inst);
+            }
             break;
         case INST_TYA:
             executeTxa(registerY);
@@ -1823,7 +1991,11 @@ public final class Cpu6502 implements Cpu {
             registerX = executeLd(getBasePageValue((char) 0));
             break;
         case INST_SMB2_BP:
-            executeSmb(getBasePageAddress((char) 0), BIT2);
+            if (enableMos65ce02) {
+                executeSmb(getBasePageAddress((char) 0), BIT2);
+            } else {
+                executeUnknown(inst);
+            }
             break;
         case INST_TAY:
             registerY = executeTax();
@@ -1835,7 +2007,11 @@ public final class Cpu6502 implements Cpu {
             registerX = executeTax();
             break;
         case INST_LDZ_ABS:
-            registerZ = executeLd(getAbsoluteValue((char) 0));
+            if (enableMos65ce02) {
+                registerZ = executeLd(getAbsoluteValue((char) 0));
+            } else {
+                executeUnknown(inst);
+            }
             break;
         case INST_LDY_ABS:
             registerY = executeLd(getAbsoluteValue((char) 0));
@@ -1872,7 +2048,11 @@ public final class Cpu6502 implements Cpu {
             registerX = executeLd(getBasePageValue(registerY));
             break;
         case INST_SMB3_BP:
-            executeSmb(getBasePageAddress((char) 0), BIT3);
+            if (enableMos65ce02) {
+                executeSmb(getBasePageAddress((char) 0), BIT3);
+            } else {
+                executeUnknown(inst);
+            }
             break;
         case INST_CLV:
             resetStatus(P_V);
@@ -1884,7 +2064,11 @@ public final class Cpu6502 implements Cpu {
             registerS = executeTax();
             break;
         case INST_LDZ_ABS_X:
-            registerZ = executeLd(getAbsoluteValue(registerX));
+            if (enableMos65ce02) {
+                registerZ = executeLd(getAbsoluteValue(registerX));
+            } else {
+                executeUnknown(inst);
+            }
             break;
         case INST_LDY_ABS_X:
             registerY = executeLd(getAbsoluteValue(registerX));
@@ -1921,7 +2105,11 @@ public final class Cpu6502 implements Cpu {
             executeDecP(getBasePageAddress((char) 0));
             break;
         case INST_SMB4_BP:
-            executeSmb(getBasePageAddress((char) 0), BIT4);
+            if (enableMos65ce02) {
+                executeSmb(getBasePageAddress((char) 0), BIT4);
+            } else {
+                executeUnknown(inst);
+            }
             break;
         case INST_INY:
             registerY = executeInc(registerY);
@@ -1933,7 +2121,11 @@ public final class Cpu6502 implements Cpu {
             registerX = executeDec(registerX);
             break;
         case INST_ASW_ABS:
-            executeAsw(getAbsoluteAddress((char) 0));
+            if (enableMos65ce02) {
+                executeAsw(getAbsoluteAddress((char) 0));
+            } else {
+                executeUnknown(inst);
+            }
             break;
         case INST_CPY_ABS:
             executeCmp(registerY, getAbsoluteValue((char) 0));
@@ -1969,7 +2161,11 @@ public final class Cpu6502 implements Cpu {
             executeDecP(getBasePageAddress(registerX));
             break;
         case INST_SMB5_BP:
-            executeSmb(getBasePageAddress((char) 0), BIT5);
+            if (enableMos65ce02) {
+                executeSmb(getBasePageAddress((char) 0), BIT5);
+            } else {
+                executeUnknown(inst);
+            }
             break;
         case INST_CLD:
             resetStatus(P_D);
@@ -1984,7 +2180,11 @@ public final class Cpu6502 implements Cpu {
             executePh(registerZ);
             break;
         case INST_CPZ_ABS:
-            executeCmp(registerZ, getAbsoluteValue((char) 0));
+            if (enableMos65ce02) {
+                executeCmp(registerZ, getAbsoluteValue((char) 0));
+            } else {
+                executeUnknown(inst);
+            }
             break;
         case INST_CMP_ABS_X:
             executeCmp(registerA, getAbsoluteValue(registerX));
@@ -1993,8 +2193,12 @@ public final class Cpu6502 implements Cpu {
             executeDecP(getAbsoluteAddress(registerX));
             break;
         case INST_BBS5_BP:
-            executeBbs(BIT5, getBasePageAddress((char) 0),
-                    getRelativeAddress());
+            if (enableMos65ce02) {
+                executeBbs(BIT5, getBasePageAddress((char) 0),
+                        getRelativeAddress());
+            } else {
+                executeUnknown(inst);
+            }
             break;
         case INST_CPX_IMM:
             executeCmp(registerX, getImmediateValue());
@@ -2007,7 +2211,11 @@ public final class Cpu6502 implements Cpu {
                     getStackPageIndirectIndexedAddress(registerY)));
             break;
         case INST_INW_BP:
-            executeInw(getBasePageAddress((char) 0));
+            if (enableMos65ce02) {
+                executeInw(getBasePageAddress((char) 0));
+            } else {
+                executeUnknown(inst);
+            }
             break;
         case INST_CPX_BP:
             executeCmp(registerX, getBasePageValue((char) 0));
@@ -2019,7 +2227,11 @@ public final class Cpu6502 implements Cpu {
             executeIncP(getBasePageAddress((char) 0));
             break;
         case INST_SMB6_BP:
-            executeSmb(getBasePageAddress((char) 0), BIT6);
+            if (enableMos65ce02) {
+                executeSmb(getBasePageAddress((char) 0), BIT6);
+            } else {
+                executeUnknown(inst);
+            }
             break;
         case INST_INX:
             registerX = executeInc(registerX);
@@ -2030,7 +2242,11 @@ public final class Cpu6502 implements Cpu {
         case INST_NOP:
             break;
         case INST_ROW_ABS:
-            executeRow(getAbsoluteAddress((char) 0));
+            if (enableMos65ce02) {
+                executeRow(getAbsoluteAddress((char) 0));
+            } else {
+                executeUnknown(inst);
+            }
             break;
         case INST_CPX_ABS:
             executeCmp(registerX, getAbsoluteValue((char) 0));
@@ -2067,7 +2283,11 @@ public final class Cpu6502 implements Cpu {
             executeIncP(getBasePageAddress(registerX));
             break;
         case INST_SMB7_BP:
-            executeSmb(getBasePageAddress((char) 0), BIT7);
+            if (enableMos65ce02) {
+                executeSmb(getBasePageAddress((char) 0), BIT7);
+            } else {
+                executeUnknown(inst);
+            }
             break;
         case INST_SED:
             setStatus(P_D);
@@ -2079,10 +2299,18 @@ public final class Cpu6502 implements Cpu {
             registerX = executePl();
             break;
         case INST_PLZ:
-            registerZ = executePl();
+            if (enableMos65ce02) {
+                registerZ = executePl();
+            } else {
+                executeUnknown(inst);
+            }
             break;
         case INST_PHW_ABS_W:
-            executePhw((short) getWordAbsoluteAddress());
+            if (enableMos65ce02) {
+                executePhw((short) getWordAbsoluteAddress());
+            } else {
+                executeUnknown(inst);
+            }
             break;
         case INST_SBC_ABS_X:
             executeSbc(getAbsoluteValue(registerX));
@@ -2091,8 +2319,12 @@ public final class Cpu6502 implements Cpu {
             executeIncP(getAbsoluteAddress(registerX));
             break;
         case INST_BBS7_BP:
-            executeBbs(BIT7, getBasePageAddress((char) 0),
-                    getRelativeAddress());
+            if (enableMos65ce02) {
+                executeBbs(BIT7, getBasePageAddress((char) 0),
+                        getRelativeAddress());
+            } else {
+                executeUnknown(inst);
+            }
             break;
         default: // all your cases are belong to us!
             Log.getLog().fatal("Cpu6502: should not be reached");
