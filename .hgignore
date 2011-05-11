@@ -3,4 +3,5 @@ data
 tmp
 .class
 .checkstyle
+.idea
 .project
