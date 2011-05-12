@@ -75,9 +75,7 @@ public final class MasterChannel implements Channel {
     public boolean removeChannel(final Channel channel) {
         buffers = null;
         boolean result = channels.remove(channel);
-        if (result) {
-            reconstructBuffers();
-        }
+        reconstructBuffers();
         return result;
     }
 
