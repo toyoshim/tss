@@ -68,6 +68,8 @@ AudioLooper.prototype.onAudioProcess = function (event) {
     // Get Int32Array input buffer.
     this.channel.generate(this.bufferSize * 2);
     var lrIn = this.channel.getBuffer();
+
+    // Process buffer conversion.
     for (var i = 0; i < this.bufferSize; i++) {
         lOut[i] = lrIn[i * 2 + 0] / 32768.0;
         rOut[i] = lrIn[i * 2 + 1] / 32768.0;

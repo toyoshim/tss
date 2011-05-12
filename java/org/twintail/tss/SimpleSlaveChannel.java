@@ -6,7 +6,7 @@ package org.twintail.tss;
 /**
  * class SlaveChannel
  *
- * This class implement simple fixed frequency slave channel.
+ * This class implements simple fixed frequency slave channel.
  * @author Takashi Toyoshima <toyoshim@gmail.com>
  */
 public final class SimpleSlaveChannel implements Channel {
