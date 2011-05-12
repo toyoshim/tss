@@ -4,8 +4,11 @@
     <title>UnitTest for T'Sound System for JavaScript (web Audio API)</title>
     <script language="JavaScript" src="../Log.js"></script>
     <script language="JavaScript" src="AudioLooper.js"></script>
+    <script language="JavaScript" src="MasterChannel.js"></script>
     <script>
         var looper = new AudioLooper();
+        var master = new MasterChannel();
+        looper.setChannel(master);
     </script>
 </head>
 <body>

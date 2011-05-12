@@ -19,7 +19,7 @@ function AudioLooper () {
     if (null == this.audioContext) return;
 
     // Allocate JavaScript synthesis node.
-    this.bufferSize = 8192;
+    this.bufferSize = 4096;
     this.jsNode = this.audioContext.createJavaScriptNode(this.bufferSize);
 
     // Connect to output audio device.
@@ -37,7 +37,7 @@ function AudioLooper () {
  * @param newChannel sound generator
  */
 AudioLooper.prototype.setChannel = function (newChannel) {
-    //newChannel.setBufferLength(this.bufferSize);
+    newChannel.setBufferLength(this.bufferSize * 2);
     this.channel = newChannel;
 }
 
@@ -51,19 +51,25 @@ AudioLooper.prototype.onAudioProcess = function (event) {
         this.firstAudioEvent = true;
         Log.getLog().info(event);
     }
-    // Get Float32Array output buffer.
-    var l = event.outputBuffer.getChannelData(0);
-    var r = event.outputBuffer.getChannelData(1);
 
-    // Test code.
-    // TODO: Delegate to Channel object and convert it.
-    for (var i = 0; i < this.bufferSize; i++) {
-        if (0 == (i & 0x80)) {
-            l[i] = 0.5;
-            r[i] = 0.5;
-        } else {
-            l[i] = -0.5;
-            r[i] = -0.5;
+    // Get Float32Array output buffer.
+    var lOut = event.outputBuffer.getChannelData(0);
+    var rOut = event.outputBuffer.getChannelData(1);
+
+    // Process no input channel.
+    if (null == this.channel) {
+        for (var i = 0; i < this.bufferSize; i++) {
+            lOut[i] = 0.0;
+            rOut[i] = 0.0;
         }
+        return;
+    }
+
+    // Get Int32Array input buffer.
+    this.channel.generate(this.bufferSize * 2);
+    var lrIn = this.channel.getBuffer();
+    for (var i = 0; i < this.bufferSize; i++) {
+        lOut[i] = lrIn[i * 2 + 0] / 32768.0;
+        rOut[i] = lrIn[i * 2 + 1] / 32768.0;
     }
 }
