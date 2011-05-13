@@ -10,6 +10,7 @@
  *
  */
 function Log () {
+    this.lastLevel = "";
 }
 
 Log.log = new Log();
@@ -35,7 +36,10 @@ Log.getLog = function () {
  * @param message fatal message
  */
 Log.prototype.fatal = function (message) {
-    console.log("FATAL:");
+    if (this.LastLevel != "FATAL") {
+        this.LastLevel = "FATAL";
+        console.log("FATAL:");
+    }
     console.log(message);
 }
 
@@ -44,7 +48,10 @@ Log.prototype.fatal = function (message) {
  * @param message error message
  */
 Log.prototype.error = function (message) {
-    console.log("ERROR:");
+    if (this.LastLevel != "ERROR") {
+        this.LastLevel = "ERROR";
+        console.log("ERROR:");
+    }
     console.log(message);
 }
 /**
@@ -52,7 +59,10 @@ Log.prototype.error = function (message) {
  * @param message warning message
  */
 Log.prototype.warn = function (message) {
-    console.log("WARN:");
+    if (this.LastLevel != "WARN") {
+        this.LastLevel = "WARN";
+        console.log("WARN:");
+    }
     console.log(message);
 }
 
@@ -61,6 +71,9 @@ Log.prototype.warn = function (message) {
  * @param message information message
  */
 Log.prototype.info = function (message) {
-    console.log("INFO:");
+    if (this.LastLevel != "INFO") {
+        this.LastLevel = "INFO";
+        console.log("INFO:");
+    }
     console.log(message);
 }
