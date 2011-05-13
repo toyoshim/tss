@@ -10,7 +10,7 @@ package org.twintail.tss;
  * @author Takashi Toyoshima <toyoshim@gmail.com>
  */
 public final class SimpleSlaveChannel implements Channel {
-    private static final int DEFAULT_VOLUME = 4096;
+    private static final int DEFAULT_VOLUME = 1024;
     private short[] buffer = null;
     private int freq = 0;
     private int phase = 0;
