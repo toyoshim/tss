@@ -56,10 +56,10 @@ MasterChannel.prototype.setVolume = function (newVolume) {
 MasterChannel.prototype.addChannel = function (channel) {
     if (0 != this.bufferLength) {
         this.buffers = null;
-        this.channel.setBufferLength(this.bufferLength);
+        channel.setBufferLength(this.bufferLength);
         this.reconstructBuffers();
     }
-    return channels.push(channel);
+    return this.channels.push(channel);
 }
 
 /**
@@ -101,7 +101,8 @@ MasterChannel.prototype.setPlayer = function (newPlayer) {
  * @param msec time interval
  */
 MasterChannel.prototype.setPlayerInterval = function (msec) {
-    this.intervalLength = (SAMPLE_FREQUENCY * msec) / MSEC_PER_SEC;
+    this.intervalLength = (MasterChannel.SAMPLE_FREQUENCY * msec) /
+            MasterChannel.MSEC_PER_SEC;
     this.intervalRestLength = this.intervalLength;
 }
 
@@ -113,7 +114,7 @@ MasterChannel.prototype.setPlayerInterval = function (msec) {
 MasterChannel.prototype.generateInternal = function (base, length) {
     var size = this.channels.length;
     for (var i = 0; i < size; i++) {
-        this.channels.generate(length);
+        this.channels[i].generate(length);
     }
     for (var offset = 0; offset < length; offset++) {
         var value = 0;
@@ -140,7 +141,7 @@ MasterChannel.prototype.setBufferLength = function (length) {
     this.buffer = new Int32Array(length);
     this.bufferLength = length;
     for (var i = 0; i < this.channels.length; i++) {
-        this.channels.setBufferLength(length);
+        this.channels[i].setBufferLength(length);
     }
     this.reconstructBuffers();
 }
