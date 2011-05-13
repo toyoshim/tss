@@ -12,10 +12,10 @@ function SimpleSlaveChannel (frequency) {
     this.buffer = null;
     this.freq = frequency;
     this.phase = 0;
-    this.data = this.DEFAULT_VOLUME;
+    this.data = SimpleSlaveChannel.DEFAULT_VOLUME;
 }
 
-SimpleSlaveChannel.DEFAULT_VOLUME = 4096;
+SimpleSlaveChannel.DEFAULT_VOLUME = 1024;
 
 /**
  * @see MasterChannel
@@ -47,5 +47,11 @@ SimpleSlaveChannel.prototype.generate = function (length) {
         }
         this.buffer[i + 0] = this.data;
         this.buffer[i + 1] = this.data;
+    }
+    // Logged object contents at the first callback.
+    if (null == this.firstGenerateCallback) {
+        this.firstGenerateCallback = true;
+        Log.getLog().info("SimpleSlaveChannel: " + this.freq + "Hz");
+        Log.getLog().info(this);
     }
 }
