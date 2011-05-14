@@ -6,7 +6,7 @@ package org.twintail.tss;
 /**
  * class PsgDeviceChannel
  *
- * This class implement PSG sound device as Device and Channel.
+ * This class implements PSG sound device as Device and Channel.
  * AY-3-8910 is a reference model.
  * @author Takashi Toyoshima <toyoshim@gmail.com>
  */
