@@ -161,6 +161,7 @@ PsgDeviceChannel.prototype.setClock = function (hz) {
     this.clock = hz; // tone frequency = clock / 32TP
     this.baseStep = PsgDeviceChannel._CLOCK_BIAS * this.clock /
             MasterChannel.SAMPLE_FREQUENCY;
+    this.baseStep = ~~this.baseStep;
 };
 
 /**
@@ -276,7 +277,7 @@ PsgDeviceChannel.prototype.setDevice = function (target) {
  * @param length buffer length or size in shorts
  */
 PsgDeviceChannel.prototype.setBufferLength = function (length) {
-    this.buffer = Int32Array(length);
+    this.buffer = new Int32Array(length);
 };
 
 /**
