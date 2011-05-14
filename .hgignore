@@ -5,3 +5,4 @@ tmp
 .checkstyle
 .idea
 .project
+.DS_Store
