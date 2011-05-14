@@ -34,7 +34,7 @@ MasterChannel.prototype.reconstructBuffers = function () {
         newBuffers[i] = this.channels[i].getBuffer();
     }
     this.buffers = newBuffers;
-}
+};
 
 /**
  * Set mixing volume.
@@ -46,7 +46,7 @@ MasterChannel.prototype.reconstructBuffers = function () {
  */
 MasterChannel.prototype.setVolume = function (newVolume) {
     this.volume = newVolume;
-}
+};
 
 /**
  * Add channel to audio play back loop.
@@ -60,7 +60,7 @@ MasterChannel.prototype.addChannel = function (channel) {
         this.reconstructBuffers();
     }
     return this.channels.push(channel);
-}
+};
 
 /**
  * Remove channel from audio play back loop.
@@ -77,7 +77,7 @@ MasterChannel.prototype.removeChannel = function (channel) {
         }
     }
     return false;
-}
+};
 
 /**
  * Remove all channels from audio play back loop.
@@ -86,7 +86,7 @@ MasterChannel.prototype.clearChannel = function () {
     this.buffers = null;
     this.channels = new Array();
     this.reconstructBuffers();
-}
+};
 
 /**
  * Set player object to control devices periodically.
@@ -94,7 +94,7 @@ MasterChannel.prototype.clearChannel = function () {
  */
 MasterChannel.prototype.setPlayer = function (newPlayer) {
     this.player = newPlayer;
-}
+};
 
 /**
  * Set time interval to call back player periodically.
@@ -104,7 +104,7 @@ MasterChannel.prototype.setPlayerInterval = function (msec) {
     this.intervalLength = (MasterChannel.SAMPLE_FREQUENCY * msec) /
             MasterChannel.MSEC_PER_SEC;
     this.intervalRestLength = this.intervalLength;
-}
+};
 
 /**
  * Do partial slave channel audio mixing.
@@ -130,7 +130,7 @@ MasterChannel.prototype.generateInternal = function (base, length) {
         }
         this.buffer[base + offset] = value;
     }
-}
+};
 
 /**
  * Set internal buffer length.
@@ -144,7 +144,7 @@ MasterChannel.prototype.setBufferLength = function (length) {
         this.channels[i].setBufferLength(length);
     }
     this.reconstructBuffers();
-}
+};
 
 /**
  * Get internal buffer.
@@ -152,7 +152,7 @@ MasterChannel.prototype.setBufferLength = function (length) {
  */
 MasterChannel.prototype.getBuffer = function () {
     return this.buffer;
-}
+};
 
 /**
  * Generate audio stream to internal buffer.
@@ -179,4 +179,4 @@ MasterChannel.prototype.generate = function (length) {
             this.intervalRestLength -= restLength;
         }
     }
-}
+};
