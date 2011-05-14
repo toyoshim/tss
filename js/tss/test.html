@@ -6,22 +6,58 @@
     <script language="JavaScript" src="AudioLooper.js"></script>
     <script language="JavaScript" src="MasterChannel.js"></script>
     <script language="JavaScript" src="SimpleSlaveChannel.js"></script>
+    <script language="JavaScript">
+        function test1start() {
+            Log.getLog().info("TEST1 START");
+            looper.setChannel(master1);
+            test = 1;
+        }
+        function testxstop() {
+            if (0 != test) {
+                Log.getLog().info("TEST" + test + " STOP");
+                looper.setChannel(null);
+                test = 0;
+            }
+        }
+        function test2change(value) {
+            if (2 != test) {
+                Log.getLog().info("TEST2 START");
+                looper.setChannel(master2);
+                test = 2;
+            }
+            simplex.freq = value;
+            var hz = document.getElementById("test2hz");
+            hz.firstChild.nodeValue = value + " Hz";
+        }
+    </script>
 </head>
 <body>
-<button onclick="Log.getLog().info('START'); looper.setChannel(master);">START</button>
-<button onclick="Log.getLog().info('STOP'); looper.setChannel(null);">STOP</button>
+<hr>
+<pre>Play 440Hz/550Hz/660Hz</pre>
+<button onclick="test1start()">START</button>
+<button onclick="testxstop()">STOP</button>
+<hr>
+<pre>Play with slider</pre>
+<input type="range" min="1" max="4096" value="440" style="width: 100%" onchange="test2change(value)">
+<pre id="test2hz">440 Hz</pre>
+<hr>
 <div id="log"></div>
-<script>
+<script language="JavaScript">
     Log.setLog(new Log("log"));
+    var test = 0;
     var looper = new AudioLooper();
-    var master = new MasterChannel();
+
+    var master1 = new MasterChannel();
     var simple1 = new SimpleSlaveChannel(440);
     var simple2 = new SimpleSlaveChannel(550);
     var simple3 = new SimpleSlaveChannel(660);
-    master.clearChannel();
-    master.addChannel(simple1);
-    master.addChannel(simple2);
-    master.addChannel(simple3);
+    master1.addChannel(simple1);
+    master1.addChannel(simple2);
+    master1.addChannel(simple3);
+
+    var master2 = new MasterChannel();
+    var simplex = new SimpleSlaveChannel(440);
+    master2.addChannel(simplex);
 </script>
 </body>
 </html>
