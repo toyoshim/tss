@@ -34,7 +34,7 @@ function AudioLooper () {
         this.jsNode.owner = this;
         this.jsNode.onaudioprocess = function (event) {
             this.owner.onAudioProcess(event);
-        }
+        };
 
         return;
     }
@@ -62,8 +62,7 @@ function AudioLooper () {
         var arraySize = this.bufferSize * this.audioChannel;
         for (var i = 0; i < this.bufferPage; i++) {
             this.buffer[i] = new Float32Array(arraySize);
-            var written = this.audio.mozWriteAudio(this.buffer[i]);
-            this.bufferWritten += written;
+            this.bufferWritten += this.audio.mozWriteAudio(this.buffer[i]);
         }
 
         // Register callback with 50msec interval.
@@ -72,6 +71,7 @@ function AudioLooper () {
 
         return;
     }
+    Log.getLog().error("Audio API unavailable");
 }
 
 /**
@@ -83,7 +83,7 @@ AudioLooper.prototype.setChannel = function (newChannel) {
         newChannel.setBufferLength(this.bufferSize * 2);
     }
     this.channel = newChannel;
-}
+};
 
 /**
  * Audio processing event handler for Web Audio API.
@@ -101,8 +101,9 @@ AudioLooper.prototype.onAudioProcess = function (event) {
     var rOut = event.outputBuffer.getChannelData(1);
 
     // Process no input channel.
+    var i;
     if (null == this.channel) {
-        for (var i = 0; i < this.bufferSize; i++) {
+        for (i = 0; i < this.bufferSize; i++) {
             lOut[i] = 0.0;
             rOut[i] = 0.0;
         }
@@ -114,11 +115,11 @@ AudioLooper.prototype.onAudioProcess = function (event) {
     var lrIn = this.channel.getBuffer();
 
     // Process buffer conversion.
-    for (var i = 0; i < this.bufferSize; i++) {
+    for (i = 0; i < this.bufferSize; i++) {
         lOut[i] = lrIn[i * 2 + 0] / 32768.0;
         rOut[i] = lrIn[i * 2 + 1] / 32768.0;
     }
-}
+};
 
 /**
  * Audio interval callback handler for Audio Data API.
@@ -147,9 +148,10 @@ AudioLooper.prototype.onAudioInterval = function () {
     this.bufferId = (this.bufferId + 1) % this.bufferPage;
 
     // Process next buffer.
+    var i;
     if (null == this.channel) {
         // Process no input channel.
-        for (var i = 0; i < this.bufferSize; i++) {
+        for (i = 0; i < this.bufferSize; i++) {
             outLr[i * 2 + 0] = 0.0;
             outLr[i * 2 + 1] = 0.0;
         }
@@ -157,13 +159,12 @@ AudioLooper.prototype.onAudioInterval = function () {
         // Process buffer conversion.
         this.channel.generate(this.bufferSize * this.audioChannel);
         var inLr = this.channel.getBuffer();
-        for (var i = 0; i < this.bufferSize; i++) {
+        for (i = 0; i < this.bufferSize; i++) {
             outLr[i * 2 + 0] = inLr[i * 2 + 0] / 32768.0;
             outLr[i * 2 + 1] = inLr[i * 2 + 1] / 32768.0;
         }
     }
 
     // Play next buffer.
-    var written = this.audio.mozWriteAudio(outLr);
-    this.bufferWritten += written;
-}
+    this.bufferWritten += this.audio.mozWriteAudio(outLr);
+};

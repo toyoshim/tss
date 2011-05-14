@@ -23,7 +23,7 @@ SimpleSlaveChannel.DEFAULT_VOLUME = 1024;
  */
 SimpleSlaveChannel.prototype.setBufferLength = function (length) {
     this.buffer = new Int32Array(length);
-}
+};
 
 /**
  * @see MasterChannel
@@ -31,7 +31,7 @@ SimpleSlaveChannel.prototype.setBufferLength = function (length) {
  */
 SimpleSlaveChannel.prototype.getBuffer = function () {
     return this.buffer;
-}
+};
 
 /**
  * Generate specified length sound stream into internal buffer.
@@ -54,4 +54,4 @@ SimpleSlaveChannel.prototype.generate = function (length) {
         Log.getLog().info("SimpleSlaveChannel: " + this.freq + "Hz");
         Log.getLog().info(this);
     }
-}
+};

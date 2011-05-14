@@ -62,15 +62,6 @@ function Log (id) {
                 var textNode = document.createTextNode(object + "\n");
                 this.framePre.appendChild(textNode);
             }
-            /*
-            var text = object.toString() + "\n";
-            if (object instanceof Object) {
-                for (var item in object)
-                text += " " + item + ":*\n"
-            }
-            var textNode = document.createTextNode(text);
-            this.framePre.appendChild(textNode);
-            */
         }
     }
 }
@@ -83,7 +74,7 @@ Log.log = new Log();
  */
 Log.setLog = function (newLog) {
     Log.log = newLog;
-}
+};
 
 /**
  * Get default log instance.
@@ -91,7 +82,7 @@ Log.setLog = function (newLog) {
  */
 Log.getLog = function () {
     return Log.log;
-}
+};
 
 /**
  * Log fatal message.
@@ -103,7 +94,7 @@ Log.prototype.fatal = function (message) {
         this.print("*FATAL*");
     }
     this.print(message);
-}
+};
 
 /**
  * Log error message.
@@ -115,7 +106,8 @@ Log.prototype.error = function (message) {
         this.print("*ERROR*");
     }
     this.print(message);
-}
+};
+
 /**
  * Log warning message.
  * @param message warning message
@@ -126,7 +118,7 @@ Log.prototype.warn = function (message) {
         this.print("*WARN*");
     }
     this.print(message);
-}
+};
 
 /**
  * Log information message.
@@ -138,4 +130,4 @@ Log.prototype.info = function (message) {
         this.print("*INFO*");
     }
     this.print(message);
-}
+};

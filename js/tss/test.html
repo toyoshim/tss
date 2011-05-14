@@ -2,10 +2,15 @@
 <html>
 <head>
     <title>UnitTest for T'Sound System for JavaScript (web Audio API)</title>
+    <!-- range type input tag emulation for Firefox -->
+    <script language="JavaScript" src="https://github.com/fryn/html5slider/raw/master/html5slider.js"></script>
+    <!-- include components -->
     <script language="JavaScript" src="../Log.js"></script>
     <script language="JavaScript" src="AudioLooper.js"></script>
     <script language="JavaScript" src="MasterChannel.js"></script>
     <script language="JavaScript" src="SimpleSlaveChannel.js"></script>
+    <script language="JavaScript" src="PsgDeviceChannel.js"></script>
+    <!-- control callback scripts -->
     <script language="JavaScript">
         function test1start() {
             Log.getLog().info("TEST1 START");
