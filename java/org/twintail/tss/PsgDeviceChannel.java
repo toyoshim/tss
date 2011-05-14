@@ -197,6 +197,7 @@ public final class PsgDeviceChannel implements Device, Channel {
         }
 
     }
+
     /**
      * Initialize SN76489 registers.
      */
