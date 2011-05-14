@@ -6,19 +6,22 @@
     <script language="JavaScript" src="AudioLooper.js"></script>
     <script language="JavaScript" src="MasterChannel.js"></script>
     <script language="JavaScript" src="SimpleSlaveChannel.js"></script>
-    <script>
-        var looper = new AudioLooper();
-        var master = new MasterChannel();
-        var simple1 = new SimpleSlaveChannel(440);
-        var simple2 = new SimpleSlaveChannel(550);
-        var simple3 = new SimpleSlaveChannel(660);
-        master.clearChannel();
-        master.addChannel(simple1);
-        master.addChannel(simple2);
-        master.addChannel(simple3);
-        looper.setChannel(master);
-    </script>
 </head>
 <body>
+<button onclick="Log.getLog().info('START'); looper.setChannel(master);">START</button>
+<button onclick="Log.getLog().info('STOP'); looper.setChannel(null);">STOP</button>
+<div id="log"></div>
+<script>
+    Log.setLog(new Log("log"));
+    var looper = new AudioLooper();
+    var master = new MasterChannel();
+    var simple1 = new SimpleSlaveChannel(440);
+    var simple2 = new SimpleSlaveChannel(550);
+    var simple3 = new SimpleSlaveChannel(660);
+    master.clearChannel();
+    master.addChannel(simple1);
+    master.addChannel(simple2);
+    master.addChannel(simple3);
+</script>
 </body>
 </html>
