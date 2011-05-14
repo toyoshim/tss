@@ -10,6 +10,7 @@
     <script language="JavaScript" src="MasterChannel.js"></script>
     <script language="JavaScript" src="SimpleSlaveChannel.js"></script>
     <script language="JavaScript" src="PsgDeviceChannel.js"></script>
+    <script language="JavaScript" src="PsglogPlayer.js"></script>
     <!-- control callback scripts -->
     <script language="JavaScript">
         function test1start() {
@@ -34,6 +35,16 @@
             var hz = document.getElementById("test2hz");
             hz.firstChild.nodeValue = value + " Hz";
         }
+        function test3start() {
+            if (!xh_res3) {
+                Log.getLog().warn("XHR3 not ready");
+                return;
+            }
+            Log.getLog().info("TEST3 START");
+            player3.play(xh_req3.response);
+            looper.setChannel(master3);
+            test = 3;
+        }
     </script>
 </head>
 <body>
@@ -45,6 +56,10 @@
 <pre>Play with slider</pre>
 <input type="range" min="1" max="4096" value="440" style="width: 100%" onchange="test2change(value)">
 <pre id="test2hz">440 Hz</pre>
+<hr>
+<pre>PSG Log REPLAY</pre>
+<button onclick="test3start()">START</button>
+<button onclick="testxstop()">STOP</button>
 <hr>
 <div id="log"></div>
 <script language="JavaScript">
@@ -63,6 +78,22 @@
     var master2 = new MasterChannel();
     var simplex = new SimpleSlaveChannel(440);
     master2.addChannel(simplex);
+
+    var xh_res3 = false;
+    var xh_req3 = new XMLHttpRequest();
+    xh_req3.open("get", "../../data/psglog.1", true);
+    xh_req3.responseType = "arraybuffer";
+    xh_req3.onload = function () {
+        Log.getLog().info("TEST3 XHR done.");
+        if (xh_req3.response instanceof ArrayBuffer) {
+            Log.getLog().info("  as ArrayBuffer.");
+        }
+        xh_res3 = true;
+    };
+    xh_req3.send();
+    var master3 = new MasterChannel();
+    var player3 = new PsglogPlayer();
+    player3.setMasterChannel(master3);
 </script>
 </body>
 </html>
