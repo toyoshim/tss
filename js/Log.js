@@ -9,8 +9,70 @@
  * @author Takashi Toyoshima <toyoshim@gmail.com>
  *
  */
-function Log () {
+
+/**
+ * Log prototype function. This prototype provide three kinds of Log
+ * mechanisms. User can specify its type by id argument.
+ * @param id Log type
+ *     undefined: Use native console.log if it's available.
+ *     null: Eliminate all logs.
+ *     <string>: Output as pre element under DOM object which has <string> id.
+ */
+function Log (id) {
     this.lastLevel = "";
+
+    // Set default log scheme.
+    this.print = function (object) { /* Do nothing. */ }
+
+    if (id == undefined) {
+        // Try to use native console.
+        if (window.console != undefined) {
+            this.print = function (object) {
+                console.log(object);
+            }
+        }
+    } else if (id != null) {
+        // Try to output under specified DOM object.
+        this.frameDiv = document.getElementById(id);
+        if (this.frameDiv == undefined) {
+            return;
+        }
+
+        this.print = function (object) {
+            if (window.console != undefined) {
+                console.log(object);
+            }
+            if (object instanceof Object) {
+                this.framePre = undefined;
+                var pre = document.createElement('pre');
+                var text = object.toString();
+                var textNode = document.createTextNode(text);
+                pre.appendChild(textNode);
+                var title = "";
+                for (var item in object) {
+                    title += item + ":" + object[item] + "; \n";
+                }
+                pre.setAttribute('title', title);
+                this.frameDiv.appendChild(pre);
+            } else {
+                if (this.framePre == undefined) {
+                    this.framePre = document.createElement('pre');
+                    this.frameDiv.appendChild(this.framePre);
+                }
+                var textNode = document.createTextNode(object + "\n");
+                this.framePre.appendChild(textNode);
+            }
+            /*
+            var text = object.toString() + "\n";
+            if (object instanceof Object) {
+                for (var item in object)
+                text += " " + item + ":*\n"
+            }
+            var textNode = document.createTextNode(text);
+            this.framePre.appendChild(textNode);
+            */
+        }
+    }
 }
 
 Log.log = new Log();
@@ -38,9 +100,9 @@ Log.getLog = function () {
 Log.prototype.fatal = function (message) {
     if (this.LastLevel != "FATAL") {
         this.LastLevel = "FATAL";
-        console.log("FATAL:");
+        this.print("*FATAL*");
     }
-    console.log(message);
+    this.print(message);
 }
 
 /**
@@ -50,9 +112,9 @@ Log.prototype.fatal = function (message) {
 Log.prototype.error = function (message) {
     if (this.LastLevel != "ERROR") {
         this.LastLevel = "ERROR";
-        console.log("ERROR:");
+        this.print("*ERROR*");
     }
-    console.log(message);
+    this.print(message);
 }
 /**
  * Log warning message.
@@ -61,9 +123,9 @@ Log.prototype.error = function (message) {
 Log.prototype.warn = function (message) {
     if (this.LastLevel != "WARN") {
         this.LastLevel = "WARN";
-        console.log("WARN:");
+        this.print("*WARN*");
     }
-    console.log(message);
+    this.print(message);
 }
 
 /**
@@ -73,7 +135,7 @@ Log.prototype.warn = function (message) {
 Log.prototype.info = function (message) {
     if (this.LastLevel != "INFO") {
         this.LastLevel = "INFO";
-        console.log("INFO:");
+        this.print("*INFO*");
     }
-    console.log(message);
+    this.print(message);
 }
