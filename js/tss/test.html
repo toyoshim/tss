@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>UnitTest for T'Sound System for JavaScript (web Audio API)</title>
+    <title>UnitTest for T'Sound System for JavaScript (Web Audio API / Audio Data API)</title>
     <!-- range type input tag emulation for Firefox -->
     <script language="JavaScript" src="https://github.com/fryn/html5slider/raw/master/html5slider.js"></script>
     <!-- include components -->
@@ -13,21 +13,21 @@
     <script language="JavaScript" src="PsglogPlayer.js"></script>
     <!-- control callback scripts -->
     <script language="JavaScript">
-        function test1start() {
-            Log.getLog().info("TEST1 START");
-            looper.setChannel(master1);
-            test = 1;
-        }
         function testxstop() {
             if (0 != test) {
-                Log.getLog().info("TEST" + test + " STOP");
+                Log.getLog().info("TEST " + test + " STOP");
                 looper.setChannel(null);
                 test = 0;
             }
         }
+        function test1start() {
+            Log.getLog().info("TEST 1 START");
+            looper.setChannel(master1);
+            test = 1;
+        }
         function test2change(value) {
             if (2 != test) {
-                Log.getLog().info("TEST2 START");
+                Log.getLog().info("TEST 2 START");
                 looper.setChannel(master2);
                 test = 2;
             }
@@ -36,29 +36,55 @@
             hz.firstChild.nodeValue = value + " Hz";
         }
         function test3start() {
-            if (!xh_res3) {
-                Log.getLog().warn("XHR3 not ready");
-                return;
-            }
-            Log.getLog().info("TEST3 START");
-            player3.play(xh_req3.response);
+            Log.getLog().info("TEST 3 START");
+            psgdev3.writeRegister( 7, 0x38);
+            psgdev3.writeRegister( 8, 0x0f);
+            psgdev3.writeRegister( 9, 0x0f);
+            psgdev3.writeRegister(10, 0x0f);
+            psgdev3.writeRegister( 1, 0x01);
+            psgdev3.writeRegister( 0, 0xc2);
+            psgdev3.writeRegister( 3, 0x01);
+            psgdev3.writeRegister( 2, 0xc4);
+            psgdev3.writeRegister( 5, 0x01);
+            psgdev3.writeRegister( 4, 0xc6);
+            Log.getLog().info(psgdev3);
             looper.setChannel(master3);
             test = 3;
+        }
+        function test4start() {
+            if (xh_res4 == null) {
+                Log.getLog().warn("XHR4 not ready");
+                return;
+            }
+            Log.getLog().info("TEST 4 START");
+            player4.play(xh_res4);
+            for (var i = 0; i < 350; i++) {
+                player4.updateDevice();
+            }
+            for (var i = 0; i < 1050; i++) {
+                player4.updateDevice();
+            }
+            looper.setChannel(master4);
+            test = 4;
         }
     </script>
 </head>
 <body>
 <hr>
-<pre>Play 440Hz/550Hz/660Hz</pre>
+<pre>1. Play 440Hz/550Hz/660Hz</pre>
 <button onclick="test1start()">START</button>
 <button onclick="testxstop()">STOP</button>
 <hr>
-<pre>Play with slider</pre>
+<pre>2. Play with slider</pre>
 <input type="range" min="1" max="4096" value="440" style="width: 100%" onchange="test2change(value)">
 <pre id="test2hz">440 Hz</pre>
 <hr>
-<pre>PSG Log REPLAY</pre>
+<pre>3. AY-3-8910 emulation test</pre>
 <button onclick="test3start()">START</button>
+<button onclick="testxstop()">STOP</button>
+<hr>
+<pre>4. PSG Log REPLAY</pre>
+<button onclick="test4start()">START</button>
 <button onclick="testxstop()">STOP</button>
 <hr>
 <div id="log"></div>
@@ -67,6 +93,7 @@
     var test = 0;
     var looper = new AudioLooper();
 
+    // TEST 1
     var master1 = new MasterChannel();
     var simple1 = new SimpleSlaveChannel(440);
     var simple2 = new SimpleSlaveChannel(550);
@@ -75,25 +102,40 @@
     master1.addChannel(simple2);
     master1.addChannel(simple3);
 
+    // TEST 2
     var master2 = new MasterChannel();
     var simplex = new SimpleSlaveChannel(440);
     master2.addChannel(simplex);
 
-    var xh_res3 = false;
-    var xh_req3 = new XMLHttpRequest();
-    xh_req3.open("get", "../../data/psglog.1", true);
-    xh_req3.responseType = "arraybuffer";
-    xh_req3.onload = function () {
-        Log.getLog().info("TEST3 XHR done.");
-        if (xh_req3.response instanceof ArrayBuffer) {
-            Log.getLog().info("  as ArrayBuffer.");
-        }
-        xh_res3 = true;
-    };
-    xh_req3.send();
+    // TEST 3
     var master3 = new MasterChannel();
-    var player3 = new PsglogPlayer();
-    player3.setMasterChannel(master3);
+    var psgdev3 = new PsgDeviceChannel();
+    psgdev3.setMode(PsgDeviceChannel.MODE_SIGNED);
+    psgdev3.setDevice(PsgDeviceChannel.DEVICE_AY_3_8910);
+    master3.addChannel(psgdev3);
+
+    // TEST 4
+    var xh_res4 = null;
+    var xh_req4 = new XMLHttpRequest();
+    xh_req4.open("get", "../../data/psglog.1", true);
+    xh_req4.responseType = "arraybuffer";
+    xh_req4.onload = function () {
+        Log.getLog().info("TEST4 XHR done.");
+        if (xh_req4.response instanceof ArrayBuffer) {
+            Log.getLog().info("  as ArrayBuffer (response).");
+            xh_res4 = xh_req4.response;
+        } else if (xh_req4.mozResponseArrayBuffer instanceof ArrayBuffer) {
+            Log.getLog().info("  as ArrayBuffer (mozResponseArrayBuffer).");
+            xh_res4 = xh_req4.mozResponseArrayBuffer;
+        }
+        if (0 == test) {
+            test4start();
+        }
+    };
+    xh_req4.send();
+    var master4 = new MasterChannel();
+    var player4 = new PsglogPlayer();
+    player4.setMasterChannel(master4);
 </script>
 </body>
 </html>
