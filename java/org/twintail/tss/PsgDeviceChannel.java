@@ -247,6 +247,7 @@ public final class PsgDeviceChannel implements Device, Channel {
         volumeTable = VOLUME_TABLE[target];
         for (int i = 0; i < CHANNELS; i++) {
             active[i] = true;
+            countTone[i] = 0;
         }
         if (device == DEVICE_SN76489) {
             initRegisterSN();
