@@ -43,8 +43,8 @@ function AudioLooper () {
     if (window.Audio != undefined) {
         Log.getLog().info("use Audio Data API");
         this.audio = new Audio();
-        if (this.audio == null) {
-            Log.getLog().fatal("could not use Audio");
+        if ((this.audio == null) || (this.audio.mozSetup == undefined)) {
+            Log.getLog().fatal("could not use Audio Data API");
             return;
         }
 
