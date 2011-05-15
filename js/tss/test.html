@@ -67,6 +67,38 @@
             looper.setChannel(master4);
             test = 4;
         }
+        function test4draw() {
+            var vol = new Int32Array(3);
+            vol[0] = player4.psg.readRegister(8);
+            vol[1] = player4.psg.readRegister(9);
+            vol[2] = player4.psg.readRegister(10);
+
+            pos = 0;
+            for (y = 0; y < h4; y++) {
+                for (x = 0; x < w4; x++) {
+                    if ((y < 4) || (y > (4 + 16))) {
+                        bmp4[pos++] = 0;
+                        bmp4[pos++] = 0;
+                        bmp4[pos++] = 0;
+                        bmp4[pos++] = 255;
+                    } else {
+                        if ((x < 4) || (x > (4 + 30)) || ((x - 3) % 10) < 2) {
+                            bmp4[pos++] = 0;
+                            bmp4[pos++] = 0;
+                            bmp4[pos++] = 0;
+                            bmp4[pos++] = 255;
+                        } else {
+                            var v = vol[~~((x - 4) / 10)];
+                            bmp4[pos++] = (v < (h4 - y - 4))? 0: ((h4 - y - 4) >= 10)? 255: 0;
+                            bmp4[pos++] = (v < (h4 - y - 4))? 0: ((h4 - y - 4) <= 10)? 255: 0;
+                            bmp4[pos++] = 0;
+                            bmp4[pos++] = 255;
+                        }
+                    }
+                }
+            }
+            ctx4.putImageData(img4, 0, 0);
+        }
     </script>
 </head>
 <body>
@@ -86,6 +118,7 @@
 <pre>4. PSG Log REPLAY</pre>
 <button onclick="test4start()">START</button>
 <button onclick="testxstop()">STOP</button>
+<canvas id="test4canvas" width="38" height="24"></canvas>
 <hr>
 <div id="log"></div>
 <script language="JavaScript">
@@ -136,6 +169,19 @@
     var master4 = new MasterChannel();
     var player4 = new PsglogPlayer();
     player4.setMasterChannel(master4);
+    var canvas4 = document.getElementById("test4canvas");
+    var w4 = canvas4.getAttributeNode("width").value;
+    var h4 = canvas4.getAttributeNode("height").value;
+    var ctx4 = canvas4.getContext("2d");
+    var img4 = ctx4.getImageData(0, 0, w4, h4);
+    var bmp4 = img4.data;
+    for (var pos = 0; pos < w4 * h4 * 4; pos += 4) {
+        bmp4[pos + 0] = 255; // R
+        bmp4[pos + 1] = 255; // G
+        bmp4[pos + 2] = 255; // B
+        bmp4[pos + 3] = 255; // A
+    }
+    setInterval(test4draw, 1);
 </script>
 </body>
 </html>
