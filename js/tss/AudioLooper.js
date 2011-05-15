@@ -144,7 +144,7 @@ AudioLooper.prototype.onAudioInterval = function () {
     }
 
     // Update buffer tracking variables.
-    var outLr = this.buffer[this.bufferId];
+    var lrOut = this.buffer[this.bufferId];
     this.bufferId = (this.bufferId + 1) % this.bufferPage;
 
     // Process next buffer.
@@ -152,19 +152,19 @@ AudioLooper.prototype.onAudioInterval = function () {
     if (null == this.channel) {
         // Process no input channel.
         for (i = 0; i < this.bufferSize; i++) {
-            outLr[i * 2 + 0] = 0.0;
-            outLr[i * 2 + 1] = 0.0;
+            lrOut[i * 2 + 0] = 0.0;
+            lrOut[i * 2 + 1] = 0.0;
         }
     } else {
         // Process buffer conversion.
         this.channel.generate(this.bufferSize * this.audioChannel);
-        var inLr = this.channel.getBuffer();
+        var lrIn = this.channel.getBuffer();
         for (i = 0; i < this.bufferSize; i++) {
-            outLr[i * 2 + 0] = inLr[i * 2 + 0] / 32768.0;
-            outLr[i * 2 + 1] = inLr[i * 2 + 1] / 32768.0;
+            lrOut[i * 2 + 0] = lrIn[i * 2 + 0] / 32768.0;
+            lrOut[i * 2 + 1] = lrIn[i * 2 + 1] / 32768.0;
         }
     }
 
     // Play next buffer.
-    this.bufferWritten += this.audio.mozWriteAudio(outLr);
+    this.bufferWritten += this.audio.mozWriteAudio(lrOut);
 };
