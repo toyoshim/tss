@@ -76,5 +76,6 @@ PsglogPlayer.prototype.updateDevice = function () {
  */
 PsglogPlayer.prototype.play = function (newInput) {
     this.input = new Uint8Array(newInput);
+    this.offset = 0;
     return true;
 };
