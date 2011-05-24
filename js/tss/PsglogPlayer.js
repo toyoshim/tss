@@ -54,7 +54,7 @@ PsglogPlayer.prototype.updateDevice = function () {
         return;
     }
     do {
-        if (this.input.length < this.offset + 2) {
+        if (this.input.byteLength < this.offset + 2) {
             return;
         }
         this.pkt[0] = this.input[this.offset++];
