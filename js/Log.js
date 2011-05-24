@@ -17,9 +17,13 @@
  *     undefined: Use native console.log if it's available.
  *     null: Eliminate all logs.
  *     <string>: Output as pre element under DOM object which has <string> id.
+ * @param reverse logging order
+ *     true: Newer logs will be added to tail.
+ *     false: Newer logs will be added to head.
  */
-function Log (id) {
+function Log (id, reverse) {
     this.lastLevel = "";
+    this.reverse = reverse;
 
     // Set default log scheme.
     this.print = function (object) { /* Do nothing. */ }
@@ -34,34 +38,33 @@ function Log (id) {
     } else if (id != null) {
         // Try to output under specified DOM object.
         this.frameDiv = document.getElementById(id);
-        if (this.frameDiv == undefined) {
+        if (this.frameDiv == undefined)
             return;
-        }
+        this.framePre = document.createElement('pre');
+        this.frameDiv.appendChild(this.framePre);
 
         this.print = function (object) {
             if (window.console != undefined) {
                 console.log(object);
             }
+            var element;
             if (object instanceof Object) {
-                this.framePre = undefined;
-                var pre = document.createElement('pre');
+                element = document.createElement('pre');
                 var text = object.toString();
                 var textNode = document.createTextNode(text);
-                pre.appendChild(textNode);
+                element.appendChild(textNode);
                 var title = "";
                 for (var item in object) {
                     title += item + ":" + object[item] + "; \n";
                 }
-                pre.setAttribute('title', title);
-                this.frameDiv.appendChild(pre);
+                element.setAttribute('title', title);
             } else {
-                if (this.framePre == undefined) {
-                    this.framePre = document.createElement('pre');
-                    this.frameDiv.appendChild(this.framePre);
-                }
-                var textNode = document.createTextNode(object + "\n");
-                this.framePre.appendChild(textNode);
+                element = document.createTextNode(object + "\n");
             }
+            if (this.reverse && this.framePre.firstChild)
+                this.framePre.insertBefore(element, this.framePre.firstChild);
+            else
+                this.framePre.appendChild(element);
         }
     }
 }
