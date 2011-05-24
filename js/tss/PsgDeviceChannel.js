@@ -317,8 +317,8 @@ PsgDeviceChannel.prototype.generateSN = function (length) {
                 value -= this.volume[channel];
             }
         }
-        countNoise += this.baseStep;
-        if (countNoise > step) {
+        this.countNoise += this.baseStep;
+        if (this.countNoise > step) {
             if (this.feedback) {
                 var v = this.seed & PsgDeviceChannel._UPDATE_SEED_MASK;
                 v ^= v >>> PsgDeviceChannel._UPDATE_SEED_RSHIFT;
@@ -334,7 +334,7 @@ PsgDeviceChannel.prototype.generateSN = function (length) {
         }
         if (0 != (this.seed & 1)) {
             value += this.volumeNoise;
-        } else if (this.mode == MODE_SIGNED) {
+        } else if (this.mode == PsgDeviceChannel.MODE_SIGNED) {
             value -= this.volumeNoise;
         }
         this.buffer[offset + 0] = value;
