@@ -13,6 +13,7 @@
 function AudioLooper () {
     // Initialize variables.
     this.channel = null;
+    this.initialized = true;
 
     // Web Audio API on Chrome and Safari.
     if (window.webkitAudioContext != undefined) {
@@ -20,6 +21,7 @@ function AudioLooper () {
         this.audioContext = new webkitAudioContext();
         if (this.audioContext == null) {
             Log.getLog().fatal("could not use webkitAudioContext");
+	    this.initialized = false;
             return;
         }
 
@@ -45,6 +47,7 @@ function AudioLooper () {
         this.audio = new Audio();
         if ((this.audio == null) || (this.audio.mozSetup == undefined)) {
             Log.getLog().fatal("could not use Audio Data API");
+	    this.initialized = false;
             return;
         }
 
@@ -72,6 +75,7 @@ function AudioLooper () {
         return;
     }
     Log.getLog().error("Audio API unavailable");
+    this.initialized = false;
 }
 
 /**
