@@ -212,6 +212,7 @@ public final class VgmPlayer implements Player {
                     || (vgmHeader[OFFSET_1] != VGM_ID2)
                     || (vgmHeader[OFFSET_2] != VGM_ID3)
                     || (vgmHeader[OFFSET_3] != VGM_ID4)) {
+                Log.getLog().info("VGM: Invalid IDENT");
                 return false;
             }
             Log.getLog().info("VGM: detect VGM indent");
