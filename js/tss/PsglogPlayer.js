@@ -1,5 +1,5 @@
 /**
- * T'SoundSystem for Java
+ * T'SoundSystem for JavaScript
  */
 
 /**
