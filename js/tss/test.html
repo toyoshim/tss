@@ -11,6 +11,7 @@
     <script language="JavaScript" src="SimpleSlaveChannel.js"></script>
     <script language="JavaScript" src="PsgDeviceChannel.js"></script>
     <script language="JavaScript" src="PsglogPlayer.js"></script>
+    <script language="JavaScript" src="VgmPlayer.js"></script>
     <!-- control callback scripts -->
     <script language="JavaScript">
         function testxstop() {
@@ -99,6 +100,32 @@
             }
             ctx4.putImageData(img4, 0, 0);
         }
+        function test5flash() {
+            flash5--;
+            if (flash5 & 1)
+                div5.style.backgroundColor = "#888888";
+            else
+                div5.style.backgroundColor = "#000000";
+            if (0 != flash5)
+                setTimeout(test5flash, 50);
+        }
+        function test5prog(e) {
+            var percent = 100 * e.loaded / e.total;
+            var msg = "|";
+            for (var i = 0; i < 100; i++) {
+                if (percent < i) msg += "-";
+                else msg += "o";
+            }
+            msg += "| " + e.loaded + "/" + e.total;
+            prog5.innerText = msg;
+            Log.getLog().info(msg);
+        }
+        function test5start(e) {
+            test5prog(e);
+            player5.play(reader5.result);
+            looper.setChannel(master5);
+            test = 5;
+        }
     </script>
 </head>
 <body>
@@ -121,9 +148,18 @@
 <button onclick="testxstop()">STOP</button>
 <canvas id="test4canvas" width="38" height="24"></canvas>
 <hr>
+<pre>5. VGM Player</pre>
+<button onclick="testxstop()">STOP</button>
+<div id="test5drop" style="width: 100%; height: 100pt; background-color: #000000; color: #ffffff;">
+    <pre>DRAG VGM FILE TO HERE</pre>
+    <pre id="test5info"></pre>
+    <pre id="test5prog"></pre>
+</div>
+<hr>
+<pre>*** LOG (reversed order) ***</pre>
 <div id="log"></div>
 <script language="JavaScript">
-    Log.setLog(new Log("log"));
+    Log.setLog(new Log("log", true));
     var test = 0;
     var looper = new AudioLooper();
 
@@ -182,7 +218,62 @@
         bmp4[pos + 2] = 255; // B
         bmp4[pos + 3] = 255; // A
     }
-    setInterval(test4draw, 1);
+    player4.updateOriginal = player4.updateDevice;
+    player4.updateDevice = function () {
+        this.updateOriginal();
+        test4draw();
+    }
+
+    // TEST 5
+    var div5 = document.getElementById("test5drop");
+    var info5 = document.getElementById("test5info");
+    var prog5 = document.getElementById("test5prog");
+    var flash5 = 0;
+    var reader5 = null;
+    var master5 = new MasterChannel();
+    var player5 = new VgmPlayer();
+    player5.setMasterChannel(master5);
+
+    function isParent(id, node) {
+        while (node) {
+            if (node.id == id)
+                return true;
+            node = node.parentNode;
+        }
+        return false;
+    }
+
+    window.addEventListener("dragover", function (e) {
+        if (isParent("test5drop", e.target)) {
+            e.preventDefault();
+            div5.style.backgroundColor = "#888888";
+        } else {
+            div5.style.backgroundColor = "#000000";
+        }
+    }, false);
+    window.addEventListener("drop", function (e) {
+        if (isParent("test5drop", e.target)) {
+            e.preventDefault();
+            flash5 = 5;
+            setTimeout(test5flash, 50);
+            var file = e.dataTransfer.files[0];
+            var msg = "";
+            msg += "  Name: " + file.name + "\n";
+            msg += "  Data: " + file.lastModifiedDate + "\n";
+            msg += "  Size: " + file.size + "\n";
+            msg += "  Type: ";
+            if (file.type)
+                msg += file.type;
+            else
+                msg += "Unknown";
+            info5.innerText = msg;
+            reader5 = new FileReader();
+            reader5.onloadstart = test5prog;
+            reader5.onprogress = test5prog;
+            reader5.onload = test5start;
+            reader5.readAsArrayBuffer(file);
+        }
+    }, false);
 </script>
 </body>
 </html>
