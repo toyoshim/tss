@@ -108,6 +108,9 @@ BiquadFilterChannel.prototype.setParameter = function (type, f, q) {
  * @param length sound length in short to generate
  */
 BiquadFilterChannel.prototype.generate = function (length) {
+    if (null == this.channel)
+        return;
+
     this.channel.generate(length);
     for (var i = 0; i < length; i += 2) {
         var L = this.inBuffer[i + 0] - this.a1 * this.zL - this.a2 * this.zzL;
