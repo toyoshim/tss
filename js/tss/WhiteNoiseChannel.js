@@ -12,7 +12,7 @@
 function WhiteNoiseChannel (frequency) {
     this.buffer = null;
     this.lfsr = 0xffff;
-    this.data = SimpleSlaveChannel.DEFAULT_VOLUME;
+    this.data = WhiteNoiseChannel.DEFAULT_VOLUME;
 }
 
 WhiteNoiseChannel.DEFAULT_VOLUME = 1024;
@@ -44,7 +44,7 @@ WhiteNoiseChannel.prototype.generate = function (length) {
                 ((this.lfsr & 0x0800) >> 11) ^
                 ((this.lfsr & 0x1000) >> 12) ^
                 ((this.lfsr & 0x2000) >> 13);
-        var data = (0 != bit) this.data : -this.data;
+        var data = (0 != bit) ? this.data : -this.data;
         this.lfsr = (this.lfsr >> 1) | (bit << 15);
         this.buffer[i + 0] = data;
         this.buffer[i + 1] = data;
