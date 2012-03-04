@@ -54,12 +54,12 @@ MasterChannel.prototype.setVolume = function (newVolume) {
  * @return result
  */
 MasterChannel.prototype.addChannel = function (channel) {
+    var result = this.channels.push(channel);
     if (0 != this.bufferLength) {
-        this.buffers = null;
         channel.setBufferLength(this.bufferLength);
         this.reconstructBuffers();
     }
-    return this.channels.push(channel);
+    return result;
 };
 
 /**
