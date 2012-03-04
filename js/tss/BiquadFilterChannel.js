@@ -115,9 +115,9 @@ BiquadFilterChannel.prototype.generate = function (length) {
     for (var i = 0; i < length; i += 2) {
         var L = this.inBuffer[i + 0] - this.a1 * this.zL - this.a2 * this.zzL;
         var R = this.inBuffer[i + 1] - this.a1 * this.zR - this.a2 * this.zzR;
-        this.outbuffer[i + 0] =
+        this.outBuffer[i + 0] =
                 this.b0 * L + this.b1 * this.zL + this.b2 * this.zzL;
-        this.outbuffer[i + 1] =
+        this.outBuffer[i + 1] =
                 this.b0 * R + this.b1 * this.zR + this.b2 * this.zzR;
         this.zzL = this.zL;
         this.zzR = this.zR;
