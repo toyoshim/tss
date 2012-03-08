@@ -30,9 +30,11 @@ BiquadFilterChannel.TYPE_HPF = 'HPF';
 BiquadFilterChannel.TYPE_BPF = 'BPF';
 BiquadFilterChannel.TYPE_BEF = 'BEF';
 BiquadFilterChannel.TYPE_APF = 'APF';
-BiquadFilterChannel.TYPE_PEG = 'PEG';
+BiquadFilterChannel.TYPE_PEQ = 'PEQ';
 BiquadFilterChannel.TYPE_LOS = 'LOS';
 BiquadFilterChannel.TYPE_HIS = 'HIS';
+BiquadFilterChannel.TYPE_BPF_TYPE1 = BiquadFilterChannel.TYPE_BPF;
+BiquadFilterChannel.TYPE_BPF_TYPE2 = 'BPF2';
 BiquadFilterChannel.TYPE_NOTCH = BiquadFilterChannel.TYPE_BEF;
 BiquadFilterChannel.TYPE_EQ = BiquadFilterChannel.TYPE_PEQ;
 BiquadFilterChannel.TYPE_PEAKING_EQ = BiquadFilterChannel.TYPE_PEQ;
@@ -97,9 +99,95 @@ BiquadFilterChannel.prototype.setDirectParameter =
 
 /**
  * Set filter characteristic by sound parameter.
+ * @param type filter type
+ * @param f cutoff frequency
+ * @param q resonance
+ * @param gain gain for Peaking EQ and Shelf
  */
-BiquadFilterChannel.prototype.setParameter = function (type, f, q) {
-    // TODO
+BiquadFilterChannel.prototype.setParameter = function (type, f, q, gain) {
+    var w = 2 * Math.PI * f / MasterChannel.SAMPLE_FREQUENCY;
+    var cosw = Math.cos(w);
+    var sinw = Math.sin(w);
+    var alpha = sinw / 2 / q;
+    if (BiquadFilterChannel.TYPE_LPF == type) {
+        var b = 1 - cosw;
+        var bb = b / 2;
+        this.setDirectParameter(1 + alpha, -2 * cosw, 1 - alpha, bb, b, bb);
+    } else if (BiquadFilterChannel.TYPE_HPF == type) {
+        var b = 1 + cosw;
+        var bb = b / 2;
+        this.setDirectParameter(1 + alpha, -2 * cosw, 1 - alpha, bb, -b, bb);
+    } else if (BiquadFilterChannel.TYPE_BPF_TYPE1 == type) {
+        var b = sinw / 2;
+        this.setDirectParameter(1 + alpha, -2 * cosw, 1 - alpha, b, 0, -b);
+    } else if (BiquadFilterChannel.TYPE_BPF_TYPE2 == type) {
+        var b = alpha;
+        this.setDirectParameter(1 + alpha, -2 * cosw, 1 - alpha, b, 0, -b);
+    } else if (BiquadFilterChannel.TYPE_BEF == type) {
+        var a = -2 * cosw;
+        this.setDirectParameter(1 + alpha, a, 1 - alpha, 1, a, 1);
+    } else if (BiquadFilterChannel.TYPE_APF == type) {
+        var a0 = 1 + alpha;
+        var a1 = -2 * cosw;
+        var a2 = 1 - alpha;
+        this.setDirectParameter(a0, a1, a2, a2, a1, a0);
+    } else if (BiquadFilterChannel.TYPE_PEQ == type) {
+        var a = Math.pow(10, gain / 40);
+        var aa = alpha / a;
+        var bb = alpha * a;
+        var a1 = -2 * cosw;
+        this.setDirectParameter(1 + aa, a1, 1 - aa, 1 + bb, a1, 1 - bb);
+    } else if (BiquadFilterChannel.TYPE_LOS == type) {
+        var a = Math.pow(10, gain / 40);
+        var ap = a + 1;
+        var am = a - 1;
+        var s = 2 * Math.sqrt(a) * alpha;
+        var a0 = ap + am * cosw + s;
+        var a1 = -2 * (am + ap * cosw);
+        var a2 = ap + am * cosw - s;
+        var b0 = a * (ap - am * cosw + s);
+        var b1 = 2 * a * (am - ap * cosw);
+        var b2 = a * (ap - am * cosw - s);
+        this.setDirectParameter(a0, a1, a2, b0, b1, b2);
+    } else if (BiquadFilterChannel.TYPE_HIS == type) {
+        var a = Math.pow(10, gain / 40);
+        var ap = a + 1;
+        var am = a - 1;
+        var s = 2 * Math.sqrt(a) * alpha;
+        var a0 = ap - am * cosw + s;
+        var a1 = 2 * (am - ap * cosw);
+        var a2 = ap - am * cosw - s;
+        var b0 = a * (ap + am * cosw + s);
+        var b1 = -2 * a * (am + ap * cosw);
+        var b2 = a * (ap + am * cosw - s);
+        this.setDirectParameter(a0, a1, a2, b0, b1, b2);
+    } else {
+        Log.getLog().error("unknown filter type: " + type);
+    }
+};
+
+/**
+ * Calculate frequency response.
+ * @param f target frequency
+ * @return magnitude for the target frequency
+ */
+BiquadFilterChannel.prototype.magnitudeResponse = function (f) {
+    var w = 2 * Math.PI * f / MasterChannel.SAMPLE_FREQUENCY;
+    var cosw = Math.cos(w);
+    var cos2w = Math.cos(2 * w);
+    var sinw = Math.sin(w);
+    var sin2w = Math.sin(2 * w);
+    var numer = {
+        r: this.b0 + this.b1 * cosw + this.b2 * cos2w,
+        i: 0 - this.b1 * sinw - this.b2 * sin2w
+    };
+    var denom = {
+        r: this.a0 + this.a1 * cosw + this.a2 * cos2w,
+        i: 0 - this.a1 * sinw - this.a2 * sin2w
+    };
+    var rNumer = numer.r * denom.r + numer.i * denom.i;
+    var rDenom = denom.r * denom.r + denom.i * denom.i;
+    return rNumer / rDenom;
 };
 
 /**
