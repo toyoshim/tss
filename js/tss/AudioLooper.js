@@ -21,7 +21,7 @@ function AudioLooper () {
         this.audioContext = new webkitAudioContext();
         if (this.audioContext == null) {
             Log.getLog().fatal("could not use webkitAudioContext");
-	    this.initialized = false;
+            this.initialized = false;
             return;
         }
 
@@ -47,7 +47,7 @@ function AudioLooper () {
         this.audio = new Audio();
         if ((this.audio == null) || (this.audio.mozSetup == undefined)) {
             Log.getLog().fatal("could not use Audio Data API");
-	    this.initialized = false;
+            this.initialized = false;
             return;
         }
 
