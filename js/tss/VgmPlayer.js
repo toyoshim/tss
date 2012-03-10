@@ -184,7 +184,7 @@ VgmPlayer.prototype.updateDevice = function () {
 };
 
 /**
- *  Decode and play.
+ * Decode and play.
  * @param newInput ArrayBuffer to play
  * @return success or not
  */
