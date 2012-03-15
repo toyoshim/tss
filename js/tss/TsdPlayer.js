@@ -13,46 +13,27 @@ function TsdPlayer () {
     this.device = null;
     this.input = null;
     this.buffer = null;
-    this.interval = 0;
+    this.interval = 0;  // TODO
     this.header = null;
     this.channel = null;
-    this.timerCount = 0;
-    this.fixedCount = 0;
+    this.timerCount = 0;  // TODO
+    this.fixedCount = 0;  // TODO
 }
 
 TsdPlayer.VERSION = 0.93;
 TsdPlayer._DEFAULT_TIMER_COUNT = 368;
 
+/**
+ * Set master channel. This function prepares required device
+ * channel and connect it player and master channel.
+ * @param channel master channel
+ */
 TsdPlayer.prototype.setMasterChannel = function (channel) {
-    // TODO: Create TssChannel
-
+    this.device = new TssChannel();
+    this.device.setPlayer(this);
     channel.clearChannel();
-    channel.addChannel(this);
+    channel.addChannel(this.device);
     this.master = channel;
-};
-
-/**
- * @see MasterChannel
- * @param length buffer length or size in shorts
- */
-TsdPlayer.prototype.setBufferLength = function (length) {
-    this.buffer = new Int32Array(length);
-};
-
-/**
- * @see MasterChannel
- * @return audio stream buffer
- */
-TsdPlayer.prototype.getBuffer = function () {
-    return this.buffer;
-};
-
-/**
- * Generate specified length sound stream into internal buffer.
- * @see MasterChannel
- * @param length sound length in short to generate
- */
-TsdPlayer.prototype.generate = function (length) {
 };
 
 TsdPlayer.prototype._compareWithString = function (offset, string) {
