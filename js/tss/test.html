@@ -13,6 +13,8 @@
     <script language="JavaScript" src="PsglogPlayer.js"></script>
     <script language="JavaScript" src="VgmPlayer.js"></script>
     <script language="JavaScript" src="Mp3PlayerChannel.js"></script>
+    <script language="JavaScript" src="TssChannel.js"></script>
+    <script language="JavaScript" src="TsdPlayer.js"></script>
     <!-- control callback scripts -->
     <script language="JavaScript">
         function testxstop() {
@@ -151,6 +153,18 @@
             looper.setChannel(master6);
             test = 6;
         }
+        function test7flash() {
+            flash7 = testxflash(flash7, div7, test7flash);
+        }
+        function test7prog(e) {
+            testxprog(e, prog7);
+        }
+        function test7start(e) {
+            test7prog(e);
+            player7.play(reader7.result);
+            looper.setChannel(master7);
+            test = 7;
+        }
     </script>
 </head>
 <body>
@@ -188,6 +202,14 @@
     <pre>DRAG MP3 FILE TO HERE</pre>
     <pre id="test6info"></pre>
     <pre id="test6prog"></pre>
+</div>
+<hr>
+<pre>7. TSD Player [work in progress]</pre>
+<button onclick="testxstop()">STOP</button>
+<div id="test7drop" style="width: 100%; height: 100pt; background-color: #000000; color: #ffffff;">
+    <pre>DRAG TSD FILE TO HERE</pre>
+    <pre id="test7info"></pre>
+    <pre id="test7prog"></pre>
 </div>
 <hr>
 <hr>
@@ -279,7 +301,17 @@
     var player6 = new Mp3PlayerChannel();
     master6.addChannel(player6);
 
-    // TEST 5 and 6
+    // TEST 7
+    var div7 = document.getElementById("test7drop");
+    var info7 = document.getElementById("test7info");
+    var prog7 = document.getElementById("test7prog");
+    var flash7 = 0;
+    var reader7 = null;
+    var master7 = new MasterChannel();
+    var player7 = new TsdPlayer();
+    player7.setMasterChannel(master7);
+
+    // TEST 5, 6 and 7
     function isParent(id, node) {
         while (node) {
             if (node.id == id)
@@ -293,12 +325,19 @@
         if (isParent("test5drop", e.target)) {
             div5.style.backgroundColor = "#888888";
             div6.style.backgroundColor = "#000000";
+            div7.style.backgroundColor = "#000000";
         } else if (isParent("test6drop", e.target)) {
             div5.style.backgroundColor = "#000000";
             div6.style.backgroundColor = "#888888";
+            div7.style.backgroundColor = "#000000";
+        } else if (isParent("test6drop", e.target)) {
+            div5.style.backgroundColor = "#000000";
+            div6.style.backgroundColor = "#000000";
+            div7.style.backgroundColor = "#888888";
         } else {
             div5.style.backgroundColor = "#000000";
             div6.style.backgroundColor = "#000000";
+            div7.style.backgroundColor = "#000000";
             done = false;
         }
         if (done) {
@@ -325,6 +364,13 @@
             reader6 = reader;
             prog = test6prog;
             kick = test6start;
+        } else if (isParent("test7drop", e.target)) {
+            info = info7;
+            flash7 = 5;
+            setTimeout(test7flash, 50);
+            reader7 = reader;
+            prog = test7prog;
+            kick = test7start;
         } else {
             done = false;
         }
