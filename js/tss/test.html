@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>UnitTest for T'Sound System for JavaScript (Web Audio API / Audio Data API)</title>
+    <title>Test Page for T'Sound System for JavaScript (Web Audio API / Audio Data API)</title>
     <!-- range type input tag emulation for Firefox -->
-    <script language="JavaScript" src="https://github.com/fryn/html5slider/raw/master/html5slider.js"></script>
+    <!--script language="JavaScript" src="https://github.com/fryn/html5slider/raw/master/html5slider.js"></script-->
     <!-- include components -->
     <script language="JavaScript" src="../Log.js"></script>
     <script language="JavaScript" src="AudioLooper.js"></script>
@@ -12,6 +12,7 @@
     <script language="JavaScript" src="PsgDeviceChannel.js"></script>
     <script language="JavaScript" src="PsglogPlayer.js"></script>
     <script language="JavaScript" src="VgmPlayer.js"></script>
+    <script language="JavaScript" src="Mp3PlayerChannel.js"></script>
     <!-- control callback scripts -->
     <script language="JavaScript">
         function testxstop() {
@@ -21,8 +22,33 @@
                 test = 0;
             }
         }
+        function testxflash(flash, div, callback) {
+            flash--;
+            if (flash & 1)
+                div.style.backgroundColor = "#888888";
+            else
+                div.style.backgroundColor = "#000000";
+            if (0 != flash)
+                setTimeout(callback, 50);
+            return flash;
+        }
+        function testxprog(e, prog) {
+            var percent = 100 * e.loaded / e.total;
+            var msg = "|";
+            for (var i = 0; i < 100; i++) {
+                if (percent < i)
+                    msg += "-";
+                else
+                    msg += "o";
+            }
+            msg += "| " + e.loaded + "/" + e.total;
+            Log.getLog().info(msg);
+            prog.innerText = msg;
+        }
+ 
         function test1start() {
             Log.getLog().info("TEST 1 START");
+            // TODO: assign descriptor
             looper.setChannel(master1);
             test = 1;
         }
@@ -59,10 +85,11 @@
             }
             Log.getLog().info("TEST 4 START");
             player4.play(xh_res4);
-            for (var i = 0; i < 350; i++) {
+            var i;
+            for (i = 0; i < 350; i++) {
                 player4.updateDevice();
             }
-            for (var i = 0; i < 1050; i++) {
+            for (i = 0; i < 1050; i++) {
                 player4.updateDevice();
             }
             looper.setChannel(master4);
@@ -75,8 +102,8 @@
             vol[2] = player4.psg.readRegister(10);
 
             pos = 0;
-            for (y = 0; y < h4; y++) {
-                for (x = 0; x < w4; x++) {
+            for (var y = 0; y < h4; y++) {
+                for (var x = 0; x < w4; x++) {
                     if ((y < 4) || (y > (4 + 16))) {
                         bmp4[pos++] = 0;
                         bmp4[pos++] = 0;
@@ -101,30 +128,28 @@
             ctx4.putImageData(img4, 0, 0);
         }
         function test5flash() {
-            flash5--;
-            if (flash5 & 1)
-                div5.style.backgroundColor = "#888888";
-            else
-                div5.style.backgroundColor = "#000000";
-            if (0 != flash5)
-                setTimeout(test5flash, 50);
+            flash5 = testxflash(flash5, div5, test5flash);
         }
         function test5prog(e) {
-            var percent = 100 * e.loaded / e.total;
-            var msg = "|";
-            for (var i = 0; i < 100; i++) {
-                if (percent < i) msg += "-";
-                else msg += "o";
-            }
-            msg += "| " + e.loaded + "/" + e.total;
-            prog5.innerText = msg;
-            Log.getLog().info(msg);
+            testxprog(e, prog5);
         }
         function test5start(e) {
             test5prog(e);
             player5.play(reader5.result);
             looper.setChannel(master5);
             test = 5;
+        }
+        function test6flash() {
+            flash6 = testxflash(flash6, div6, test6flash);
+        }
+        function test6prog(e) {
+            testxprog(e, prog6);
+        }
+        function test6start(e) {
+            test6prog(e);
+            player6.play(reader6.result);
+            looper.setChannel(master6);
+            test = 6;
         }
     </script>
 </head>
@@ -156,6 +181,15 @@
     <pre id="test5info"></pre>
     <pre id="test5prog"></pre>
 </div>
+<hr>
+<pre>6. MP3 Player [work in progress]</pre>
+<button onclick="testxstop()">STOP</button>
+<div id="test6drop" style="width: 100%; height: 100pt; background-color: #000000; color: #ffffff;">
+    <pre>DRAG MP3 FILE TO HERE</pre>
+    <pre id="test6info"></pre>
+    <pre id="test6prog"></pre>
+</div>
+<hr>
 <hr>
 <pre>*** LOG (reversed order) ***</pre>
 <div id="log"></div>
@@ -235,6 +269,17 @@
     var player5 = new VgmPlayer();
     player5.setMasterChannel(master5);
 
+    // TEST 6
+    var div6 = document.getElementById("test6drop");
+    var info6 = document.getElementById("test6info");
+    var prog6 = document.getElementById("test6prog");
+    var flash6 = 0;
+    var reader6 = null;
+    var master6 = new MasterChannel();
+    var player6 = new Mp3PlayerChannel();
+    master6.addChannel(player6);
+
+    // TEST 5 and 6
     function isParent(id, node) {
         while (node) {
             if (node.id == id)
@@ -243,20 +288,48 @@
         }
         return false;
     }
-
     window.addEventListener("dragover", function (e) {
+        var done = true;
         if (isParent("test5drop", e.target)) {
-            e.preventDefault();
             div5.style.backgroundColor = "#888888";
+            div6.style.backgroundColor = "#000000";
+        } else if (isParent("test6drop", e.target)) {
+            div5.style.backgroundColor = "#000000";
+            div6.style.backgroundColor = "#888888";
         } else {
             div5.style.backgroundColor = "#000000";
+            div6.style.backgroundColor = "#000000";
+            done = false;
+        }
+        if (done) {
+            e.preventDefault();
         }
     }, false);
     window.addEventListener("drop", function (e) {
+        var done = true;
+        var info = null;
+        var reader = new FileReader();
+        var prog = null;
+        var kick = null;
         if (isParent("test5drop", e.target)) {
-            e.preventDefault();
+            info = info5;
             flash5 = 5;
             setTimeout(test5flash, 50);
+            reader5 = reader;
+            prog = test5prog;
+            kick = test5start;
+        } else if (isParent("test6drop", e.target)) {
+            info = info6;
+            flash6 = 5;
+            setTimeout(test6flash, 50);
+            reader6 = reader;
+            prog = test6prog;
+            kick = test6start;
+        } else {
+            done = false;
+        }
+        if (done) {
+            e.preventDefault();
             var file = e.dataTransfer.files[0];
             var msg = "";
             msg += "  Name: " + file.name + "\n";
@@ -267,12 +340,11 @@
                 msg += file.type;
             else
                 msg += "Unknown";
-            info5.innerText = msg;
-            reader5 = new FileReader();
-            reader5.onloadstart = test5prog;
-            reader5.onprogress = test5prog;
-            reader5.onload = test5start;
-            reader5.readAsArrayBuffer(file);
+                info.innerText = msg;
+            reader.onloadstart = prog;
+            reader.onprogress = prog;
+            reader.onload = kick;
+            reader.readAsArrayBuffer(file);
         }
     }, false);
 </script>
