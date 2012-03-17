@@ -9,7 +9,7 @@
  * on pseudorandom numbers by linear feedback shift register method.
  * @author Takashi Toyoshima <toyoshim@gmail.com>
  */
-function WhiteNoiseChannel (frequency) {
+function WhiteNoiseChannel () {
     this.buffer = null;
     this.lfsr = 0xffff;
     this.data = WhiteNoiseChannel.DEFAULT_VOLUME;
