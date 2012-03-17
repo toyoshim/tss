@@ -15,14 +15,17 @@ function TssChannel () {
     this.player = null;
     this.module = [];
     this.timer = [
-        { enable: false, timer: 0, count: 0, callback: null },
-        { enable: false, timer: 0, count: 0, callback: null }
+        { enable: false, timer: 0, count: 0, self: null, callback: null },
+        { enable: false, timer: 0, count: 0, self: null, callback: null }
     ];
     this.maxChannel = 0;
     this.wave = [];
     for (var i = 0; i < 256; i++)
         this.wave = new Uint8Array(0);
 }
+
+TssChannel.MODULE_CHANNEL_L = 0;
+TssChannel.MODULE_CHANNEL_R = 1;
 
 /**
  * @see MasterChannel
@@ -59,14 +62,14 @@ TssChannel.prototype.setPlayer = function (newPlayer) {
 TssChannel.prototype.generate = function (length) {
     var offset = 0;
     while (offset < length) {
-        var timerCount = length >> 1;  // from buffer count to sampling count
+        var timerCount = length >> 2;
         var timerId;
         for (timerId = 0; timerId < 2; timerId++) {
             if (this.timer[timerId].enable &&
                     (this.timer[timerId].count < timerCount))
                 timerCount = this.timer[timerId].count;
         }
-        var generateCount = timerCount << 1; // back to buffer count
+        var generateCount = timerCount << 2;
         this._generateInternal(offset, generateCount);
         offset += generateCount;
         for (timerId = 0; timerId < 2; timerId++) {
@@ -76,7 +79,7 @@ TssChannel.prototype.generate = function (length) {
             if (0 != this.timer[timerId].count)
                 continue;
             this.timer[timerId].count = this.timer[timerId].timer;
-            this.timer[timerId].callback();
+            this.timer[timerId].callback.apply(this.timer[timerId].self);
         }
     }
 };
@@ -106,7 +109,7 @@ TssChannel.prototype.setWave = function (id, wave) {
  * @param count timer count by sampling number
  * @param callback callback function
  */
-TssChannel.prototype.setTimerCallback = function (id, count, callback) {
+TssChannel.prototype.setTimerCallback = function (id, count, self, callback) {
     if (id > 2)
         return;
     if ((null != callback) && (count <= 0))
@@ -115,8 +118,30 @@ TssChannel.prototype.setTimerCallback = function (id, count, callback) {
         enable: null != callback,
         timer: count,
         count: count,
+        self: self,
         callback: callback
     };
+};
+
+TssChannel.prototype.setModuleFrequency = function (id, frequency) {
+    if (id > this.maxChannel) {
+        Log.getLog().error("TSC: Invalid module channel: " + id);
+        return;
+    }
+    this.module[id].frequency = frequency;
+};
+
+TssChannel.prototype.setModuleVolume = function (id, ch, volume) {
+    if (id > this.maxChannel) {
+        Log.getLog().error("TSC: Invalid module channel: " + id);
+        return;
+    }
+    if (ch == TssChannel.MODULE_CHANNEL_L)
+        this.module[id].volume.l = volume;
+    else if (ch == TssChannel.MODULE_CHANNEL_R)
+        this.module[id].volume.r = volume;
+    else
+        Log.getLog().error("TSC: Invalid volume channel: " + ch);
 };
 
 TssChannel.prototype._generateInternal = function (offset, count) {
@@ -156,7 +181,7 @@ TssChannel.Module = function (channel) {
             channel: 0
         }
     };
-    this.multiple = 0;
+    this.multiple = 1;
     this.setType(TssChannel.Module.TYPE_PSG);
 };
 

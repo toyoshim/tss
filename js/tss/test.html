@@ -160,8 +160,12 @@
             testxprog(e, prog7);
         }
         function test7start(e) {
-            test7prog(e);
-            player7.play(reader7.result);
+            if (e) {
+                test7prog(e);
+                player7.play(reader7.result);
+            } else {
+                player7.play(xh_res7);
+            }
             looper.setChannel(master7);
             test = 7;
         }
@@ -212,6 +216,77 @@
     <pre id="test7prog"></pre>
 </div>
 <hr>
+<pre>8. TSS Player [work in progress]</pre>
+<button onclick="">Compile & Play</button>
+<button onclick="testxstop()">STOP</button>
+<div id="test8tss" style="width: 100%; background-color: #000000; color: #ffffff;">
+    <pre>#TITLE &lt;SALAMANDER - BOSS BGM -&gt;
+#CHANNEL 11
+#A	t200 %3 @1 v3 l4 q1 o5 s1 @o1,0 mp30,16,2,8 $
+	[&lt;c8&gt;f8&lt;c8&gt;f.&lt; c&gt;f&lt;c&gt; f2.&lt;c2.&gt; f8&lt;c8&gt;f8&lt;c.&gt; f&lt;c&gt;f&lt; c2.&gt;f2.
+	b8e8b8e. beb e2.b2. e8b8e8b. ebe b2.&lt;e2.&gt;]
+	l8 &lt;[cc4f4g^2 gga-4.b-4. | &gt;ff4b-4&lt;c^2 &gt;fga-4.b-4.&lt;] ff4b-4&lt;c^2.^2.
+#B	t200 %3 @17 v7 l4 q1 o4 s1 @i5,0 @o1,0 mp30,16,2,8 $
+	[&lt;c8&gt;f8&lt;c8&gt;f.&lt; c&gt;f&lt;c&gt; f2.&lt;c2.&gt; f8&lt;c8&gt;f8&lt;c.&gt; f&lt;c&gt;f&lt; c2.&gt;f2.
+	b8e8b8e. beb e2.b2. e8b8e8b. ebe b2.&lt;e2.&gt;]
+	l8 &lt;[cc4f4g^2 gga-4.b-4. | &gt;ff4b-4&lt;c^2 &gt;fga-4.b-4.&lt;] ff4b-4&lt;c^2.^2.
+#C	t200 %3 @16 v8 l4 q13 o4 s32 p3 @i5,0 mp30,16,2,8 $
+	[&lt;c8&gt;f8&lt;c8&gt;f.&lt; c&gt;f&lt;c&gt; f2.&lt;c2.&gt; f8&lt;c8&gt;f8&lt;c.&gt; f&lt;c&gt;f&lt; c2.&gt;f2.
+	b8e8b8e. beb e2.b2. e8b8e8b. ebe b2.&lt;e2.&gt;]
+	l8 &lt;[cc4f4g^2 gga-4.b-4. | &gt;ff4b-4&lt;c^2 &gt;fga-4.b-4.&lt;] ff4b-4&lt;c^2.^2.
+#D	t200 %3 @1 v3 l4 q1 o5 s1 k2 r8. @o1,0 mp30,16,2,8 $
+	[&lt;c8&gt;f8&lt;c8&gt;f.&lt; c&gt;f&lt;c&gt; f2.&lt;c2.&gt; f8&lt;c8&gt;f8&lt;c.&gt; f&lt;c&gt;f&lt; c2.&gt;f2.
+	b8e8b8e. beb e2.b2. e8b8e8b. ebe b2.&lt;e2.&gt;]
+	l8 &lt;[cc4f4g^2 gga-4.b-4. | &gt;ff4b-4&lt;c^2 &gt;fga-4.b-4.&lt;] ff4b-4&lt;c^2.^2.
+#E	t200 %3 @17 v8 l4 q1 o4 s1 k1 r8. @i5,0 @o1,0 mp30,16,2,8 $
+	[&lt;c8&gt;f8&lt;c8&gt;f.&lt; c&gt;f&lt;c&gt; f2.&lt;c2.&gt; f8&lt;c8&gt;f8&lt;c.&gt; f&lt;c&gt;f&lt; c2.&gt;f2.
+	b8e8b8e. beb e2.b2. e8b8e8b. ebe b2.&lt;e2.&gt;]
+	l8 &lt;[cc4f4g^2 gga-4.b-4. | &gt;ff4b-4&lt;c^2 &gt;fga-4.b-4.&lt;] ff4b-4&lt;c^2.^2.
+#F	t200 %3 @16 v5 l4 q13 o4 s32 k1 r8. p3 @i5,0 mp30,16,2,8 $
+	[&lt;c8&gt;f8&lt;c8&gt;f.&lt; c&gt;f&lt;c&gt; f2.&lt;c2.&gt; f8&lt;c8&gt;f8&lt;c.&gt; f&lt;c&gt;f&lt; c2.&gt;f2.
+	b8e8b8e. beb e2.b2. e8b8e8b. ebe b2.&lt;e2.&gt;]
+	l8 &lt;[cc4f4g^2 gga-4.b-4. | &gt;ff4b-4&lt;c^2 &gt;fga-4.b-4.&lt;] ff4b-4&lt;c^2.^2.
+#G	t200 %3 @1 $ v12 l8 q1 s1 o6 p2
+	[6fga-b-a-g] fga-b-&lt;c&gt;b-a-b-a-ga-f
+	[6ef+gagf+] ef+gabagagf+gf+
+	[6fga-b-a-g] fga-b-&lt;c&gt;b-a-b-a-ga-f
+	[6ef+gagf+] ef+gabagagf+gf+
+	v10 q1 s1 o4 l8
+	[gg4b-4&lt;c^2 cde-4.d4. | cc4e-4f^2 cde-4.f4.&gt;] cc4e-4f^2.^2.
+#H	t200 %3 @16 $ v6 l8 q1 s8 o6 p2
+	[6fga-b-a-g] fga-b-&lt;c&gt;b-a-b-a-ga-f
+	[6ef+gagf+] ef+gabagagf+gf+
+	[6fga-b-a-g] fga-b-&lt;c&gt;b-a-b-a-ga-f
+	[6ef+gagf+] ef+gabagagf+gf+
+	v7 q13 s32 o4 l8
+	[gg4b-4&lt;c^2 cde-4.d4. | cc4e-4f^2 cde-4.f4.&gt;] cc4e-4f^2.^2.
+#I	t200 %3 @1 v8 l8 q1 s9 o2 p2 $
+	[4f&lt;fe-fcf&gt;b-&lt;fcfef&gt;]
+	[4e&lt;ede&gt;b&lt;e&gt;a&lt;e&gt;b&lt;ede&gt;]
+	[4f&lt;fe-fcf&gt;b-&lt;fcfef&gt;]
+	[4e&lt;ede&gt;b&lt;e&gt;a&lt;e&gt;b&lt;ede&gt;]&lt;
+	[c&lt;c&gt;cgb-&lt;c&gt;c&lt;c&gt;c&lt;c&gt;c&lt;c&gt; &gt;a-&lt;a-&gt;a-&lt;b-&gt;b-&lt;b-&gt;
+	f&lt;f&gt;f&lt;ce-f&gt;f&lt;f&gt;f&lt;f&gt;f&lt;f&gt; | a-&lt;a-&gt;a-&lt;b-&gt;b-&lt;b-]
+	f&lt;f&gt;f&lt;f&gt;f&lt;f
+#K	t200 %3 @16 v8 l8 q1 s8 o3 p2 $
+	[4f&lt;fe-fcf&gt;b-&lt;fcfef&gt;]
+	[4e&lt;ede&gt;b&lt;e&gt;a&lt;e&gt;b&lt;ede&gt;]
+	[4f&lt;fe-fcf&gt;b-&lt;fcfef&gt;]
+	[4e&lt;ede&gt;b&lt;e&gt;a&lt;e&gt;b&lt;ede&gt;]&lt;
+	[c&lt;c&gt;cgb-&lt;c&gt;c&lt;c&gt;c&lt;c&gt;c&lt;c&gt; &gt;a-&lt;a-&gt;a-&lt;b-&gt;b-&lt;b-&gt;
+	f&lt;f&gt;f&lt;ce-f&gt;f&lt;f&gt;f&lt;f&gt;f&lt;f&gt; | a-&lt;a-&gt;a-&lt;b-&gt;b-&lt;b-]
+	f&lt;f&gt;f&lt;f&gt;f&lt;f
+#J	t200 %3 v15 q1 s32,-10 l8 $
+	[o4 ffrffr&lt;f4r4&gt;fr ffrffr&lt;f4r4&gt;r4
+	ffrffr&lt;f4r4&gt;fr ffrffr&lt;dd&gt;brgr
+	ffrffr&lt;f4r4&gt;fr ffrffr&lt;f4r4&gt;r4
+	ffrffr&lt;f4r4&gt;fr &lt;dddd&gt;f4bbbbf4]
+	[f4&lt;f&gt;f4&lt;f&gt;f&lt;ff&gt;f&lt;f&gt;f ff&lt;f&gt;ff&lt;f&gt;
+	f4&lt;f&gt;f4&lt;f&gt;f&lt;ff&gt;f&lt;f&gt;f | &lt;dd&gt;gbdf]
+	l16 &lt;dddd&gt;bbbbgggg
+#END</pre>
+</div>
+<hr>
 <hr>
 <pre>*** LOG (reversed order) ***</pre>
 <div id="log"></div>
@@ -255,9 +330,9 @@
             Log.getLog().info("  as ArrayBuffer (mozResponseArrayBuffer).");
             xh_res4 = xh_req4.mozResponseArrayBuffer;
         }
-        if (0 == test) {
-            test4start();
-        }
+        //if (0 == test) {
+        //    test4start();
+        //}
     };
     xh_req4.send();
     var master4 = new MasterChannel();
@@ -279,7 +354,7 @@
     player4.updateDevice = function () {
         this.updateOriginal();
         test4draw();
-    }
+    };
 
     // TEST 5
     var div5 = document.getElementById("test5drop");
@@ -302,6 +377,24 @@
     master6.addChannel(player6);
 
     // TEST 7
+    var xh_res7 = null;
+    var xh_req7 = new XMLHttpRequest();
+    xh_req7.open("get", "../../data/SALAMANDER_BOSS.TSD", true);
+    xh_req7.responseType = "arraybuffer";
+    xh_req7.onload = function () {
+        Log.getLog().info("TEST7 XHR done.");
+        if (xh_req7.response instanceof ArrayBuffer) {
+            Log.getLog().info("  as ArrayBuffer (response).");
+            xh_res7 = xh_req7.response;
+        } else if (xh_req7.mozResponseArrayBuffer instanceof ArrayBuffer) {
+            Log.getLog().info("  as ArrayBuffer (mozResponseArrayBuffer).");
+            xh_res7 = xh_req7.mozResponseArrayBuffer;
+        }
+        if (0 == test) {
+            test7start();
+        }
+    };
+    xh_req7.send();
     var div7 = document.getElementById("test7drop");
     var info7 = document.getElementById("test7info");
     var prog7 = document.getElementById("test7prog");
@@ -330,7 +423,7 @@
             div5.style.backgroundColor = "#000000";
             div6.style.backgroundColor = "#888888";
             div7.style.backgroundColor = "#000000";
-        } else if (isParent("test6drop", e.target)) {
+        } else if (isParent("test7drop", e.target)) {
             div5.style.backgroundColor = "#000000";
             div6.style.backgroundColor = "#000000";
             div7.style.backgroundColor = "#888888";
