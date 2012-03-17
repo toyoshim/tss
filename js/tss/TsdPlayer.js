@@ -1999,10 +1999,22 @@ TsdPlayer.prototype._performSequencer = function () {
             if (cmd <= TsdPlayer._CMD_LAST_NOTE) {
                 // Tone data
                 this._noteOn(ch, cmd);
-                break;
+                ch.wait = this.input[ch.baseOffset + ch.offset++];
+                if (0xff == ch.wait) {
+                    ch.wait = this._readU16(ch.baseOffset + ch.offset);
+                    ch.offset += 2;
+                }
+                if (0 != ch.wait)
+                    break;
             } else if (cmd == TsdPlayer._CMD_NOTE_OFF) {
                 this._noteOff(ch);
-                break;
+                ch.wait = this.input[ch.baseOffset + ch.offset++];
+                if (0xff == ch.wait) {
+                    ch.wait = this._readU16(ch.baseOffset + ch.offset);
+                    ch.offset += 2;
+                }
+                if (0 != ch.wait)
+                    break;
             } else if (cmd == TsdPlayer._CMD_VOLUME_MONO) {
                 dt = this.input[ch.baseOffset + ch.offset++];
                 if (ch.pan & TsdPlayer._PAN_L)
@@ -2023,11 +2035,11 @@ TsdPlayer.prototype._performSequencer = function () {
             } else if (cmd == TsdPlayer._CMD_TEMPO) {
                 dt = this._readU16(ch.baseOffset + ch.offset);
                 ch.offset += 2;
-                this._setSequencerFiness(dt);
+                this._setSequencerFineness(dt);
             } else if (cmd == TsdPlayer._CMD_FINENESS) {
                 dt = this._readU16(ch.baseOffset + ch.offset);
                 ch.offset += 2;
-                this._setAutomationFiness(dt);
+                this._setAutomationFineness(dt);
             } else if (cmd == TsdPlayer._CMD_PITCH_MODULATION_DELAY) {
                 dt = this._readU16(ch.baeOffset + ch.offset);
                 ch.offset += 2;
@@ -2048,23 +2060,24 @@ TsdPlayer.prototype._performSequencer = function () {
                 ch.loop.offset = ch.offset;
             } else if (cmd == TsdPlayer._CMD_FM_IN) {
                 dt = this.input[ch.baseOffset + ch.offset++];
-                // TODO
+                this._setFmInPipe(ch, dt >> 4, dt & 0x0f);
             } else if (cmd == TsdPlayer._CMD_FM_OUT) {
                 dt = this.input[ch.baseOffset + ch.offset++];
-                // TODO
+                this._setFmOutPipe(ch, dt >> 4, dt & 0x0f);
             } else if (cmd == TsdPlayer._CMD_VOICE_CHANGE) {
-                ch.offset++;
-                // TODO
+                dt = this.input[ch.baseOffset + ch.offset++];
+                this._setVoice(ch, dt)
             } else if (cmd == TsdPlayer._CMD_MODULE_CHANGE) {
-                ch.offset++;
-                // TODO
+                dt = this.input[ch.baseOffset + ch.offset++];
+                this._setModule(ch, dt)
             } else if (cmd == TsdPlayer._CMD_END) {
                 if (0 != ch.loop.offset) {
                     // Perform endless loop
                     ch.offset = ch.loop.offset;
                     ch.loop.count++;
+                    Log.getLog().info("TSD: ch " + i + " loop");
                 } else {
-                    ch.wait = -1;
+                    // Stop
                     this._noteOff(ch);
                     this.activeChannel--;
                     Log.getLog().info("TSD: ch " + i + " end");
@@ -2073,22 +2086,17 @@ TsdPlayer.prototype._performSequencer = function () {
             } else {
                 Log.getLog().error("TSD: not supported " + cmd.toString(16));
                 Log.getLog().info(this);
-                ch.wait = -1;
                 break;
-            }
-        }
-        if (0 != ch.wait) {
-            ch.wait = 0;
-        } else {
-            ch.wait = this.input[ch.baseOffset + ch.offset++];
-            if (0xff == ch.wait) {
-                ch.wait = this._readU16(ch.baseOffset + ch.offset);
-                ch.offset += 2;
             }
         }
     }
 };
 
+/**
+ * Perform note on.
+ * @param ch channel object to control
+ * @param note note number
+ */
 TsdPlayer.prototype._noteOn = function (ch, note) {
     // Set tone frequency.
     var type = ch.frequency.type;
@@ -2117,7 +2125,7 @@ TsdPlayer.prototype._noteOn = function (ch, note) {
     ch.frequency.param = param;
     ch.frequency.hz = hz;
 
-    // TODO: Sset volume.
+    // TODO: Set volume.
     // TODO: Key on.
     // TODO: Reset phase.
     // TODO: Reset modulation, envelope, and sastin.
@@ -2132,14 +2140,74 @@ TsdPlayer.prototype._setVolume = function (ch, lr, volume) {
     this.device.setModuleVolume(ch.id, lr, volume);
 };
 
-TsdPlayer.prototype._setSequencerFiness = function (finess) {
-    Log.getLog().info("TSD: sequencer finess " + finess);
+/**
+ * Set sequencer timer fineness.
+ * @param fineness timer count
+ */
+TsdPlayer.prototype._setSequencerFineness = function (fineness) {
+    Log.getLog().info("TSD: sequencer fineness " + fineness);
     this.device.setTimerCallback(
-            TsdPlayer._TIMER_SEQUENCER, finess, this, this._performSequencer);
+            TsdPlayer._TIMER_SEQUENCER, fineness, this,
+            this._performSequencer);
 };
 
-TsdPlayer.prototype._setAutomationFiness = function (finess) {
-    Log.getLog().info("TSD: automation finess " + finess);
+/**
+ * Set automation timer fineness.
+ * @param fineness timer count
+ */
+TsdPlayer.prototype._setAutomationFineness = function (fineness) {
+    Log.getLog().info("TSD: automation fineness " + fineness);
     this.device.setTimerCallback(
-            TsdPlayer._TIMER_AUTOMATION, finess, this, this._performAutomation);
+            TsdPlayer._TIMER_AUTOMATION, fineness, this,
+            this._performAutomation);
+};
+
+TsdPlayer.prototype._setFmInPipe = function (ch, rate, pipe) {
+    Log.getLog().info("TSD: fm in " + ch.id + " = " + rate + ", " + pipe);
+    this.device.setModuleFmInPipe(ch.id, rate, pipe);
+};
+
+TsdPlayer.prototype._setFmOutPipe = function (ch, mode, pipe) {
+    Log.getLog().info("TSD: fm out " + ch.id + " = " + mode + ", " + pipe);
+    this.device.setModuleFmOutPipe(ch.id, mode, pipe);
+};
+
+/**
+ * Set voice of module.
+ * @param ch channel object to control
+ * @param voice voice id
+ */
+TsdPlayer.prototype._setVoice = function (ch, voice) {
+    Log.getLog().info("TSD: voice " + ch.id + " = " + voice);
+    //this.device.setModuleVoice(ch.id, voice);
+    if (TssChannel.Module.TYPE_SIN != this.device.getModuleType(ch.id))
+        return;
+    // Old style FM pipe setting for compatibility.
+    var fmIn = voice >> 4;
+    var fmOut = voice & 0x0f;
+    if (0 != fmIn)
+        this._setFmInPipe(ch, 4, (fmIn % 5) - 1);
+    else
+        this._setFmInPipe(ch, 0, 0);
+    if (0 != fmOut)
+        this._setFmOutPipe(ch, 1, (fmOut % 5) - 1);
+    else
+        this._setFmOutPipe(ch, 0, 0);
+};
+
+/**
+ * Set module device type.
+ * @param ch channel object to control
+ * @param module module id
+ */
+TsdPlayer.prototype._setModule = function (ch, module) {
+    Log.getLog().info("TSD: module " + ch.id + " = " + module);
+    this.device.setModuleType(ch.id, module);
+    if (0 != (module & 0x80))
+        ch.frequency.type = module >> 7;
+    else
+        ch.frequency.type = module >> 4;
+    Log.getLog().info("TSD: frequency type " + ch.id + " = " +
+            ch.frequency.type);
+    // TODO: Handle frequency type
 };

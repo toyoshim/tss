@@ -26,6 +26,16 @@ function TssChannel () {
 
 TssChannel.MODULE_CHANNEL_L = 0;
 TssChannel.MODULE_CHANNEL_R = 1;
+TssChannel._FM_OUT_MODE_OFF = 0;
+TssChannel._FM_OUT_MODE_ADD = 1;
+TssChannel._FM_OUT_MODE_NEW = 2;
+TssChannel._SIN_TABLE = new Int8Array(256);
+
+// Calculate tables.
+(function () {
+    for (var i = 0; i < 256; i++)
+        TssChannel._SIN_TABLE[i] = ~~(Math.sin(Math.PI * i / 128) * 64);
+})();
 
 /**
  * @see MasterChannel
@@ -123,6 +133,11 @@ TssChannel.prototype.setTimerCallback = function (id, count, self, callback) {
     };
 };
 
+/**
+ * Set module frequency.
+ * @param id module id
+ * @param frequency frequency
+ */
 TssChannel.prototype.setModuleFrequency = function (id, frequency) {
     if (id > this.maxChannel) {
         Log.getLog().error("TSC: Invalid module channel: " + id);
@@ -131,7 +146,14 @@ TssChannel.prototype.setModuleFrequency = function (id, frequency) {
     this.module[id].frequency = frequency;
 };
 
+/**
+ * Set module volume.
+ * @param id module id
+ * @param ch channel
+ * @param volume volume
+ */
 TssChannel.prototype.setModuleVolume = function (id, ch, volume) {
+    Log.getLog().info("TSC: Volume " + id + " = " + ch + ", " + volume);
     if (id > this.maxChannel) {
         Log.getLog().error("TSC: Invalid module channel: " + id);
         return;
@@ -144,6 +166,53 @@ TssChannel.prototype.setModuleVolume = function (id, ch, volume) {
         Log.getLog().error("TSC: Invalid volume channel: " + ch);
 };
 
+/**
+ * Set module device type
+ * @param id module id
+ * @param type device type id
+ */
+TssChannel.prototype.setModuleType = function (id, type) {
+    if (id > this.maxChannel) {
+        Log.getLog().error("TSC: Invalid module channel: " + id);
+        return;
+    }
+    this.module[id].setType(type);
+};
+
+/**
+ * Get module device type
+ * @param id module id
+ * @return device type id
+ */
+TssChannel.prototype.getModuleType = function (id) {
+    if (id > this.maxChannel) {
+        Log.getLog().error("TSC: Invalid module channel: " + id);
+        return TssChannel.Module.TYPE_INVALID;
+    }
+    return this.module[id].type;
+};
+
+TssChannel.prototype.setModuleFmInPipe = function (id, rate, pipe) {
+    if (id > this.maxChannel) {
+        Log.getLog().error("TSC: Invalid module channel: " + id);
+        return TssChannel.Module.TYPE_INVALID;
+    }
+    this.module[id].setFmInPipe(rate, pipe);
+};
+
+TssChannel.prototype.setModuleFmOutPipe = function (id, mode, pipe) {
+    if (id > this.maxChannel) {
+        Log.getLog().error("TSC: Invalid module channel: " + id);
+        return TssChannel.Module.TYPE_INVALID;
+    }
+    this.module[id].setFmOutPipe(mode, pipe);
+};
+
+/**
+ * Generate sounds into a partial buffer.
+ * @param offset offset in buffer to start
+ * @param count sie to generate
+ */
 TssChannel.prototype._generateInternal = function (offset, count) {
     var buffer = this.buffer.subarray(offset, offset + count);
     var fmBuffer = [
@@ -152,8 +221,13 @@ TssChannel.prototype._generateInternal = function (offset, count) {
         this.fmBuffer[2].subarray(offset, offset + count),
         this.fmBuffer[3].subarray(offset, offset + count)
     ];
-    for (var i = 0; i < count; i++)
+    for (var i = 0; i < count; i++) {
         buffer[i] = 0;
+        fmBuffer[0][i] = 0;
+        fmBuffer[1][i] = 0;
+        fmBuffer[2][i] = 0;
+        fmBuffer[3][i] = 0;
+    }
     for (var ch = 0; ch < this.maxChannel; ch++)
         this.module[ch].generate(buffer, fmBuffer);
 };
@@ -172,19 +246,16 @@ TssChannel.Module = function (channel) {
     };
     this.frequency = 0;
     this.fm = {
-        in: {
-            depth: 0,
-            channel: 0
-        },
-        out: {
-            depth: 0,
-            channel: 0
-        }
+        inRate: 0,
+        inPipe: 0,
+        outMode: 0,
+        outPipe: 0
     };
     this.multiple = 1;
     this.setType(TssChannel.Module.TYPE_PSG);
 };
 
+TssChannel.Module.TYPE_INVALID = -1;
 TssChannel.Module.TYPE_PSG = 0;
 TssChannel.Module.TYPE_FC = 1;
 TssChannel.Module.TYPE_NOISE = 2;
@@ -194,6 +265,10 @@ TssChannel.Module.TYPE_OSC = 5;
 TssChannel.Module.TYPE_GB_SQUARE = 13;
 TssChannel.Module.TYPE_GB_WAVE = 14;
 
+/**
+ * Set module device type.
+ * @param type device type id
+ */
 TssChannel.Module.prototype.setType = function (type) {
     this.type = type;
     this.count = 0;
@@ -203,11 +278,24 @@ TssChannel.Module.prototype.setType = function (type) {
         case TssChannel.Module.TYPE_PSG:
             this.generate = this.generatePsg;
             break;
+        case TssChannel.Module.TYPE_SIN:
+            this.generate = this.generateSin;
+            break;
         default:
             // TODO: Implement other types.
             this.generate = this.generatePsg;
             break;
     }
+};
+
+TssChannel.Module.prototype.setFmInPipe = function (rate, pipe) {
+    this.fm.inRate = rate;
+    this.fm.inPipe = pipe;
+};
+
+TssChannel.Module.prototype.setFmOutPipe = function (mode, pipe) {
+    this.fm.outMode = mode;
+    this.fm.outPipe = pipe;
 };
 
 /**
@@ -236,6 +324,83 @@ TssChannel.Module.prototype.generatePsg = function (buffer, fmBuffer) {
             count -= MasterChannel.SAMPLE_FREQUENCY;
             phase++;
             phase &= 1;
+        }
+    }
+    this.count = count;
+    this.phase = phase;
+};
+
+/**
+ * Generate a Sine wave sound.
+ * @param buffer Int32Array to which generate sound
+ * @param fmBuffer Int32Array to which output fm data, or from which input one
+ */
+TssChannel.Module.prototype.generateSin = function (buffer, fmBuffer) {
+    var out = buffer;
+    if (TssChannel._FM_OUT_MODE_OFF != this.fm.outMode)
+        out = fmBuffer[this.fm.outPipe];
+    var volumeL = this.volume.l >> 1;
+    var volumeR = this.volume.r >> 1;
+    var length = buffer.length;
+    var plus = this.frequency * 256 * this.multiple;
+    var count = this.count;
+    var phase = this.phase;
+    var i;
+    if (0 == this.fm.inRate) {
+        if (TssChannel._FM_OUT_MODE_NEW == this.fm.outMode) {
+            for (i = 0; i < length; i += 2) {
+                out[i + 0] = TssChannel._SIN_TABLE[phase] * volumeL;
+                out[i + 1] = TssChannel._SIN_TABLE[phase] * volumeR;
+                count += plus;
+                while (count > MasterChannel.SAMPLE_FREQUENCY) {
+                    count -= MasterChannel.SAMPLE_FREQUENCY;
+                    phase++;
+                    phase &= 0xff;
+                }
+            }
+        } else {
+            for (i = 0; i < length; i += 2) {
+                out[i + 0] += TssChannel._SIN_TABLE[phase] * volumeL;
+                out[i + 1] += TssChannel._SIN_TABLE[phase] * volumeR;
+                count += plus;
+                while (count > MasterChannel.SAMPLE_FREQUENCY) {
+                    count -= MasterChannel.SAMPLE_FREQUENCY;
+                    phase++;
+                    phase &= 0xff;
+                }
+            }
+        }
+    } else {
+        var fm = fmBuffer[this.fm.inPipe];
+        var inRate = this.fm.inRate;
+        var fmPhaseL;
+        var fmPhaseR;
+        if (TssChannel._FM_OUT_MODE_NEW == this.fm.outMode) {
+            for (i = 0; i < length; i += 2) {
+                fmPhaseL = (phase + (fm[i + 0] >> inRate)) & 0xff;
+                fmPhaseR = (phase + (fm[i + 1] >> inRate)) & 0xff;
+                out[i + 0] = TssChannel._SIN_TABLE[fmPhaseL] * volumeL;
+                out[i + 1] = TssChannel._SIN_TABLE[fmPhaseR] * volumeR;
+                count += plus;
+                while (count > MasterChannel.SAMPLE_FREQUENCY) {
+                    count -= MasterChannel.SAMPLE_FREQUENCY;
+                    phase++;
+                    phase &= 0xff;
+                }
+            }
+        } else {
+            for (i = 0; i < length; i += 2) {
+                fmPhaseL = (phase + (fm[i + 0] >> inRate)) & 0xff;
+                fmPhaseR = (phase + (fm[i + 1] >> inRate)) & 0xff;
+                out[i + 0] += TssChannel._SIN_TABLE[fmPhaseL] * volumeL;
+                out[i + 1] += TssChannel._SIN_TABLE[fmPhaseR] * volumeR;
+                count += plus;
+                while (count > MasterChannel.SAMPLE_FREQUENCY) {
+                    count -= MasterChannel.SAMPLE_FREQUENCY;
+                    phase++;
+                    phase &= 0xff;
+                }
+            }
         }
     }
     this.count = count;
