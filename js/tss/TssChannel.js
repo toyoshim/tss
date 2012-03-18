@@ -218,6 +218,17 @@ TssChannel.prototype.getModuleType = function (id) {
 };
 
 /**
+ * Set module voice.
+ * @param id module id
+ * @param voice voice id
+ * @raise RangeError module channel id is out of range of maxChannel
+ */
+TssChannel.prototype.setModuleVoice = function (id, voice) {
+    this._CheckId(id);
+    this.module[id].voice = voice;
+};
+
+/**
  * Set module fm input pipe.
  * @see TssChannel.Module.setFmInPipe
  * @param id module id
@@ -313,6 +324,10 @@ TssChannel.Module.prototype.setType = function (type) {
         case TssChannel.Module.TYPE_PSG:
             this.generate = this.generatePsg;
             break;
+        case TssChannel.Module.TYPE_FC:
+            this.generate = this.generateFc;
+            this.voice = 3;
+            break;
         case TssChannel.Module.TYPE_NOISE:
             this.generate = this.generateNoise;
             break;
@@ -377,6 +392,41 @@ TssChannel.Module.prototype.generatePsg = function (buffer, fmBuffer) {
             count -= MasterChannel.SAMPLE_FREQUENCY;
             phase++;
             phase &= 1;
+        }
+    }
+    this.count = count;
+    this.phase = phase;
+};
+
+/**
+ * Generate a NES-like sound.
+ * @param buffer Int32Array to which generate sound
+ * @param fmBuffer Int32Array to which output fm data, or from which input one
+ */
+TssChannel.Module.prototype.generateFc = function (buffer, fmBuffer) {
+    var volumeL = this.volume.l << 4;
+    var volumeR = this.volume.r << 4;
+    var length = buffer.length;
+    var plus = this.frequency * 8 * this.multiple;
+    var count = this.count;
+    var phase = this.phase;
+    var voice = this.voice;
+    if (phase < voice) {
+        volumeL = -volumeL;
+        volumeR = -volumeR;
+    }
+    for (var i = 0; i < length; i += 2) {
+        buffer[i + 0] += volumeL;
+        buffer[i + 1] += volumeR;
+        count += plus;
+        while (count > MasterChannel.SAMPLE_FREQUENCY) {
+            count -= MasterChannel.SAMPLE_FREQUENCY;
+            phase++;
+            phase &= 7;
+            if ((phase == 0) || (phase == voice)) {
+                volumeL = -volumeL;
+                volumeR = -volumeR;
+            }
         }
     }
     this.count = count;

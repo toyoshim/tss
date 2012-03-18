@@ -798,7 +798,7 @@ TsdPlayer.prototype._setFmOutPipe = function (ch, mode, pipe) {
  */
 TsdPlayer.prototype._setVoice = function (ch, voice) {
     Log.getLog().info("TSD: voice " + ch.id + " = " + voice);
-    //this.device.setModuleVoice(ch.id, voice);
+    this.device.setModuleVoice(ch.id, voice);
     if (TssChannel.Module.TYPE_SIN != this.device.getModuleType(ch.id))
         return;
     // Old style FM pipe setting for compatibility.

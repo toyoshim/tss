@@ -169,6 +169,14 @@
             looper.setChannel(master7);
             test = 7;
         }
+        function test7xhr() {
+            var select = document.getElementById("test7sel");
+            var index = select.selectedIndex;
+            var name = select.options[index].value;
+            xh_req7.open("get", "../../data/" + name, true);
+            xh_req7.responseType = "arraybuffer";
+            xh_req7.send();
+        }
     </script>
 </head>
 <body>
@@ -208,13 +216,21 @@
     <pre id="test6prog"></pre>
 </div>
 <hr>
+<a name="tsd"></a>
 <pre>7. TSD Player [work in progress]</pre>
 <button onclick="testxstop()">STOP</button>
+<select id="test7sel" onchange="test7xhr()">
+    <option value="DARIUS_GAIDEN_FAKE.TSD">ANTARCTIC_ST1.TSD
+    <option value="ANTARCTIC_ST1.TSD">ANTARCTIC_ST1.TSD
+    <option value="ANTARCTIC_ST5.TSD">ANTARCTIC_ST5.TSD
+</select>
+
 <div id="test7drop" style="width: 100%; height: 100pt; background-color: #000000; color: #ffffff;">
     <pre>DRAG TSD FILE TO HERE</pre>
     <pre id="test7info"></pre>
     <pre id="test7prog"></pre>
 </div>
+<!--
 <hr>
 <pre>8. TSS Player [work in progress]</pre>
 <button onclick="">Compile & Play</button>
@@ -286,6 +302,7 @@
 	l16 &lt;dddd&gt;bbbbgggg
 #END</pre>
 </div>
+-->
 <hr>
 <hr>
 <pre>*** LOG (reversed order) ***</pre>
@@ -379,8 +396,7 @@
     // TEST 7
     var xh_res7 = null;
     var xh_req7 = new XMLHttpRequest();
-//    xh_req7.open("get", "../../data/SALAMANDER_BOSS.TSD", true);
-    xh_req7.open("get", "../../data/ANTARCTIC_ST1.TSD", true);
+    xh_req7.open("get", "../../data/DARIUS_GAIDEN_FAKE.TSD", true);
     xh_req7.responseType = "arraybuffer";
     xh_req7.onload = function () {
         Log.getLog().info("TEST7 XHR done.");
@@ -391,9 +407,7 @@
             Log.getLog().info("  as ArrayBuffer (mozResponseArrayBuffer).");
             xh_res7 = xh_req7.mozResponseArrayBuffer;
         }
-        if (0 == test) {
-            test7start();
-        }
+        test7start();
     };
     xh_req7.send();
     var div7 = document.getElementById("test7drop");
