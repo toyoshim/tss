@@ -756,7 +756,7 @@ TsdPlayer.prototype._setVoice = function (ch, voice) {
  */
 TsdPlayer.prototype._setModule = function (ch, module) {
     Log.getLog().info("TSD: module " + ch.id + " = " + module);
-    this.device.setModuleType(ch.id, module);
+    this.device.setModuleType(ch.id, module &0x0f);
     if (0 != (module & 0x80))
         ch.frequency.type = module >> 7;
     else

@@ -29,11 +29,20 @@ TssChannel.MODULE_CHANNEL_R = 1;
 TssChannel.FM_OUT_MODE_OFF = 0;
 TssChannel.FM_OUT_MODE_ADD = 1;
 TssChannel.FM_OUT_MODE_NEW = 2;
+TssChannel._RND_TABLE = new Int8Array(4096);
 TssChannel._SIN_TABLE = new Int8Array(256);
 
 // Calculate tables.
 (function () {
-    for (var i = 0; i < 256; i++)
+    var i;
+    for (i = 0; i <4096; i++) {
+        var u8 = ((~~(Math.random() * 0x7fffffff)) >> 8) & 0xff;
+        if (u8 >= 0x80)
+            u8 = u8 - 0x100;
+        TssChannel._RND_TABLE[i] = u8;
+    }
+
+    for (i = 0; i < 256; i++)
         TssChannel._SIN_TABLE[i] = ~~(Math.sin(Math.PI * i / 128) * 64 + 0.5);
 })();
 
@@ -297,11 +306,15 @@ TssChannel.Module.prototype.setType = function (type) {
         case TssChannel.Module.TYPE_PSG:
             this.generate = this.generatePsg;
             break;
+        case TssChannel.Module.TYPE_NOISE:
+            this.generate = this.generateNoise;
+            break;
         case TssChannel.Module.TYPE_SIN:
             this.generate = this.generateSin;
             break;
         default:
             // TODO: Implement other types.
+            Log.getLog().warn("TSC: unknown device type " + type);
             this.generate = this.generatePsg;
             break;
     }
@@ -357,6 +370,28 @@ TssChannel.Module.prototype.generatePsg = function (buffer, fmBuffer) {
             count -= MasterChannel.SAMPLE_FREQUENCY;
             phase++;
             phase &= 1;
+        }
+    }
+    this.count = count;
+    this.phase = phase;
+};
+
+TssChannel.Module.prototype.generateNoise = function (buffer, fmBuffer) {
+    var volumeL = this.volume.l >> 2;
+    var volumeR = this.volume.r >> 2;
+    var length = buffer.length;
+    var plus = this.frequency * this.multiple;
+    var count = this.count;
+    var phase = this.phase;
+    for (var i = 0; i < length; i += 2) {
+        var rnd = TssChannel._RND_TABLE[phase];
+        buffer[i + 0] += rnd * volumeL;
+        buffer[i + 1] += rnd * volumeR;
+        count += plus;
+        while (count > 0) {
+            phase++;
+            phase &= 0x0fff;
+            count -= 880;
         }
     }
     this.count = count;
