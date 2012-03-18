@@ -417,7 +417,11 @@ TsdPlayer.prototype.play = function (newInput) {
         this.channel = channel;
 
         // Parse table information.
+        var tableOffset = this._readU32(offset);
+        Log.getLog().info("TSD: table offset = " + tableOffset);
+        offset = tableOffset;
         var numOfWave = this._readU16(offset);
+        Log.getLog().info("TSD: found " + numOfWave + " wave table(s)");
         offset += 2;
         for (i = 0; i < numOfWave; i++) {
             // Wave table data for a SCC-like sound.
@@ -430,6 +434,7 @@ TsdPlayer.prototype.play = function (newInput) {
             offset += 2 + 32;
         }
         var numOfTable = this._readU16(offset);
+        Log.getLog().info("TSD: found " + numOfTable + " envelope table(s)");
         offset += 2;
         for (i = 0; i < numOfTable; i++) {
             // Table data for envelope.
@@ -619,6 +624,10 @@ TsdPlayer.prototype._performSequencer = function () {
             } else if (cmd == TsdPlayer._CMD_PITCH_MODULATION_DELTA) {
                 dt = this.input[ch.baseOffset + ch.offset++];
                 Log.getLog().info("TSD: pm delta");
+                // TODO
+            } else if (cmd == TsdPlayer._CMD_AMP_EMVELOPE) {
+                ch.offset += 2;
+                Log.getLog().info("TSD: ampemvelope");
                 // TODO
             } else if (cmd == TsdPlayer._CMD_ENDLESS_LOOP_POINT) {
                 // Set endless loop point here.
