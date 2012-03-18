@@ -461,7 +461,8 @@ TsdPlayer.prototype._performAutomation = function () {
             // Key off processings.
             if (0 != ch.sustain.level)
                 this._performSustain(ch);
-            // TODO: portament
+            if (0 != ch.portament)
+                this._performPortament(ch);
         }
         // TODO: other processings
     }
@@ -484,6 +485,45 @@ TsdPlayer.prototype._performSustain = function (ch) {
     this._setVolume(ch, TsdPlayer._CH_R, ch.sustain.volume.r);
 };
 
+TsdPlayer.prototype._performPortament = function (ch) {
+    var frequency = ch.frequency.hz;
+    switch (ch.frequency.type) {
+        case TsdPlayer._FREQUENCY_TYPE_NORMAL:
+            if (ch.frequency.param + ch.portament < 1)
+                ch.frequency.param = 1;
+            else if (ch.frequency.param + ch.portament > 0xffff)
+                ch.frequency.param = 0xffff;
+            else
+                ch.frequency.param += ch.portament;
+            frequency = ch.frequency.param;
+            break;
+        case TsdPlayer._FREQUENCY_TYPE_MSX:
+            if (ch.frequency.param - ch.portament < 0)
+                ch.frequency.param = 0;
+            else if ((ch.frequency.param - ch.portament) > 0x0fff)
+                ch.frequency.param = 0x0fff;
+            else
+                ch.frequency.param -= ch.portament;
+            frequency = TsdPlayer._PARAMETER_FREQUENCY_TABLE[
+                    TsdPlayer._FREQUENCY_TYPE_MSX][ch.frequency.param];
+            break;
+        case TsdPlayer._FREQUENCY_TYPE_FM:
+            if (ch.frequency.param + ch.portament < 0)
+                ch.frequency.param = 0;
+            else if ((ch.frequency.param + ch.portament) > 0x1fff)
+                ch.frequency.param = 0x1fff;
+            else
+                ch.frequency.param += ch.portament;
+            frequency = TsdPlayer._PARAMETER_FREQUENCY_TABLE[
+                TsdPlayer._FREQUENCY_TYPE_FM][ch.frequency.param];
+            break;
+        case TsdPlayer._FREQUENCY_TYPE_GB_SQUARE:
+            // TODO: not supported originally.
+            break;
+    }
+    this.device.setModuleFrequency(ch.id, frequency);
+};
+
 /**
  * Perform sequencer.
  */
@@ -498,7 +538,7 @@ TsdPlayer.prototype._performSequencer = function () {
             var cmd = this.input[ch.baseOffset + ch.offset++];
             var dt;
             if (cmd <= TsdPlayer._CMD_LAST_NOTE) {
-                // Note on
+                // Note on.
                 this._noteOn(ch, cmd);
                 ch.wait = this.input[ch.baseOffset + ch.offset++];
                 if (0xff == ch.wait) {
@@ -508,7 +548,7 @@ TsdPlayer.prototype._performSequencer = function () {
                 if (0 != ch.wait)
                     break;
             } else if (cmd == TsdPlayer._CMD_NOTE_OFF) {
-                // Note off
+                // Note off.
                 this._noteOff(ch);
                 ch.wait = this.input[ch.baseOffset + ch.offset++];
                 if (0xff == ch.wait) {
@@ -518,21 +558,32 @@ TsdPlayer.prototype._performSequencer = function () {
                 if (0 != ch.wait)
                     break;
             } else if (cmd == TsdPlayer._CMD_VOLUME_MONO) {
-                // Set volume by monaural with the panpot setting
+                // Set volume by monaural with the panpot setting.
                 dt = this.input[ch.baseOffset + ch.offset++];
                 if (ch.pan & TsdPlayer._PAN_L)
                     ch.volume.l = dt;
                 if (ch.pan & TsdPlayer._PAN_R)
                     ch.volume.r = dt;
             } else if (cmd == TsdPlayer._CMD_SUSTAIN_MODE) {
-                // Set sustain setting
+                // Set sustain setting.
                 ch.sustain.level = this.input[ch.baseOffset + ch.offset++];
             } else if (cmd == TsdPlayer._CMD_DETUNE) {
+                // Set detune setting.
                 ch.detune = this._readI8(ch.baseOffset + ch.offset);
                 ch.offset++;
             } else if (cmd == TsdPlayer._CMD_PORTAMENT) {
+                // Set portament setting.
+                ch.portament = this._readI8(ch.baseOffset + ch.offset);
                 ch.offset++;
-                Log.getLog().info("TSD: portament");
+                // Pitch modulation is disabled when portament is set.
+                ch.mp.enabled = false;
+            } else if (cmd == TsdPlayer._CMD_VOLUME_LEFT) {
+                ch.offset++;
+                Log.getLog().info("TSD: volume left");
+                // TODO
+            } else if (cmd == TsdPlayer._CMD_VOLUME_RIGHT) {
+                ch.offset++;
+                Log.getLog().info("TSD: volume right");
                 // TODO
             } else if (cmd == TsdPlayer._CMD_PANPOT) {
                 ch.pan = this.input[ch.baseOffset + ch.offset++];
