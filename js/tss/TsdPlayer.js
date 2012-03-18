@@ -62,7 +62,7 @@ TsdPlayer._CMD_ENDLESS_LOOP_POINT = 0xe0;
 TsdPlayer._CMD_LOCAL_LOOP_START = 0xe1;
 TsdPlayer._CMD_LOCAL_LOOP_BREAK = 0xe2;
 TsdPlayer._CMD_LOCAL_LOOP_END = 0xe3;
-TsdPlayer._CMD_PITCH_MODE_CHANGE = 0xf0;
+TsdPlayer._CMD_FREQUENCY_MODE_CHANGE = 0xf0;
 TsdPlayer._CMD_VOLUME_MODE_CHANGE = 0xf1;
 TsdPlayer._CMD_FM_IN = 0xf8;
 TsdPlayer._CMD_FM_OUT = 0xf9;
@@ -344,24 +344,24 @@ TsdPlayer.prototype.play = function (newInput) {
                 sustain: {  // sustain information
                     level: 0,  // sustain level
                     volume: {  // base volume to start sustain
-                        l: 0,
-                        r: 0
+                        l: 0,  // left volume
+                        r: 0  // right vlume
                     }
                 },
-                portament: 0,
-                detune: 0,
-                keyOn: false,
-                volume: {
-                    type: 0,
-                    l: 0,
-                    r:0
+                portament: 0,  // portament depth
+                detune: 0,  // detune depth
+                keyOn: false,  // key on state
+                volume: {  // base volume information
+                    type: 0,  // volume type
+                    l: 0, // left volume
+                    r:0  // right volume
                 },
-                pan: TsdPlayer._PAN_C,
-                frequency: {
-                    type: 0,
-                    note: 0,
-                    param: 0,
-                    hz: 0
+                pan: TsdPlayer._PAN_C,  // panpot
+                frequency: {  // frequency information
+                    type: 0,  // frequency type
+                    note: 0,  // original note id
+                    param: 0,  // type specific intermediate parameter
+                    hz: 0  // frequency to play
                 },
                 tone: 0,
                 phase: 0,
@@ -401,9 +401,9 @@ TsdPlayer.prototype.play = function (newInput) {
             };
             for (var n = 0; n < 16; n++) {
                 channel[i].localLoop[n] = {
-                    offset: 0,
-                    count: 0,
-                    end: 0
+                    offset: 0,  // loop start offset
+                    count: 0,  // loop count
+                    end: 0  // loop end offset
                 };
             }
             channel[i].baseOffset = this._readU32(offset);
@@ -621,7 +621,28 @@ TsdPlayer.prototype._performSequencer = function () {
                 Log.getLog().info("TSD: pm delta");
                 // TODO
             } else if (cmd == TsdPlayer._CMD_ENDLESS_LOOP_POINT) {
+                // Set endless loop point here.
                 ch.loop.offset = ch.offset;
+            } else if (cmd == TsdPlayer._CMD_LOCAL_LOOP_START) {
+                // Set local loop start point here.
+                dt = this.input[ch.baseOffset + ch.offset++];
+                ch.localLoop[dt].count =
+                    this.input[ch.baseOffset + ch.offset++];
+                ch.localLoop[dt].offset = ch.offset;
+            } else if (cmd == TsdPlayer._CMD_LOCAL_LOOP_BREAK) {
+                // Quit local loop if current loop is the last one.
+                dt = this.input[ch.baseOffset + ch.offset++];
+                if (ch.localLoop[dt].count == 1)
+                    ch.offset = ch.localLoop[dt].end;
+            } else if (cmd == TsdPlayer._CMD_LOCAL_LOOP_END) {
+                // Do local loop unless current loop is the last one.
+                dt = this.input[ch.baseOffset + ch.offset++];
+                ch.localLoop[dt].end = ch.offset;
+                if (0 != --ch.localLoop[dt].count)
+                    ch.offset = ch.localLoop[dt].offset;
+            } else if (cmd == TsdPlayer._CMD_FREQUENCY_MODE_CHANGE) {
+                // Set frequency mode.
+                ch.frequency.type = this.input[ch.baseOffset + ch.offset++];
             } else if (cmd == TsdPlayer._CMD_VOLUME_MODE_CHANGE) {
                 // Set volume mode.
                 ch.volume.type = this.input[ch.baseOffset + ch.offset++];
@@ -826,6 +847,4 @@ TsdPlayer.prototype._setModule = function (ch, module) {
         ch.frequency.type = module >> 7;
     else
         ch.frequency.type = module >> 4;
-    Log.getLog().info("TSD: frequency type " + ch.id + " = " +
-            ch.frequency.type);
 };
