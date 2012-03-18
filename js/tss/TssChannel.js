@@ -109,7 +109,7 @@ TssChannel.prototype.generate = function (length) {
  * @raise RangeError module channel id is out of range of maxChannel
  */
 TssChannel.prototype._CheckId = function (id) {
-    if (id > this.maxChannel)
+    if ((typeof id == "undefined") || (id > this.maxChannel))
         throw RangeError("TSC: Invalid module channel: " + id);
 };
 

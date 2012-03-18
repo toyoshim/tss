@@ -480,8 +480,8 @@ TsdPlayer.prototype._performSustain = function (ch) {
         ch.sustain.volume.r -= ch.sustain.level;
     else
         ch.sustain.volume.r = 0;
-    this._setVolume(ch.id, TsdPlayer._CH_L, ch.sustain.volume.l);
-    this._setVolume(ch.id, TsdPlayer._CH_R, ch.sustain.volume.r);
+    this._setVolume(ch, TsdPlayer._CH_L, ch.sustain.volume.l);
+    this._setVolume(ch, TsdPlayer._CH_R, ch.sustain.volume.r);
 };
 
 /**
@@ -521,9 +521,9 @@ TsdPlayer.prototype._performSequencer = function () {
                 // Set volume by monaural with the panpot setting
                 dt = this.input[ch.baseOffset + ch.offset++];
                 if (ch.pan & TsdPlayer._PAN_L)
-                    this.ch.volume.l = dt;
+                    ch.volume.l = dt;
                 if (ch.pan & TsdPlayer._PAN_R)
-                    this.ch.volume.r = dt;
+                    ch.volume.r = dt;
             } else if (cmd == TsdPlayer._CMD_SUSTAIN_MODE) {
                 // Set sustain setting
                 ch.sustain.level = this.input[ch.baseOffset + ch.offset++];
@@ -639,8 +639,8 @@ TsdPlayer.prototype._noteOn = function (ch, note) {
     ch.frequency.hz = hz;
 
     // Set volume
-    this._setVolume(ch.id, TsdPlayer._CH_L, ch.volume.l);
-    this._setVolume(ch.id, TsdPlayer._CH_R, ch.volume.r);
+    this._setVolume(ch, TsdPlayer._CH_L, ch.volume.l);
+    this._setVolume(ch, TsdPlayer._CH_R, ch.volume.r);
     ch.sustain.volume.l = ch.na.volume.l = ch.volume.l;
     ch.sustain.volume.r = ch.na.volume.r = ch.volume.r;
 
