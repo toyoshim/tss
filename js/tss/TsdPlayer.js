@@ -430,7 +430,7 @@ TsdPlayer.prototype.play = function (newInput) {
                 return false;
             }
             this.device.setWave(this.input[offset],
-                    this.input.subarray(offset + 2, offset + 2 + 32));
+                    new Int8Array(newInput, offset + 2, 32));
             offset += 2 + 32;
         }
         var numOfTable = this._readU16(offset);
@@ -805,7 +805,6 @@ TsdPlayer.prototype._setAutomationFineness = function (fineness) {
  * @param pipe pipe id
  */
 TsdPlayer.prototype._setFmInPipe = function (ch, rate, pipe) {
-    Log.getLog().info("TSD: fm in " + ch.id + " = " + rate + ", " + pipe);
     this.device.setModuleFmInPipe(ch.id, rate, pipe);
 };
 
@@ -817,7 +816,6 @@ TsdPlayer.prototype._setFmInPipe = function (ch, rate, pipe) {
  * @param pipe pipe id
  */
 TsdPlayer.prototype._setFmOutPipe = function (ch, mode, pipe) {
-    Log.getLog().info("TSD: fm out " + ch.id + " = " + mode + ", " + pipe);
     this.device.setModuleFmOutPipe(ch.id, mode, pipe);
 };
 
@@ -827,7 +825,6 @@ TsdPlayer.prototype._setFmOutPipe = function (ch, mode, pipe) {
  * @param voice voice id
  */
 TsdPlayer.prototype._setVoice = function (ch, voice) {
-    Log.getLog().info("TSD: voice " + ch.id + " = " + voice);
     this.device.setModuleVoice(ch.id, voice);
     if (TssChannel.Module.TYPE_SIN != this.device.getModuleType(ch.id))
         return;
@@ -850,7 +847,6 @@ TsdPlayer.prototype._setVoice = function (ch, voice) {
  * @param module module type with frequency mode
  */
 TsdPlayer.prototype._setModule = function (ch, module) {
-    Log.getLog().info("TSD: module " + ch.id + " = " + module);
     this.device.setModuleType(ch.id, module &0x0f);
     if (0 != (module & 0x80))
         ch.frequency.type = module >> 7;
