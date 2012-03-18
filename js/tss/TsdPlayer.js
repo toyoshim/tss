@@ -485,6 +485,10 @@ TsdPlayer.prototype._performSustain = function (ch) {
     this._setVolume(ch, TsdPlayer._CH_R, ch.sustain.volume.r);
 };
 
+/**
+ * Perform portament.
+ * @param ch
+ */
 TsdPlayer.prototype._performPortament = function (ch) {
     var frequency = ch.frequency.hz;
     switch (ch.frequency.type) {
