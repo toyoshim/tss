@@ -255,7 +255,7 @@ TsdPlayer.prototype._buildString = function (offset, size) {
 TsdPlayer.prototype._readI8 = function (offset) {
     var data = this.input[offset];
     if (data >= 0x80)
-        data = 0x100 - data;
+        data = data - 0x100;
     return data;
 };
 
