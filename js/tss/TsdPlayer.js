@@ -37,7 +37,7 @@ TsdPlayer._FREQUENCY_TYPE_GB_SQUARE = 3;
 TsdPlayer._CMD_LAST_NOTE = 0x7f;
 TsdPlayer._CMD_NOTE_OFF = 0x80;
 TsdPlayer._CMD_VOLUME_MONO = 0x81;
-TsdPlayer._CMD_SASTIN_MODE = 0x82;
+TsdPlayer._CMD_SUSTAIN_MODE = 0x82;
 TsdPlayer._CMD_DETUNE = 0x83;
 TsdPlayer._CMD_PORTAMENT = 0x84;
 TsdPlayer._CMD_VOLUME_LEFT = 0x85;
@@ -355,7 +355,13 @@ TsdPlayer.prototype.play = function (newInput) {
                 },
                 localLoop:[],
                 wait: 1,
-                sastinLevel: 0,
+                sustain: {
+                    level: 0,
+                    volume: {
+                        l: 0,
+                        r: 0
+                    }
+                },
                 portament: 0,
                 detune: 0,
                 keyOn: false,
@@ -394,7 +400,7 @@ TsdPlayer.prototype.play = function (newInput) {
                     wait: 0,
                     state: 0,
                     count: 0,
-                    vol: {
+                    volume: {
                         l: 0,
                         r: 0
                     }
@@ -461,7 +467,30 @@ TsdPlayer.prototype.play = function (newInput) {
  * Perform device automation, e.g., sastain, portament, envelope, modulation.
  */
 TsdPlayer.prototype._performAutomation = function () {
-    // TODO
+    for (var i = 0; i < this.header.numOfChannel; i++) {
+        var ch = this.channel[i];
+        if (!ch.keyOn) {
+            // Key off processings.
+            if (0 != ch.sustain.level)
+                this._performSustain(ch);
+            // TODO: portament
+        }
+        // TODO: other processings
+    }
+};
+
+TsdPlayer.prototype._performSustain = function (ch) {
+    if (ch.sustain.volume.l > ch.sustain.level)
+        ch.sustain.volume.l -= ch.sustain.level;
+    else
+        ch.sustain.volume.l = 0;
+    if (ch.sustain.volume.r > ch.sustain.level)
+        ch.sustain.volume.r -= ch.sustain.level;
+    else
+        ch.sustain.volume.r = 0;
+    // TODO: volume mode
+    this.device.setModuleVolume(ch.id, TsdPlayer._CH_L, ch.sustain.volume.l);
+    this.device.setModuleVolume(ch.id, TsdPlayer._CH_R, ch.sustain.volume.r);
 };
 
 /**
@@ -478,7 +507,7 @@ TsdPlayer.prototype._performSequencer = function () {
             var cmd = this.input[ch.baseOffset + ch.offset++];
             var dt;
             if (cmd <= TsdPlayer._CMD_LAST_NOTE) {
-                // Tone data
+                // Note on
                 this._noteOn(ch, cmd);
                 ch.wait = this.input[ch.baseOffset + ch.offset++];
                 if (0xff == ch.wait) {
@@ -488,6 +517,7 @@ TsdPlayer.prototype._performSequencer = function () {
                 if (0 != ch.wait)
                     break;
             } else if (cmd == TsdPlayer._CMD_NOTE_OFF) {
+                // Note off
                 this._noteOff(ch);
                 ch.wait = this.input[ch.baseOffset + ch.offset++];
                 if (0xff == ch.wait) {
@@ -497,19 +527,21 @@ TsdPlayer.prototype._performSequencer = function () {
                 if (0 != ch.wait)
                     break;
             } else if (cmd == TsdPlayer._CMD_VOLUME_MONO) {
+                // Set volume by monaural with the panpot setting
                 dt = this.input[ch.baseOffset + ch.offset++];
                 if (ch.pan & TsdPlayer._PAN_L)
                     this._setVolume(ch, TsdPlayer._CH_L, dt);
                 if (ch.pan & TsdPlayer._PAN_R)
                     this._setVolume(ch, TsdPlayer._CH_R, dt);
-            } else if (cmd == TsdPlayer._CMD_SASTIN_MODE) {
-                dt = this.input[ch.baseOffset + ch.offset++];
-                // TODO
+            } else if (cmd == TsdPlayer._CMD_SUSTAIN_MODE) {
+                // Set sustain setting
+                ch.sustain.level = this.input[ch.baseOffset + ch.offset++];
             } else if (cmd == TsdPlayer._CMD_DETUNE) {
                 ch.detune = this._readI8(ch.baseOffset + ch.offset);
                 ch.offset++;
             } else if (cmd == TsdPlayer._CMD_PORTAMENT) {
                 ch.offset++;
+                Log.getLog().info("TSD: portament");
                 // TODO
             } else if (cmd == TsdPlayer._CMD_PANPOT) {
                 ch.pan = this.input[ch.baseOffset + ch.offset++];
@@ -524,18 +556,23 @@ TsdPlayer.prototype._performSequencer = function () {
             } else if (cmd == TsdPlayer._CMD_PITCH_MODULATION_DELAY) {
                 dt = this._readU16(ch.baeOffset + ch.offset);
                 ch.offset += 2;
+                Log.getLog().info("TSD: pm delay");
                 // TODO
             } else if (cmd == TsdPlayer._CMD_PITCH_MODULATION_DEPTH) {
                 dt = this.input[ch.baseOffset + ch.offset++];
+                Log.getLog().info("TSD: pm depth");
                 // TODO
             } else if (cmd == TsdPlayer._CMD_PITCH_MODULATION_WIDTH) {
                 dt = this.input[ch.baseOffset + ch.offset++];
+                Log.getLog().info("TSD: pm width");
                 // TODO
             } else if (cmd == TsdPlayer._CMD_PITCH_MODULATION_HEIGHT) {
                 dt = this.input[ch.baseOffset + ch.offset++];
+                Log.getLog().info("TSD: pm height");
                 // TODO
             } else if (cmd == TsdPlayer._CMD_PITCH_MODULATION_DELTA) {
                 dt = this.input[ch.baseOffset + ch.offset++];
+                Log.getLog().info("TSD: pm delta");
                 // TODO
             } else if (cmd == TsdPlayer._CMD_ENDLESS_LOOP_POINT) {
                 ch.loop.offset = ch.offset;
@@ -606,18 +643,54 @@ TsdPlayer.prototype._noteOn = function (ch, note) {
     ch.frequency.param = param;
     ch.frequency.hz = hz;
 
-    // TODO: Set volume.
-    // TODO: Key on.
+    // Set volume
+    // TODO: volume mode
+    this.device.setModuleVolume(ch.id, TsdPlayer._CH_L, ch.volume.l);
+    this.device.setModuleVolume(ch.id, TsdPlayer._CH_R, ch.volume.r);
+    ch.sustain.volume.l = ch.na.volume.l = ch.volume.l;
+    ch.sustain.volume.r = ch.na.volume.r = ch.volume.r;
+
+    // Key on
+    ch.keyOn = true;
+
     // TODO: Reset phase.
     // TODO: Reset modulation, envelope, and sastin.
 };
 
+/**
+ * Perform note off.
+ * @param ch channel object to control
+ */
 TsdPlayer.prototype._noteOff = function (ch) {
-    // TODO
+    if (0 != ch.sustain.level) {
+        // When sustain is disabled,
+        if (!ch.na.enable) {
+            // and amplifier envelope is also disabled.
+            this.device.setModuleVolume(ch.id, TsdPlayer._CH_L, 0);
+            this.device.setModuleVolume(ch.id, TsdPlayer._CH_R, 0);
+        } else {
+            // and amplifier envelope is enabled.
+            ch.na.volume.l =
+                    this.device.getModuleVolume(ch.id,TsdPlayer._CH_L);
+            ch.na.volume.r =
+                    this.device.getModuleVolume(ch.id,TsdPlayer._CH_R);
+        }
+    }
+    ch.keyOn = false;
 };
 
+/**
+ * Set channel base volume.
+ * @param ch channel object to control
+ * @param lr L/R channel to set
+ * @param volume volume to set
+ */
 TsdPlayer.prototype._setVolume = function (ch, lr, volume) {
-    // TODO: volume type
+    // TODO: volume mode
+    if (TsdPlayer._CH_L == lr)
+        ch.volume.l = volume;
+    else if (TsdPlayer._CH_R == lr)
+        ch.volume.r = volume;
     this.device.setModuleVolume(ch.id, lr, volume);
 };
 

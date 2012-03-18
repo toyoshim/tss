@@ -26,15 +26,15 @@ function TssChannel () {
 
 TssChannel.MODULE_CHANNEL_L = 0;
 TssChannel.MODULE_CHANNEL_R = 1;
-TssChannel._FM_OUT_MODE_OFF = 0;
-TssChannel._FM_OUT_MODE_ADD = 1;
-TssChannel._FM_OUT_MODE_NEW = 2;
+TssChannel.FM_OUT_MODE_OFF = 0;
+TssChannel.FM_OUT_MODE_ADD = 1;
+TssChannel.FM_OUT_MODE_NEW = 2;
 TssChannel._SIN_TABLE = new Int8Array(256);
 
 // Calculate tables.
 (function () {
     for (var i = 0; i < 256; i++)
-        TssChannel._SIN_TABLE[i] = ~~(Math.sin(Math.PI * i / 128) * 64);
+        TssChannel._SIN_TABLE[i] = ~~(Math.sin(Math.PI * i / 128) * 64 + 0.5);
 })();
 
 /**
@@ -153,7 +153,6 @@ TssChannel.prototype.setModuleFrequency = function (id, frequency) {
  * @param volume volume
  */
 TssChannel.prototype.setModuleVolume = function (id, ch, volume) {
-    Log.getLog().info("TSC: Volume " + id + " = " + ch + ", " + volume);
     if (id > this.maxChannel) {
         Log.getLog().error("TSC: Invalid module channel: " + id);
         return;
@@ -164,6 +163,19 @@ TssChannel.prototype.setModuleVolume = function (id, ch, volume) {
         this.module[id].volume.r = volume;
     else
         Log.getLog().error("TSC: Invalid volume channel: " + ch);
+};
+
+TssChannel.prototype.getModuleVolume = function (id, ch) {
+    if (id > this.maxChannel) {
+        Log.getLog().error("TSC: Invalid module channel: " + id);
+        return 0;
+    }
+    if (ch == TssChannel.MODULE_CHANNEL_L)
+        return this.module[id].volume.l;
+    else if (ch == TssChannel.MODULE_CHANNEL_R)
+        return this.module[id].volume.r;
+    Log.getLog().error("TSC: Invalid volume channel: " + id);
+    return 0;
 };
 
 /**
@@ -200,6 +212,13 @@ TssChannel.prototype.setModuleFmInPipe = function (id, rate, pipe) {
     this.module[id].setFmInPipe(rate, pipe);
 };
 
+/**
+ * Set module fm output pipe.
+ * @see TssChannel.Module.setFmOutPipe
+ * @param id module id
+ * @param mode connection mode
+ * @param pipe pipe id
+ */
 TssChannel.prototype.setModuleFmOutPipe = function (id, mode, pipe) {
     if (id > this.maxChannel) {
         Log.getLog().error("TSC: Invalid module channel: " + id);
@@ -288,11 +307,25 @@ TssChannel.Module.prototype.setType = function (type) {
     }
 };
 
+/**
+ * Set frequency modulation input pipe connection. The input pipe affect
+ * pow(-2, rate) if rate is not 0. Otherwise, Pipe is not used.
+ * @param rate input rate
+ * @param pipe pipe id
+ */
 TssChannel.Module.prototype.setFmInPipe = function (rate, pipe) {
     this.fm.inRate = rate;
     this.fm.inPipe = pipe;
 };
 
+/**
+ * Set frequency modulation output pipe connection.
+ * @param mode connection mode
+ *      TssChannel.FM_OUT_MODE_OFF: Don't use frequency modulation
+ *      TssChannel.FM_OUT_MODE_ADD: Add output into specified pipe
+ *      TssChannel.FM_OUT_MODE_NEW: Write output into specified pipe
+ * @param pipe pipe id
+ */
 TssChannel.Module.prototype.setFmOutPipe = function (mode, pipe) {
     this.fm.outMode = mode;
     this.fm.outPipe = pipe;
@@ -337,7 +370,7 @@ TssChannel.Module.prototype.generatePsg = function (buffer, fmBuffer) {
  */
 TssChannel.Module.prototype.generateSin = function (buffer, fmBuffer) {
     var out = buffer;
-    if (TssChannel._FM_OUT_MODE_OFF != this.fm.outMode)
+    if (TssChannel.FM_OUT_MODE_OFF != this.fm.outMode)
         out = fmBuffer[this.fm.outPipe];
     var volumeL = this.volume.l >> 1;
     var volumeR = this.volume.r >> 1;
@@ -347,7 +380,7 @@ TssChannel.Module.prototype.generateSin = function (buffer, fmBuffer) {
     var phase = this.phase;
     var i;
     if (0 == this.fm.inRate) {
-        if (TssChannel._FM_OUT_MODE_NEW == this.fm.outMode) {
+        if (TssChannel.FM_OUT_MODE_NEW == this.fm.outMode) {
             for (i = 0; i < length; i += 2) {
                 out[i + 0] = TssChannel._SIN_TABLE[phase] * volumeL;
                 out[i + 1] = TssChannel._SIN_TABLE[phase] * volumeR;
@@ -375,7 +408,7 @@ TssChannel.Module.prototype.generateSin = function (buffer, fmBuffer) {
         var inRate = this.fm.inRate;
         var fmPhaseL;
         var fmPhaseR;
-        if (TssChannel._FM_OUT_MODE_NEW == this.fm.outMode) {
+        if (TssChannel.FM_OUT_MODE_NEW == this.fm.outMode) {
             for (i = 0; i < length; i += 2) {
                 fmPhaseL = (phase + (fm[i + 0] >> inRate)) & 0xff;
                 fmPhaseR = (phase + (fm[i + 1] >> inRate)) & 0xff;
