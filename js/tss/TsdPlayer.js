@@ -662,7 +662,7 @@ TsdPlayer.prototype._noteOn = function (ch, note) {
  * @param ch channel object to control
  */
 TsdPlayer.prototype._noteOff = function (ch) {
-    if (0 != ch.sustain.level) {
+    if (0 == ch.sustain.level) {
         // When sustain is disabled,
         if (!ch.na.enable) {
             // and amplifier envelope is also disabled.
