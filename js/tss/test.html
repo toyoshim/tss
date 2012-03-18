@@ -170,11 +170,13 @@
             looper.setChannel(master7);
             test = 7;
         }
-        function test7xhr() {
+        function test7sel() {
             var select = document.getElementById("test7sel");
             var index = select.selectedIndex;
-            var name = select.options[index].value;
-            xh_req7.open("get", "../../data/" + name, true);
+            return select.options[index].value;
+        }
+        function test7xhr() {
+            xh_req7.open("get", "../../data/" + test7sel(), true);
             xh_req7.responseType = "arraybuffer";
             xh_req7.send();
         }
@@ -222,8 +224,8 @@
 <button onclick="testxstop()">STOP</button>
 <select id="test7sel" onchange="test7xhr()">
     <option value="SALAMANDER_BOSS.TSD">沙羅曼蛇 BOSS戦 (wip)
-    <option value="GRADIUS_GENERATION_STAGE1.tsd">GRADIUS GENERATION Stage 1 (wip)
-    <option value="lain.tsd" selected>main theme of lain for PlayStation (wip)
+    <option value="GRADIUS_GENERATION_STAGE1.tsd" selected>GRADIUS GENERATION Stage 1 (wip)
+    <option value="lain.tsd">main theme of lain for PlayStation
     <option value="GRA2_KUTYUSEN.TSD">GRADIUS2 空中戦
     <option value="GRADIUS2_ST3.TSD">GRADIUS2 Stage 3
     <option value="DARIUS_GAIDEN_FAKE.TSD">DARIUS外伝 FAKE
@@ -403,7 +405,7 @@
     // TEST 7
     var xh_res7 = null;
     var xh_req7 = new XMLHttpRequest();
-    xh_req7.open("get", "../../data/lain.tsd", true);
+    xh_req7.open("get", "../../data/" + test7sel(), true);
     xh_req7.responseType = "arraybuffer";
     xh_req7.onload = function () {
         Log.getLog().info("TEST7 XHR done.");

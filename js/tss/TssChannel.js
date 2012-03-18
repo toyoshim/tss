@@ -257,6 +257,17 @@ TssChannel.prototype.setModuleFmOutPipe = function (id, mode, pipe) {
 };
 
 /**
+ * Set module phase.
+ * @param id module id
+ * @param phase phase to set
+ * @raise RangeError module channel id is out of range of maxChannel
+ */
+TssChannel.prototype.setModulePhase = function (id, phase) {
+    this._CheckId(id);
+    this.module[id].phase = phase;
+};
+
+/**
  * Generate sounds into a partial buffer.
  * @param offset offset in buffer to start
  * @param count sie to generate

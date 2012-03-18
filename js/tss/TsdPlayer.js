@@ -364,21 +364,21 @@ TsdPlayer.prototype.play = function (newInput) {
                     hz: 0  // frequency to play
                 },
                 tone: 0,
-                phase: 0,
-                mp: {
+                phase: 0,  // initial phase at key on
+                pitchModulation: {  // pitch modulation information
                     enable: false,
-                    frequency: 0,
+                    base: 0,
                     delayCount: 0,
                     widthCount: 0,
                     deltaCount: 0,
                     currentDepth: 0,
                     currentHeight: 0,
                     currentDiff: 0,
-                    delay: 0,
-                    depth: 0,
-                    width: 0,
-                    height: 0,
-                    delta: 0
+                    delay: 0,  // delay parameter
+                    depth: 0,  // depth parameter
+                    width: 0,  // with parameter
+                    height: 0,  // height parameter
+                    delta: 0  // delta parameter
                 },
                 na: {
                     enable: false,
@@ -469,13 +469,18 @@ TsdPlayer.prototype._performAutomation = function () {
             if (0 != ch.portament)
                 this._performPortament(ch);
         }
-        // TODO: other processings
+        // TODO: note envelope
+
+        if (ch.pitchModulation.enabled)
+            this._performPitchModulation(ch);
+
+        // TODO: amp envelope
     }
 };
 
 /**
  * Perform sustain.
- * @param ch
+ * @param ch channel oject to control
  */
 TsdPlayer.prototype._performSustain = function (ch) {
     if (ch.sustain.volume.l > ch.sustain.level)
@@ -492,7 +497,7 @@ TsdPlayer.prototype._performSustain = function (ch) {
 
 /**
  * Perform portament.
- * @param ch
+ * @param ch channel object to contol
  */
 TsdPlayer.prototype._performPortament = function (ch) {
     var frequency = ch.frequency.hz;
@@ -531,6 +536,98 @@ TsdPlayer.prototype._performPortament = function (ch) {
             break;
     }
     this.device.setModuleFrequency(ch.id, frequency);
+};
+
+/**
+ * Perform pitch modulation.
+ *                __            _ _ _ _ _ _ _ _
+ *             __|  |__
+ *          __|        |__             depth
+ * ________|  :           |__   _ _ _ _ _ _ _ _
+ * :       :  :              |__  _ _ heighgt _
+ * : delay :  :                 |__
+ *         width
+ * @param ch channel object to control
+ */
+TsdPlayer.prototype._performPitchModulation = function (ch) {
+    var pm = ch.pitchModulation;
+    if (pm.delayCount < pm.delay) {
+        // Wait for counting up to delay parameter.
+        pm.delayCount++;
+        return;
+    } else if (pm.delayCount == pm.delay) {
+        // Initialize pitch modulation parameters.
+        switch (ch.frequency.type) {
+            case TsdPlayer._FREQUENCY_TYPE_NORMAL:
+                pm.base = ch.frequency.hz;
+                break;
+            case TsdPlayer._FREQUENCY_TYPE_MSX:
+                pm.base = ch.frequency.param;
+                break;
+            case TsdPlayer._FREQUENCY_TYPE_FM:
+                pm.base = ch.frequency.param;
+                break;
+            case TsdPlayer._FREQUENCY_TYPE_GB_SQUARE:
+                // TODO: not supported originally.
+                break;
+        }
+        pm.currentDepth = pm.depth;
+        pm.currentHeight = pm.height;
+        pm.currentDiff = 0;
+        pm.widthCount = 0;
+        pm.deltaCount = 0;
+        pm.delayCount++;
+        return;
+    } else {
+        // Perform pitch modulation.
+        if (++pm.widthCount != pm.width)
+            return;
+        pm.widthCount = 0;
+        pm.currentDiff += pm.currentHeight;
+        if ((pm.currentDiff >= pm.currentDepth) ||
+                (pm.currentDiff <= -pm.currentDepth)) {
+            // Change direction.
+            pm.currentHeight = -pm.currentHeight;
+            // Modulation depth control.
+            // Old implementation was 'pm.currentDepth += pm.delta'
+            // I'm not sure when this implementation was changed.
+            // TODO: Check revision history.
+            pm.deltaCount++;
+            if (pm.deltaCount == pm.delta) {
+                pm.deltaCount = 0;
+                pm.currentDepth++;
+            }
+        }
+        var frequency = ch.frequency.hz;
+        var param;
+        switch (ch.frequency.type) {
+            case TsdPlayer._FREQUENCY_TYPE_NORMAL:
+                frequency = pm.base + pm.currentDiff;
+                break;
+            case TsdPlayer._FREQUENCY_TYPE_MSX:
+                param = pm.base + pm.currentDiff;
+                if (param < 0)
+                    param = 0;
+                else if (param > 0x0fff)
+                    param = 0x0fff;
+                frequency = TsdPlayer._PARAMETER_FREQUENCY_TABLE[
+                        TsdPlayer._FREQUENCY_TYPE_MSX][param];
+                break;
+            case TsdPlayer._FREQUENCY_TYPE_FM:
+                param = pm.base + pm.currentDiff;
+                if (param < 0)
+                    param = 0;
+                else if (param > 0x1fff)
+                    param = 0x1fff;
+                frequency = TsdPlayer._PARAMETER_FREQUENCY_TABLE[
+                        TsdPlayer._FREQUENCY_TYPE_FM][param];
+                break;
+            case TsdPlayer._FREQUENCY_TYPE_GB_SQUARE:
+                // TODO: not supported originally.
+                break;
+        }
+        this.device.setModuleFrequency(ch.id, frequency);
+    }
 };
 
 /**
@@ -585,7 +682,7 @@ TsdPlayer.prototype._performSequencer = function () {
                 ch.portament = this._readI8(ch.baseOffset + ch.offset);
                 ch.offset++;
                 // Pitch modulation is disabled when portament is set.
-                ch.mp.enabled = false;
+                ch.pitchModulation.enabled = false;
             } else if (cmd == TsdPlayer._CMD_VOLUME_LEFT) {
                 ch.offset++;
                 Log.getLog().info("TSD: volume left");
@@ -623,26 +720,25 @@ TsdPlayer.prototype._performSequencer = function () {
                 Log.getLog().info("TSD: multiple");
                 // TODO
             } else if (cmd == TsdPlayer._CMD_PITCH_MODULATION_DELAY) {
-                dt = this._readU16(ch.baeOffset + ch.offset);
+                dt = this._readU16(ch.baseOffset + ch.offset);
                 ch.offset += 2;
-                Log.getLog().info("TSD: pm delay");
-                // TODO
+                ch.pitchModulation.delay = dt;
+                ch.pitchModulation.enabled = 0 != dt;
+                // Portament is disabled when pitch modulation is set.
+                ch.portament = 0;
             } else if (cmd == TsdPlayer._CMD_PITCH_MODULATION_DEPTH) {
                 dt = this.input[ch.baseOffset + ch.offset++];
-                Log.getLog().info("TSD: pm depth");
-                // TODO
+                ch.pitchModulation.depth = dt;
             } else if (cmd == TsdPlayer._CMD_PITCH_MODULATION_WIDTH) {
                 dt = this.input[ch.baseOffset + ch.offset++];
-                Log.getLog().info("TSD: pm width");
-                // TODO
+                ch.pitchModulation.width = dt;
             } else if (cmd == TsdPlayer._CMD_PITCH_MODULATION_HEIGHT) {
-                dt = this.input[ch.baseOffset + ch.offset++];
-                Log.getLog().info("TSD: pm height");
-                // TODO
+                dt = this._readI8(ch.baseOffset + ch.offset);
+                ch.offset++;
+                ch.pitchModulation.height = dt;
             } else if (cmd == TsdPlayer._CMD_PITCH_MODULATION_DELTA) {
                 dt = this.input[ch.baseOffset + ch.offset++];
-                Log.getLog().info("TSD: pm delta");
-                // TODO
+                ch.pitchModulation.delta = dt;
             } else if (cmd == TsdPlayer._CMD_AMP_EMVELOPE) {
                 ch.offset += 2;
                 Log.getLog().info("TSD: amp envelope");
@@ -750,8 +846,9 @@ TsdPlayer.prototype._noteOn = function (ch, note) {
 
     // Key on
     ch.keyOn = true;
+    ch.pitchModulation.delayCount = 0;
+    this.device.setModulePhase(ch.id, ch.phase);
 
-    // TODO: Reset phase.
     // TODO: Reset modulation, envelope, and sastin.
 };
 
