@@ -66,7 +66,7 @@ TssChannel.prototype.getBuffer = function () {
 };
 
 /**
- * Set player object to control devices periodically.
+ * @see MasterChannel
  * @param newPlayer player to call back
  */
 TssChannel.prototype.setPlayer = function (newPlayer) {
@@ -74,7 +74,6 @@ TssChannel.prototype.setPlayer = function (newPlayer) {
 };
 
 /**
- * Generate specified length sound stream into internal buffer.
  * @see MasterChannel
  * @param length sound length in short to generate
  */
@@ -97,10 +96,21 @@ TssChannel.prototype.generate = function (length) {
             this.timer[timerId].count -= timerCount;
             if (0 != this.timer[timerId].count)
                 continue;
+            // Invoke callback.
             this.timer[timerId].count = this.timer[timerId].timer;
             this.timer[timerId].callback.apply(this.timer[timerId].self);
         }
     }
+};
+
+/**
+ * Check if the module channele id is in range of maxChannel.
+ * @param id module channel id
+ * @raise RangeError module channel id is out of range of maxChannel
+ */
+TssChannel.prototype._CheckId = function (id) {
+    if (id > this.maxChannel)
+        throw RangeError("TSC: Invalid module channel: " + id);
 };
 
 /**
@@ -146,12 +156,10 @@ TssChannel.prototype.setTimerCallback = function (id, count, self, callback) {
  * Set module frequency.
  * @param id module id
  * @param frequency frequency
+ * @raise RangeError module channel id is out of range of maxChannel
  */
 TssChannel.prototype.setModuleFrequency = function (id, frequency) {
-    if (id > this.maxChannel) {
-        Log.getLog().error("TSC: Invalid module channel: " + id);
-        return;
-    }
+    this._CheckId(id);
     this.module[id].frequency = frequency;
 };
 
@@ -160,12 +168,10 @@ TssChannel.prototype.setModuleFrequency = function (id, frequency) {
  * @param id module id
  * @param ch channel
  * @param volume volume
+ * @raise RangeError module channel id is out of range of maxChannel
  */
 TssChannel.prototype.setModuleVolume = function (id, ch, volume) {
-    if (id > this.maxChannel) {
-        Log.getLog().error("TSC: Invalid module channel: " + id);
-        return;
-    }
+    this._CheckId(id);
     if (ch == TssChannel.MODULE_CHANNEL_L)
         this.module[id].volume.l = volume;
     else if (ch == TssChannel.MODULE_CHANNEL_R)
@@ -174,29 +180,29 @@ TssChannel.prototype.setModuleVolume = function (id, ch, volume) {
         Log.getLog().error("TSC: Invalid volume channel: " + ch);
 };
 
+/**
+ * Get module volume.
+ * @param id module id
+ * @param ch channel
+ * @raise RangeError module channel id or channel id is out of range
+ */
 TssChannel.prototype.getModuleVolume = function (id, ch) {
-    if (id > this.maxChannel) {
-        Log.getLog().error("TSC: Invalid module channel: " + id);
-        return 0;
-    }
+    this._CheckId(id);
     if (ch == TssChannel.MODULE_CHANNEL_L)
         return this.module[id].volume.l;
     else if (ch == TssChannel.MODULE_CHANNEL_R)
         return this.module[id].volume.r;
-    Log.getLog().error("TSC: Invalid volume channel: " + id);
-    return 0;
+    throw RangeError("TSC: Invalid volume channel:" + id)
 };
 
 /**
  * Set module device type
  * @param id module id
  * @param type device type id
+ * @raise RangeError module channel id is out of range of maxChannel
  */
 TssChannel.prototype.setModuleType = function (id, type) {
-    if (id > this.maxChannel) {
-        Log.getLog().error("TSC: Invalid module channel: " + id);
-        return;
-    }
+    this._CheckId(id);
     this.module[id].setType(type);
 };
 
@@ -204,20 +210,23 @@ TssChannel.prototype.setModuleType = function (id, type) {
  * Get module device type
  * @param id module id
  * @return device type id
+ * @raise RangeError module channel id is out of range of maxChannel
  */
 TssChannel.prototype.getModuleType = function (id) {
-    if (id > this.maxChannel) {
-        Log.getLog().error("TSC: Invalid module channel: " + id);
-        return TssChannel.Module.TYPE_INVALID;
-    }
+    this._CheckId(id);
     return this.module[id].type;
 };
 
+/**
+ * Set module fm input pipe.
+ * @see TssChannel.Module.setFmInPipe
+ * @param id module id
+ * @param rate modulation rate
+ * @param pipe pipe id
+ * @raise RangeError module channel id is out of range of maxChannel
+ */
 TssChannel.prototype.setModuleFmInPipe = function (id, rate, pipe) {
-    if (id > this.maxChannel) {
-        Log.getLog().error("TSC: Invalid module channel: " + id);
-        return TssChannel.Module.TYPE_INVALID;
-    }
+    this._CheckId(id);
     this.module[id].setFmInPipe(rate, pipe);
 };
 
@@ -227,12 +236,10 @@ TssChannel.prototype.setModuleFmInPipe = function (id, rate, pipe) {
  * @param id module id
  * @param mode connection mode
  * @param pipe pipe id
+ * @raise RangeError module channel id is out of range of maxChannel
  */
 TssChannel.prototype.setModuleFmOutPipe = function (id, mode, pipe) {
-    if (id > this.maxChannel) {
-        Log.getLog().error("TSC: Invalid module channel: " + id);
-        return TssChannel.Module.TYPE_INVALID;
-    }
+    this._CheckId(id);
     this.module[id].setFmOutPipe(mode, pipe);
 };
 
@@ -376,6 +383,11 @@ TssChannel.Module.prototype.generatePsg = function (buffer, fmBuffer) {
     this.phase = phase;
 };
 
+/**
+ * Generate a noise sound. The noise is not white noise (maybe brawn?).
+ * @param buffer Int32Array to which generate sound
+ * @param fmBuffer Int32Array to which output fm data, or from which input one
+ */
 TssChannel.Module.prototype.generateNoise = function (buffer, fmBuffer) {
     var volumeL = this.volume.l >> 2;
     var volumeR = this.volume.r >> 2;

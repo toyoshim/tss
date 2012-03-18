@@ -479,6 +479,10 @@ TsdPlayer.prototype._performAutomation = function () {
     }
 };
 
+/**
+ * Perform sustain.
+ * @param ch
+ */
 TsdPlayer.prototype._performSustain = function (ch) {
     if (ch.sustain.volume.l > ch.sustain.level)
         ch.sustain.volume.l -= ch.sustain.level;
@@ -716,11 +720,25 @@ TsdPlayer.prototype._setAutomationFineness = function (fineness) {
             this._performAutomation);
 };
 
+/**
+ * Set frequency modulation input pipe connection.
+ * @see TssChannel.Module.setFmInPipe
+ * @param ch channel object to control
+ * @param rate input rate
+ * @param pipe pipe id
+ */
 TsdPlayer.prototype._setFmInPipe = function (ch, rate, pipe) {
     Log.getLog().info("TSD: fm in " + ch.id + " = " + rate + ", " + pipe);
     this.device.setModuleFmInPipe(ch.id, rate, pipe);
 };
 
+/**
+ * Set frequency modulation output pipe connection.
+ * @see TssChannel.Module.setFmOutPipe
+ * @param ch channel object to control
+ * @param mode connection mode
+ * @param pipe pipe id
+ */
 TsdPlayer.prototype._setFmOutPipe = function (ch, mode, pipe) {
     Log.getLog().info("TSD: fm out " + ch.id + " = " + mode + ", " + pipe);
     this.device.setModuleFmOutPipe(ch.id, mode, pipe);
