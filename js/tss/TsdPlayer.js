@@ -596,14 +596,32 @@ TsdPlayer.prototype._performSequencer = function () {
                 // TODO
             } else if (cmd == TsdPlayer._CMD_PANPOT) {
                 ch.pan = this.input[ch.baseOffset + ch.offset++];
+            } else if (cmd == TsdPlayer._CMD_RELATIVE_VOLUME_UP) {
+                ch.offset++;
+                Log.getLog().info("TSD: volume up");
+                // TODO
+            } else if (cmd == TsdPlayer._CMD_RELATIVE_VOLUME_DOWN) {
+                ch.offset++;
+                Log.getLog().info("TSD: volume down");
+                // TODO
             } else if (cmd == TsdPlayer._CMD_TEMPO) {
+                // Set musical tempo.
                 dt = this._readU16(ch.baseOffset + ch.offset);
                 ch.offset += 2;
                 this._setSequencerFineness(dt);
             } else if (cmd == TsdPlayer._CMD_FINENESS) {
+                // Set automation speed.
                 dt = this._readU16(ch.baseOffset + ch.offset);
                 ch.offset += 2;
                 this._setAutomationFineness(dt);
+            } else if (cmd == TsdPlayer._CMD_KEY_ON_PHASE) {
+                ch.offset++;
+                Log.getLog().info("TSD: key on phase");
+                // TODO
+            } else if (cmd == TsdPlayer._CMD_MULTIPLE) {
+                ch.offset++;
+                Log.getLog().info("TSD: multiple");
+                // TODO
             } else if (cmd == TsdPlayer._CMD_PITCH_MODULATION_DELAY) {
                 dt = this._readU16(ch.baeOffset + ch.offset);
                 ch.offset += 2;
@@ -627,7 +645,7 @@ TsdPlayer.prototype._performSequencer = function () {
                 // TODO
             } else if (cmd == TsdPlayer._CMD_AMP_EMVELOPE) {
                 ch.offset += 2;
-                Log.getLog().info("TSD: ampemvelope");
+                Log.getLog().info("TSD: amp envelope");
                 // TODO
             } else if (cmd == TsdPlayer._CMD_ENDLESS_LOOP_POINT) {
                 // Set endless loop point here.
@@ -656,12 +674,15 @@ TsdPlayer.prototype._performSequencer = function () {
                 // Set volume mode.
                 ch.volume.type = this.input[ch.baseOffset + ch.offset++];
             } else if (cmd == TsdPlayer._CMD_FM_IN) {
+                // Set fm input pipe.
                 dt = this.input[ch.baseOffset + ch.offset++];
                 this._setFmInPipe(ch, dt >> 4, dt & 0x0f);
             } else if (cmd == TsdPlayer._CMD_FM_OUT) {
+                // Set fm output pipe.
                 dt = this.input[ch.baseOffset + ch.offset++];
                 this._setFmOutPipe(ch, dt >> 4, dt & 0x0f);
             } else if (cmd == TsdPlayer._CMD_VOICE_CHANGE) {
+                // Set voice number with fm mode.
                 dt = this.input[ch.baseOffset + ch.offset++];
                 this._setVoice(ch, dt)
             } else if (cmd == TsdPlayer._CMD_MODULE_CHANGE) {
@@ -673,16 +694,14 @@ TsdPlayer.prototype._performSequencer = function () {
                     // Perform endless loop
                     ch.offset = ch.loop.offset;
                     ch.loop.count++;
-                    Log.getLog().info("TSD: ch " + i + " loop");
                 } else {
                     // Stop
                     this._noteOff(ch);
                     this.activeChannel--;
-                    Log.getLog().info("TSD: ch " + i + " end");
                     break;
                 }
             } else {
-                Log.getLog().error("TSD: not supported " + cmd.toString(16));
+                Log.getLog().error("TSD: unsupported cmd " + cmd.toString(16));
                 Log.getLog().info(this);
                 break;
             }
@@ -780,7 +799,6 @@ TsdPlayer.prototype._setVolume = function (ch, lr, volume) {
  * @param fineness timer count
  */
 TsdPlayer.prototype._setSequencerFineness = function (fineness) {
-    Log.getLog().info("TSD: sequencer fineness " + fineness);
     this.device.setTimerCallback(
             TsdPlayer._TIMER_SEQUENCER, fineness, this,
             this._performSequencer);
@@ -791,7 +809,6 @@ TsdPlayer.prototype._setSequencerFineness = function (fineness) {
  * @param fineness timer count
  */
 TsdPlayer.prototype._setAutomationFineness = function (fineness) {
-    Log.getLog().info("TSD: automation fineness " + fineness);
     this.device.setTimerCallback(
             TsdPlayer._TIMER_AUTOMATION, fineness, this,
             this._performAutomation);

@@ -304,9 +304,9 @@ TssChannel.Module.TYPE_FC = 1;
 TssChannel.Module.TYPE_NOISE = 2;
 TssChannel.Module.TYPE_SIN = 3;
 TssChannel.Module.TYPE_SCC = 4;
-TssChannel.Module.TYPE_OSC = 5;
-TssChannel.Module.TYPE_GB_SQUARE = 13;
-TssChannel.Module.TYPE_GB_WAVE = 14;
+TssChannel.Module.TYPE_OSC = 5;  // TODO
+TssChannel.Module.TYPE_GB_SQUARE = 13;  // TODO
+TssChannel.Module.TYPE_GB_WAVE = 14;  // TODO
 
 /**
  * Set module device type.
