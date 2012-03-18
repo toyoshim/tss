@@ -34,6 +34,8 @@ TsdPlayer._FREQUENCY_TYPE_NORMAL = 0;
 TsdPlayer._FREQUENCY_TYPE_MSX = 1;
 TsdPlayer._FREQUENCY_TYPE_FM = 2;
 TsdPlayer._FREQUENCY_TYPE_GB_SQUARE = 3;
+TsdPlayer._VOLUME_TYPE_NORMAL = 0;
+TsdPlayer._VOLUME_TYPE_FM = 1;
 TsdPlayer._CMD_LAST_NOTE = 0x7f;
 TsdPlayer._CMD_NOTE_OFF = 0x80;
 TsdPlayer._CMD_VOLUME_MONO = 0x81;
@@ -70,6 +72,7 @@ TsdPlayer._CMD_END = 0xff;
 TsdPlayer._NOTE_FREQUENCY_TABLE = [ null, null, null, null ];
 TsdPlayer._NOTE_PARAMETER_TABLE = [ null, null, null, null ];
 TsdPlayer._PARAMETER_FREQUENCY_TABLE = [ null, null,null, null ];
+TsdPlayer._FM_VOLUME_TABLE = null;
 TsdPlayer._MSX_PARAMETER_TABLE = [
     0x0D5D, 0x0C9C, 0x0BE7, 0x0B3C, 0x0A9B, 0x0A02, 0x0973, 0x08EB,
     0x086B, 0x07F2, 0x0780, 0x0714, 0x06AF, 0x064E, 0x05F4, 0x059E,
@@ -88,13 +91,12 @@ TsdPlayer._MSX_PARAMETER_TABLE = [
 // Calculate tables.
 (function () {
     var i;
-    var power;
 
     // from note to frequency table for NORMAL mode
     var table = new Uint16Array(0x80);
     TsdPlayer._NOTE_FREQUENCY_TABLE[TsdPlayer._FREQUENCY_TYPE_NORMAL] = table;
     for (i = 0; i < 0x80; i++)
-        table[i] = ~~(440 * Math.pow(2, (i - 69) / 12));
+        table[i] = ~~(440 * Math.pow(2, (i - 69) / 12) + 0.5);
 
     // from note to frequency table for GB_SQUARE mode
     table = new Uint16Array(0x80);
@@ -102,7 +104,7 @@ TsdPlayer._MSX_PARAMETER_TABLE = [
             table;
     for (i = 0; i < 0x80; i++) {
         var frequency = 440 * Math.pow(2, (i - 69) / 12);
-        var param = 2048 - 131072 / frequency;
+        var param = 2048 - 131072 / frequency + 0.5;
         if (param < 0)
             param = 0;
         table[i] = param;
@@ -132,9 +134,15 @@ TsdPlayer._MSX_PARAMETER_TABLE = [
     for (i = 0; i < 0x2000; i++) {
         var tone = i >> 6;
         var fine = i & 0x3f;
-        power = ((tone - 69) + fine / 64) / 12;
+        var power = ((tone - 69) + fine / 64) / 12;
         table[i] = ~~(440 * Math.pow(2, power) + 0.5);
     }
+
+    // volume table for FM mode
+    table = new Uint8Array(256);
+    TsdPlayer._FM_VOLUME_TABLE = table;
+    for (i = 0; i < 256; i++)
+        table[i] = ~~(255 * Math.pow(10, -0.75 * (255 - i) / 2 / 20) + 0.5);
 })();
 
 /**
@@ -323,19 +331,19 @@ TsdPlayer.prototype.play = function (newInput) {
         var i;
         for (i = 0; i < header.numOfChannel; i++) {
             channel[i] = {
-                id: i,
-                baseOffset: 0,
-                size: 0,
-                offset: 0,
-                loop: {
-                    offset: 0,
-                    count: 0
+                id: i,  // module id
+                baseOffset: 0,  // offset to sequence data in input buffer
+                size: 0,  // sequence data size
+                offset: 0,  // current processing offset to sequence data
+                loop: {  // loop information
+                    offset: 0,  // offset to loop start poit of sequence data
+                    count: 0  // current loop count
                 },
-                localLoop:[],
-                wait: 1,
-                sustain: {
-                    level: 0,
-                    volume: {
+                localLoop:[],  // inner loop information
+                wait: 1,  // wait count to the next processing
+                sustain: {  // sustain information
+                    level: 0,  // sustain level
+                    volume: {  // base volume to start sustain
                         l: 0,
                         r: 0
                     }
@@ -412,6 +420,7 @@ TsdPlayer.prototype.play = function (newInput) {
         var numOfWave = this._readU16(offset);
         offset += 2;
         for (i = 0; i < numOfWave; i++) {
+            // Wave table data for a SCC-like sound.
             if (32 != this.input[offset + 1]) {
                 Log.getLog().error("TSD: Invalid WAVE size");
                 return false;
@@ -423,6 +432,7 @@ TsdPlayer.prototype.play = function (newInput) {
         var numOfTable = this._readU16(offset);
         offset += 2;
         for (i = 0; i < numOfTable; i++) {
+            // Table data for envelope.
             var tableSize = this.input[offset + 1];
             this._setTable(this.input[offset],
                     this.input.subarray(offset + 2, offset + 2 + tableSize));
@@ -470,9 +480,8 @@ TsdPlayer.prototype._performSustain = function (ch) {
         ch.sustain.volume.r -= ch.sustain.level;
     else
         ch.sustain.volume.r = 0;
-    // TODO: volume mode
-    this.device.setModuleVolume(ch.id, TsdPlayer._CH_L, ch.sustain.volume.l);
-    this.device.setModuleVolume(ch.id, TsdPlayer._CH_R, ch.sustain.volume.r);
+    this._setVolume(ch.id, TsdPlayer._CH_L, ch.sustain.volume.l);
+    this._setVolume(ch.id, TsdPlayer._CH_R, ch.sustain.volume.r);
 };
 
 /**
@@ -512,9 +521,9 @@ TsdPlayer.prototype._performSequencer = function () {
                 // Set volume by monaural with the panpot setting
                 dt = this.input[ch.baseOffset + ch.offset++];
                 if (ch.pan & TsdPlayer._PAN_L)
-                    this._setVolume(ch, TsdPlayer._CH_L, dt);
+                    this.ch.volume.l = dt;
                 if (ch.pan & TsdPlayer._PAN_R)
-                    this._setVolume(ch, TsdPlayer._CH_R, dt);
+                    this.ch.volume.r = dt;
             } else if (cmd == TsdPlayer._CMD_SUSTAIN_MODE) {
                 // Set sustain setting
                 ch.sustain.level = this.input[ch.baseOffset + ch.offset++];
@@ -558,6 +567,9 @@ TsdPlayer.prototype._performSequencer = function () {
                 // TODO
             } else if (cmd == TsdPlayer._CMD_ENDLESS_LOOP_POINT) {
                 ch.loop.offset = ch.offset;
+            } else if (cmd == TsdPlayer._CMD_VOLUME_MODE_CHANGE) {
+                // Set volume mode.
+                ch.volume.type = this.input[ch.baseOffset + ch.offset++];
             } else if (cmd == TsdPlayer._CMD_FM_IN) {
                 dt = this.input[ch.baseOffset + ch.offset++];
                 this._setFmInPipe(ch, dt >> 4, dt & 0x0f);
@@ -568,6 +580,7 @@ TsdPlayer.prototype._performSequencer = function () {
                 dt = this.input[ch.baseOffset + ch.offset++];
                 this._setVoice(ch, dt)
             } else if (cmd == TsdPlayer._CMD_MODULE_CHANGE) {
+                // Set module type with frequency mode.
                 dt = this.input[ch.baseOffset + ch.offset++];
                 this._setModule(ch, dt)
             } else if (cmd == TsdPlayer._CMD_END) {
@@ -626,9 +639,8 @@ TsdPlayer.prototype._noteOn = function (ch, note) {
     ch.frequency.hz = hz;
 
     // Set volume
-    // TODO: volume mode
-    this.device.setModuleVolume(ch.id, TsdPlayer._CH_L, ch.volume.l);
-    this.device.setModuleVolume(ch.id, TsdPlayer._CH_R, ch.volume.r);
+    this._setVolume(ch.id, TsdPlayer._CH_L, ch.volume.l);
+    this._setVolume(ch.id, TsdPlayer._CH_R, ch.volume.r);
     ch.sustain.volume.l = ch.na.volume.l = ch.volume.l;
     ch.sustain.volume.r = ch.na.volume.r = ch.volume.r;
 
@@ -662,18 +674,20 @@ TsdPlayer.prototype._noteOff = function (ch) {
 };
 
 /**
- * Set channel base volume.
+ * Set channel base volume in current volume mode with panpot setting.
  * @param ch channel object to control
  * @param lr L/R channel to set
  * @param volume volume to set
  */
 TsdPlayer.prototype._setVolume = function (ch, lr, volume) {
-    // TODO: volume mode
-    if (TsdPlayer._CH_L == lr)
-        ch.volume.l = volume;
-    else if (TsdPlayer._CH_R == lr)
-        ch.volume.r = volume;
-    this.device.setModuleVolume(ch.id, lr, volume);
+    var data = volume;
+    if ((TsdPlayer._CH_L == lr) && (0 == (ch.pan & TsdPlayer._PAN_L)))
+        data = 0;
+    else if ((TsdPlayer._CH_R == lr) && (0 == (ch.pan & TsdPlayer._PAN_R)))
+        data = 0;
+    else if (TsdPlayer._VOLUME_TYPE_FM == ch.volume.type)
+        data = TsdPlayer._FM_VOLUME_TABLE[data];
+    this.device.setModuleVolume(ch.id, lr, data);
 };
 
 /**
@@ -748,7 +762,7 @@ TsdPlayer.prototype._setVoice = function (ch, voice) {
 /**
  * Set module device type.
  * @param ch channel object to control
- * @param module module id
+ * @param module module type with frequency mode
  */
 TsdPlayer.prototype._setModule = function (ch, module) {
     Log.getLog().info("TSD: module " + ch.id + " = " + module);
@@ -759,5 +773,4 @@ TsdPlayer.prototype._setModule = function (ch, module) {
         ch.frequency.type = module >> 4;
     Log.getLog().info("TSD: frequency type " + ch.id + " = " +
             ch.frequency.type);
-    // TODO: Handle frequency type
 };
