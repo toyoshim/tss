@@ -279,11 +279,28 @@ TsdPlayer.prototype._readU32 = function (offset) {
 };
 
 /**
+ * Clamp number value between min and max.
+ * @param value original value
+ * @param min minimum value
+ * @param max maximum value
+ * @return clamped value
+ */
+TsdPlayer.prototype._clamp = function (value, min, max) {
+    if (value < min)
+        return min;
+    if (value > max)
+        return max;
+    return value;
+};
+
+/**
  * Set table data.
  * @param id table id
- * @param table table data of Uint8Array
+ * @param table table data of Int8Array
  */
 TsdPlayer.prototype._setTable = function (id, table) {
+    Log.getLog().info("TSD: Set envelope table " + id);
+    Log.getLog().info(table);
     this.table[id] = table;
 };
 
@@ -341,13 +358,7 @@ TsdPlayer.prototype.play = function (newInput) {
                 },
                 localLoop:[],  // inner loop information
                 wait: 1,  // wait count to the next processing
-                sustain: {  // sustain information
-                    level: 0,  // sustain level
-                    volume: {  // base volume to start sustain
-                        l: 0,  // left volume
-                        r: 0  // right vlume
-                    }
-                },
+                sustain: 0,  // sustain level
                 portament: 0,  // portament depth
                 detune: 0,  // detune depth
                 keyOn: false,  // key on state
@@ -366,29 +377,29 @@ TsdPlayer.prototype.play = function (newInput) {
                 tone: 0,
                 phase: 0,  // initial phase at key on
                 pitchModulation: {  // pitch modulation information
-                    enable: false,
-                    base: 0,
-                    delayCount: 0,
-                    widthCount: 0,
-                    deltaCount: 0,
-                    currentDepth: 0,
-                    currentHeight: 0,
-                    currentDiff: 0,
+                    enable: false,  // enable flag
+                    base: 0,  // base frequency parameter
+                    delayCount: 0,  // delay counter
+                    widthCount: 0,  // width counter
+                    deltaCount: 0,  // delta counter
+                    currentDepth: 0,  // current depth parameter
+                    currentHeight: 0,  // current height (+height or -height)
+                    currentDiff: 0,  // current offset from base
                     delay: 0,  // delay parameter
                     depth: 0,  // depth parameter
                     width: 0,  // with parameter
                     height: 0,  // height parameter
                     delta: 0  // delta parameter
                 },
-                na: {
-                    enable: false,
-                    id: 0,
-                    wait: 0,
-                    state: 0,
-                    count: 0,
-                    volume: {
-                        l: 0,
-                        r: 0
+                ampEnvelope: {  // amplifier envelope information
+                    enable: false,  // enable flag
+                    id: 0,  // table id
+                    wait: 0,  // wait counter
+                    state: 0,  // envelope step position
+                    count: 0,  // wait count
+                    volume: {  // base volume parameter
+                        l: 0,  // left volume
+                        r: 0  // right volume
                     }
                 },
                 nt: {
@@ -440,7 +451,7 @@ TsdPlayer.prototype.play = function (newInput) {
             // Table data for envelope.
             var tableSize = this.input[offset + 1];
             this._setTable(this.input[offset],
-                    this.input.subarray(offset + 2, offset + 2 + tableSize));
+                    new Int8Array(newInput, offset + 2, tableSize));
             offset += 2 + tableSize;
         }
 
@@ -464,17 +475,17 @@ TsdPlayer.prototype._performAutomation = function () {
         var ch = this.channel[i];
         if (!ch.keyOn) {
             // Key off processings.
-            if (0 != ch.sustain.level)
+            if (0 != ch.sustain)
                 this._performSustain(ch);
             if (0 != ch.portament)
                 this._performPortament(ch);
         }
         // TODO: note envelope
 
-        if (ch.pitchModulation.enabled)
+        if (ch.pitchModulation.enable)
             this._performPitchModulation(ch);
-
-        // TODO: amp envelope
+        if (ch.ampEnvelope.enable)
+            this._performAmpEnvelope(ch);
     }
 };
 
@@ -483,16 +494,21 @@ TsdPlayer.prototype._performAutomation = function () {
  * @param ch channel oject to control
  */
 TsdPlayer.prototype._performSustain = function (ch) {
-    if (ch.sustain.volume.l > ch.sustain.level)
-        ch.sustain.volume.l -= ch.sustain.level;
+    if (ch.ampEnvelope.volume.l > ch.sustain)
+        ch.ampEnvelope.volume.l -= ch.sustain;
     else
-        ch.sustain.volume.l = 0;
-    if (ch.sustain.volume.r > ch.sustain.level)
-        ch.sustain.volume.r -= ch.sustain.level;
+        ch.ampEnvelope.volume.l = 0;
+    if (ch.ampEnvelope.volume.r > ch.sustain)
+        ch.ampEnvelope.volume.r -= ch.sustain;
     else
-        ch.sustain.volume.r = 0;
-    this._setVolume(ch, TsdPlayer._CH_L, ch.sustain.volume.l);
-    this._setVolume(ch, TsdPlayer._CH_R, ch.sustain.volume.r);
+        ch.ampEnvelope.volume.r = 0;
+    // Reproduce a bug that sustain could not reflect panpot correctly.
+    // Reproduce a bug that sustain could not reflect panpot correctly.
+    var pan = ch.pan;
+    ch.pan = TsdPlayer._PAN_C;
+    this._setVolume(ch, TsdPlayer._CH_L, ch.ampEnvelope.volume.l);
+    this._setVolume(ch, TsdPlayer._CH_R, ch.ampEnvelope.volume.r);
+    ch.pan = pan;
 };
 
 /**
@@ -631,6 +647,36 @@ TsdPlayer.prototype._performPitchModulation = function (ch) {
 };
 
 /**
+ * Perform amplifier envelope.
+ * @param ch channel object to control
+ */
+TsdPlayer.prototype._performAmpEnvelope = function (ch) {
+    var ae = ch.ampEnvelope;
+    if (++ae.count != ae.wait)
+        return;
+    ae.count = 0;
+
+    var diff = this.table[ae.id][ae.state];
+    ae.state++;
+    if (ae.state == this.table[ae.id].length)
+        ae.state--;
+
+    var volumeL = ae.volume.l + diff;
+    var volumeR = ae.volume.r + diff;
+    if (0 != (ch.pan & TsdPlayer._PAN_L))
+        volumeL = this._clamp(volumeL, 0, 255);
+    else
+        volumeL = 0;
+    if (0 != (ch.pan & TsdPlayer._PAN_R))
+        volumeR = this._clamp(volumeR, 0, 255);
+    else
+        volumeR = 0;
+
+    this._setVolume(ch, TsdPlayer._CH_L, volumeL);
+    this._setVolume(ch, TsdPlayer._CH_R, volumeR);
+};
+
+/**
  * Perform sequencer.
  */
 TsdPlayer.prototype._performSequencer = function () {
@@ -672,7 +718,7 @@ TsdPlayer.prototype._performSequencer = function () {
                     ch.volume.r = dt;
             } else if (cmd == TsdPlayer._CMD_SUSTAIN_MODE) {
                 // Set sustain setting.
-                ch.sustain.level = this.input[ch.baseOffset + ch.offset++];
+                ch.sustain = this.input[ch.baseOffset + ch.offset++];
             } else if (cmd == TsdPlayer._CMD_DETUNE) {
                 // Set detune setting.
                 ch.detune = this._readI8(ch.baseOffset + ch.offset);
@@ -682,7 +728,7 @@ TsdPlayer.prototype._performSequencer = function () {
                 ch.portament = this._readI8(ch.baseOffset + ch.offset);
                 ch.offset++;
                 // Pitch modulation is disabled when portament is set.
-                ch.pitchModulation.enabled = false;
+                ch.pitchModulation.enable = false;
             } else if (cmd == TsdPlayer._CMD_VOLUME_LEFT) {
                 ch.offset++;
                 Log.getLog().info("TSD: volume left");
@@ -723,7 +769,7 @@ TsdPlayer.prototype._performSequencer = function () {
                 dt = this._readU16(ch.baseOffset + ch.offset);
                 ch.offset += 2;
                 ch.pitchModulation.delay = dt;
-                ch.pitchModulation.enabled = 0 != dt;
+                ch.pitchModulation.enable = 0 != dt;
                 // Portament is disabled when pitch modulation is set.
                 ch.portament = 0;
             } else if (cmd == TsdPlayer._CMD_PITCH_MODULATION_DEPTH) {
@@ -740,9 +786,12 @@ TsdPlayer.prototype._performSequencer = function () {
                 dt = this.input[ch.baseOffset + ch.offset++];
                 ch.pitchModulation.delta = dt;
             } else if (cmd == TsdPlayer._CMD_AMP_EMVELOPE) {
-                ch.offset += 2;
-                Log.getLog().info("TSD: amp envelope");
-                // TODO
+                // Set amp emvelope
+                dt = this.input[ch.baseOffset + ch.offset++];
+                ch.ampEnvelope.id = dt;
+                dt = this.input[ch.baseOffset + ch.offset++];
+                ch.ampEnvelope.wait = dt;
+                ch.ampEnvelope.enable = 0 != dt;
             } else if (cmd == TsdPlayer._CMD_ENDLESS_LOOP_POINT) {
                 // Set endless loop point here.
                 ch.loop.offset = ch.offset;
@@ -841,15 +890,17 @@ TsdPlayer.prototype._noteOn = function (ch, note) {
     // Set volume
     this._setVolume(ch, TsdPlayer._CH_L, ch.volume.l);
     this._setVolume(ch, TsdPlayer._CH_R, ch.volume.r);
-    ch.sustain.volume.l = ch.na.volume.l = ch.volume.l;
-    ch.sustain.volume.r = ch.na.volume.r = ch.volume.r;
 
     // Key on
     ch.keyOn = true;
-    ch.pitchModulation.delayCount = 0;
     this.device.setModulePhase(ch.id, ch.phase);
 
-    // TODO: Reset modulation, envelope, and sastin.
+    // Reset sustain, pitch modulation, and amplifier envelope parameters.
+    ch.ampEnvelope.volume.l = ch.volume.l;
+    ch.ampEnvelope.volume.r = ch.volume.r;
+    ch.ampEnvelope.state = 0;
+    ch.ampEnvelope.count = 0;
+    ch.pitchModulation.delayCount = 0;
 };
 
 /**
@@ -857,18 +908,18 @@ TsdPlayer.prototype._noteOn = function (ch, note) {
  * @param ch channel object to control
  */
 TsdPlayer.prototype._noteOff = function (ch) {
-    if (0 == ch.sustain.level) {
+    if (0 == ch.sustain) {
         // When sustain is disabled,
-        if (!ch.na.enable) {
+        if (!ch.ampEnvelope.enable) {
             // and amplifier envelope is also disabled.
             this.device.setModuleVolume(ch.id, TsdPlayer._CH_L, 0);
             this.device.setModuleVolume(ch.id, TsdPlayer._CH_R, 0);
         } else {
             // and amplifier envelope is enabled.
-            ch.na.volume.l =
-                    this.device.getModuleVolume(ch.id,TsdPlayer._CH_L);
-            ch.na.volume.r =
-                    this.device.getModuleVolume(ch.id,TsdPlayer._CH_R);
+            ch.ampEnvelope.volume.l =
+                    this.device.getModuleVolume(ch.id, TsdPlayer._CH_L);
+            ch.ampEnvelope.volume.r =
+                    this.device.getModuleVolume(ch.id, TsdPlayer._CH_R);
         }
     }
     ch.keyOn = false;
@@ -919,7 +970,10 @@ TsdPlayer.prototype._setAutomationFineness = function (fineness) {
  * @param pipe pipe id
  */
 TsdPlayer.prototype._setFmInPipe = function (ch, rate, pipe) {
-    this.device.setModuleFmInPipe(ch.id, rate, pipe);
+    var param = rate;
+    if (0 != param)
+        param = 9 - param;
+    this.device.setModuleFmInPipe(ch.id, param, pipe);
 };
 
 /**
@@ -946,7 +1000,7 @@ TsdPlayer.prototype._setVoice = function (ch, voice) {
     var fmIn = voice >> 4;
     var fmOut = voice & 0x0f;
     if (0 != fmIn)
-        this._setFmInPipe(ch, 4, (fmIn % 5) - 1);
+        this._setFmInPipe(ch, 5, (fmIn % 5) - 1);
     else
         this._setFmInPipe(ch, 0, 0);
     if (0 != fmOut)

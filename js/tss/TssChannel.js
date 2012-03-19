@@ -120,7 +120,7 @@ TssChannel.prototype._CheckId = function (id) {
 TssChannel.prototype.setMaxChannel = function (maxChannel) {
     this.maxChannel = maxChannel;
     for (var ch = 0; ch < maxChannel; ch++)
-        this.module[ch] = new TssChannel.Module(this);
+        this.module[ch] = new TssChannel.Module(this, ch);
 };
 
 /**
@@ -291,8 +291,10 @@ TssChannel.prototype._generateInternal = function (offset, count) {
  *
  * This prototype implements inner class to emulate sound devices.
  * @param channel parent channel object
+ * @param ch module id
  */
-TssChannel.Module = function (channel) {
+TssChannel.Module = function (channel, ch) {
+    this.id = ch;
     this.channel = channel;
     this.volume = {
         l: 0,
