@@ -67,7 +67,7 @@ BiquadFilterChannel.prototype.getBuffer = function () {
  * @param channel channel to process
  */
 BiquadFilterChannel.prototype.setChannel = function (channel) {
-    if (0 != this.bufferLength) {
+    if ((0 != this.bufferLength) && (null != channel)) {
         channel.setBufferLength(this.bufferLength);
         this.inBuffer = channel.getBuffer();
     }
@@ -196,8 +196,11 @@ BiquadFilterChannel.prototype.magnitudeResponse = function (f) {
  * @param length sound length in short to generate
  */
 BiquadFilterChannel.prototype.generate = function (length) {
-    if (null == this.channel)
+    if (null == this.channel) {
+        for (var i = 0; i < length; i++)
+            this.outBuffer[i] = 0;
         return;
+    }
 
     this.channel.generate(length);
     for (var i = 0; i < length; i += 2) {

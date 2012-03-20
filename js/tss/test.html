@@ -6,8 +6,13 @@
     <!-- range type input tag emulation for Firefox -->
     <!--script language="JavaScript" src="https://github.com/fryn/html5slider/raw/master/html5slider.js"></script-->
     <!-- include components -->
+    <link href='http://fonts.googleapis.com/css?family=Exo' rel='stylesheet' type='text/css'>
+    <link href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8/themes/cupertino/jquery-ui.css" rel="stylesheet" type="text/css"/>
+    <script language="JavaScript" src="http://www.google.com/jsapi"></script>
+    <script language="JavaScript" src="http://yuri.twintail.org/lib/flotr2.min.js"></script>
     <script language="JavaScript" src="../Log.js"></script>
     <script language="JavaScript" src="AudioLooper.js"></script>
+    <script language="JavaScript" src="BiquadFilterChannel.js"></script>
     <script language="JavaScript" src="MasterChannel.js"></script>
     <script language="JavaScript" src="SimpleSlaveChannel.js"></script>
     <script language="JavaScript" src="PsgDeviceChannel.js"></script>
@@ -15,13 +20,16 @@
     <script language="JavaScript" src="VgmPlayer.js"></script>
     <script language="JavaScript" src="Mp3PlayerChannel.js"></script>
     <script language="JavaScript" src="TssChannel.js"></script>
+    <script language="JavaScript" src="TssCompiler.js"></script>
     <script language="JavaScript" src="TsdPlayer.js"></script>
     <!-- control callback scripts -->
     <script language="JavaScript">
+        google.load("jquery", "1.7.1");
+        google.load("jqueryui", "1.8.16");
         function testxstop() {
             if (0 != test) {
                 Log.getLog().info("TEST " + test + " STOP");
-                looper.setChannel(null);
+                filter.setChannel(null);
                 test = 0;
             }
         }
@@ -52,13 +60,13 @@
         function test1start() {
             Log.getLog().info("TEST 1 START");
             // TODO: assign descriptor
-            looper.setChannel(master1);
+            filter.setChannel(master1);
             test = 1;
         }
         function test2change(value) {
             if (2 != test) {
                 Log.getLog().info("TEST 2 START");
-                looper.setChannel(master2);
+                filter.setChannel(master2);
                 test = 2;
             }
             simplex.freq = value;
@@ -78,7 +86,7 @@
             psgdev3.writeRegister( 5, 0x01);
             psgdev3.writeRegister( 4, 0xc6);
             Log.getLog().info(psgdev3);
-            looper.setChannel(master3);
+            filter.setChannel(master3);
             test = 3;
         }
         function test4start() {
@@ -95,7 +103,7 @@
             for (i = 0; i < 1050; i++) {
                 player4.updateDevice();
             }
-            looper.setChannel(master4);
+            filter.setChannel(master4);
             test = 4;
         }
         function test4draw() {
@@ -139,7 +147,7 @@
         function test5start(e) {
             test5prog(e);
             player5.play(reader5.result);
-            looper.setChannel(master5);
+            filter.setChannel(master5);
             test = 5;
         }
         function test6flash() {
@@ -151,7 +159,7 @@
         function test6start(e) {
             test6prog(e);
             player6.play(reader6.result);
-            looper.setChannel(master6);
+            filter.setChannel(master6);
             test = 6;
         }
         function test7flash() {
@@ -167,7 +175,7 @@
             } else {
                 player7.play(xh_res7);
             }
-            looper.setChannel(master7);
+            filter.setChannel(master7);
             test = 7;
         }
         function test7sel() {
@@ -180,30 +188,52 @@
             xh_req7.responseType = "arraybuffer";
             xh_req7.send();
         }
+        function test8start() {
+            var src = document.getElementById("test8tss");
+            var tsc = new TssCompiler();
+            tsc.compile(src.innerText);
+        }
     </script>
 </head>
 <body>
 <p>Source code is available on <a href="http://code.google.com/p/tss/">Google Code</a></p>
 <p>Enable Web Audio API on Chrome at chrome://flags or just use FileFox 4 or later</p>
 <hr>
-<pre>1. Play 440Hz/550Hz/660Hz</pre>
+<p class="title">Filter Type</p>
+<button name="LPF">LPF</button>
+<button name="HPF">HPF</button>
+<button name="BPF">BPF</button>
+<button name="BEF">BEF</button>
+<button name="APF">APF</button>
+<button name="PEQ">EQ</button>
+<button name="LOS">Low Shelf</button>
+<button name="HIS">High Shelf</button>
+<p class="title">Cutoff Frequency</p>
+<div id="frequency" style="width: 400px; margin-left: 50px;"></div>
+<p class="title">Resonance</p>
+<div id="resonance" style="width: 400px; margin-left: 50px;"></div>
+<p class="title">Preview</p>
+<div id="container" style="margin-left: 50px;"></div>
+<br>
+<hr>
+<p class="title">1. Play 440Hz/550Hz/660Hz</p>
 <button onclick="test1start()">START</button>
 <button onclick="testxstop()">STOP</button>
 <hr>
-<pre>2. Play with slider</pre>
+<p class="title">2. Play with slider</p>
 <input type="range" min="1" max="4096" value="440" style="width: 100%" onchange="test2change(value)">
 <pre id="test2hz">440 Hz</pre>
 <hr>
-<pre>3. AY-3-8910 emulation test</pre>
+<p class="title">3. AY-3-8910 emulation test</p>
 <button onclick="test3start()">START</button>
 <button onclick="testxstop()">STOP</button>
 <hr>
-<pre>4. PSG Log REPLAY</pre>
+<p class="title">4. PSG Log REPLAY</p>
 <button onclick="test4start()">START</button>
 <button onclick="testxstop()">STOP</button>
 <canvas id="test4canvas" width="38" height="24"></canvas>
 <hr>
-<pre>5. VGM Player</pre>
+<p class="title">5. VGM Player</p>
 <button onclick="testxstop()">STOP</button>
 <div id="test5drop" style="width: 100%; height: 100pt; background-color: #000000; color: #ffffff;">
     <pre>DRAG VGM FILE TO HERE</pre>
@@ -211,7 +241,7 @@
     <pre id="test5prog"></pre>
 </div>
 <hr>
-<pre>6. MP3 Player [work in progress]</pre>
+<p class="title">6. MP3 Player [work in progress]</p>
 <button onclick="testxstop()">STOP</button>
 <div id="test6drop" style="width: 100%; height: 100pt; background-color: #000000; color: #ffffff;">
     <pre>DRAG MP3 FILE TO HERE</pre>
@@ -220,7 +250,7 @@
 </div>
 <hr>
 <a name="tsd"></a>
-<pre>7. TSD Player [work in progress]</pre>
+<p class="title">7. TSD Player</p>
 <button onclick="testxstop()">STOP</button>
 <select id="test7sel" onchange="test7xhr()">
     <option value="G2_8.tsd">GRANDIS2 Phylliida - Mother Planet -
@@ -234,18 +264,18 @@
     <option value="ANTARCTIC_ST5.TSD">夢大陸アドベンチャー Stage 5
     <option value="GRADIUS_ST1.TSD">GRADIUS Stage 1
 </select>
-
 <div id="test7drop" style="width: 100%; height: 100pt; background-color: #000000; color: #ffffff;">
     <pre>DRAG TSD FILE TO HERE</pre>
     <pre id="test7info"></pre>
     <pre id="test7prog"></pre>
 </div>
 <hr>
-<pre>8. TSS Player [work in progress]</pre>
-<button onclick="">Compile & Play</button>
+<a name="tss"></a>
+<p class="title">8. TSS Player [work in progress]</p>
+<button onclick="test8start()">Compile & Play</button>
 <button onclick="testxstop()">STOP</button>
-<div id="test8tss" style="width: 100%; background-color: #000000; color: #ffffff;">
-    <pre>#TITLE &lt;SALAMANDER - BOSS BGM -&gt;
+<div style="width: 100%; background-color: #000000; color: #ffffff;">
+    <pre id="test8tss">#TITLE &lt;SALAMANDER - BOSS BGM -&gt;
 #CHANNEL 11
 #A	t200 %3 @1 v3 l4 q1 o5 s1 @o1,0 mp30,16,2,8 $
 	[&lt;c8&gt;f8&lt;c8&gt;f.&lt; c&gt;f&lt;c&gt; f2.&lt;c2.&gt; f8&lt;c8&gt;f8&lt;c.&gt; f&lt;c&gt;f&lt; c2.&gt;f2.
@@ -293,7 +323,7 @@
 	[c&lt;c&gt;cgb-&lt;c&gt;c&lt;c&gt;c&lt;c&gt;c&lt;c&gt; &gt;a-&lt;a-&gt;a-&lt;b-&gt;b-&lt;b-&gt;
 	f&lt;f&gt;f&lt;ce-f&gt;f&lt;f&gt;f&lt;f&gt;f&lt;f&gt; | a-&lt;a-&gt;a-&lt;b-&gt;b-&lt;b-]
 	f&lt;f&gt;f&lt;f&gt;f&lt;f
-#K	t200 %3 @16 v8 l8 q1 s8 o3 p2 $
+#J	t200 %3 @16 v8 l8 q1 s8 o3 p2 $
 	[4f&lt;fe-fcf&gt;b-&lt;fcfef&gt;]
 	[4e&lt;ede&gt;b&lt;e&gt;a&lt;e&gt;b&lt;ede&gt;]
 	[4f&lt;fe-fcf&gt;b-&lt;fcfef&gt;]
@@ -301,7 +331,7 @@
 	[c&lt;c&gt;cgb-&lt;c&gt;c&lt;c&gt;c&lt;c&gt;c&lt;c&gt; &gt;a-&lt;a-&gt;a-&lt;b-&gt;b-&lt;b-&gt;
 	f&lt;f&gt;f&lt;ce-f&gt;f&lt;f&gt;f&lt;f&gt;f&lt;f&gt; | a-&lt;a-&gt;a-&lt;b-&gt;b-&lt;b-]
 	f&lt;f&gt;f&lt;f&gt;f&lt;f
-#J	t200 %3 v15 q1 s32,-10 l8 $
+#K	t200 %3 v15 q1 s32,-10 l8 $
 	[o4 ffrffr&lt;f4r4&gt;fr ffrffr&lt;f4r4&gt;r4
 	ffrffr&lt;f4r4&gt;fr ffrffr&lt;dd&gt;brgr
 	ffrffr&lt;f4r4&gt;fr ffrffr&lt;f4r4&gt;r4
@@ -319,6 +349,8 @@
     Log.setLog(new Log("log", true));
     var test = 0;
     var looper = new AudioLooper();
+    var filter = new BiquadFilterChannel();
+    //looper.setChannel(filter);
 
     // TEST 1
     var master1 = new MasterChannel();
@@ -428,6 +460,12 @@
     var player7 = new TsdPlayer();
     player7.setMasterChannel(master7);
 
+    // TEST 8
+    var master8 = new MasterChannel();
+    master8.setVolume(1);
+    var player8 = new TsdPlayer();
+    player8.setMasterChannel(master8);
+
     // TEST 5, 6 and 7
     function isParent(id, node) {
         while (node) {
@@ -510,6 +548,92 @@
             reader.readAsArrayBuffer(file);
         }
     }, false);
+    $(function () {
+        var calcXposFromFrequency = function (frequency) {
+            var xPos = 500 * Math.log(frequency) / Math.log(22050) - 100;
+            return (xPos < 0) ? 0 : xPos;
+        };
+        var calcFrequencyFromXpos = function (x) {
+            var n = (x + 100) / 500 * Math.log(22050);
+            return Math.pow(Math.E, n);
+        };
+        var dB = function (ratio) {
+            if (ratio < 1.0e-10)
+                ratio = 1.0e-10;
+            return 10 * Math.log(ratio) / Math.LN10;
+        };
+        var drawPreview = function (data) {
+            var container = $('#container').get(0);
+            var tickPoints = [20, 40, 100, 200, 400, 1000, 2000, 6000, 20000];
+            var tickNames =
+                    ['20', '40', '100', '200', '400', '1k', '2k', '6k', '20k [Hz]'];
+            var xTicks = [];
+            for (var i in tickPoints) {
+                var xPos = calcXposFromFrequency(tickPoints[i]);
+                xTicks.push([xPos, tickNames[i]]);
+            }
+            var graph = Flotr.draw(container, [data], {
+                xaxis: {
+                    ticks: xTicks,
+                    max: 400,
+                },
+                yaxis: {
+                    ticks: [[-20, ''], -10, 0, 10, [20, '[dB]']],
+                    max: 20,
+                    min: -20
+                }
+            });
+        };
+        var redrawPreview = function () {
+            var rawFrequency = $('#frequency').slider("option", "value");
+            var rawResonance = $('#resonance').slider("option", "value");
+            var frequency = 22050 * Math.pow(2, (rawFrequency - 500) / 50);
+            var resonance = rawResonance / 100;  // 1-1000 => 0.01-10.00
+            filter.setParameter(window.filterType, frequency, resonance, 20);
+            var data = [];
+            var x;
+            for (x = 0; x <= 400; x++) {
+                var f = calcFrequencyFromXpos(x);
+                var v = filter.magnitudeResponse(f);
+                var y = dB(v);
+                data.push([x, y]);
+            }
+            drawPreview(data);
+        };
+        $('p').css({
+            fontFamily: 'Exo, sans-serif'
+        });
+        $('p.title').css({
+            border: '1px solid #999',
+            borderRightColor: '#333',
+            borderBottomColor: '#333',
+            color: '#333',
+            width: '500px'
+        });
+        $('#frequency').slider({
+            value: 500,
+            min: 0,
+            max: 500
+        }).bind("slide", redrawPreview);
+        $('#resonance').slider({
+            value: 100,
+            min: 1,
+            max: 1000
+        }).bind("slide", redrawPreview);
+        $('#container').css({
+            width: '400px',
+            height: '200px'
+        });
+        $('button').css({
+            fontSize: '10px'
+        }).button().click(function() {
+                    window.filterType = this.getAttribute('name');
+                    redrawPreview();
+                });
+        window.filterType = BiquadFilterChannel.TYPE_LPF;
+        window.tss = new AudioLooper();
+        redrawPreview();
+    });
 </script>
 </body>
 </html>
