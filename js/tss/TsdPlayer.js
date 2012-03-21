@@ -6,7 +6,6 @@
  * TsdPlayer prototype
  *
  * Play TSD format files.
- * TODO: Must calcurate various tables on load.
  * @author Takashi Toyoshima <toyoshim@gmail.com>
  */
 function TsdPlayer () {

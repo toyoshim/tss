@@ -12,9 +12,13 @@
 function TssCompiler () {
     this.directives = [];
     this.channels = [];
+    this.waves = [];
+    this.title = "";
+    this.fineness = TssCompiler._DEFAULT_FINENESS;
 }
 
 TssCompiler.VERSION = 0.93;
+TssCompiler._DEFAULT_FINENESS = 368;
 TssCompiler._ALPHABET_COUNT = 'z'.charCodeAt(0) - 'a'.charCodeAt(0) + 1;
 
 /**
