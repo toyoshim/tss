@@ -349,6 +349,19 @@ TString.prototype.alphabetIndex = function (offset) {
 };
 
 /**
+ * Find code from internal UTF-8 array at offset.
+ * @param offset start offset
+ * @param code code to find
+ * @return offset if the code is found, otherwise -1
+ */
+TString.prototype.find = function (offset, code) {
+    for (var i = offset; i < this.object.length; i++)
+        if (this.object[i] == code)
+            return i;
+    return -1;
+};
+
+/**
  * Create UTF-16 string object from internal UTF-8 byte array from offset.
  * @param offset start offset (default: 0)
  * @param size size in byte (default: byteLength() - offset)

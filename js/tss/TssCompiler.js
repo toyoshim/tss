@@ -23,17 +23,27 @@ TssCompiler._DEFAULT_FINENESS = 368;
 TssCompiler._ALPHABET_COUNT = 'z'.charCodeAt(0) - 'a'.charCodeAt(0) + 1;
 
 /**
- * Log error information.
- * @param line line object containing error object.
- *  line: line number
- *  error: error information
- *      offset: offset where an error is detected
- *      message: error message
- *  ... misc ...  // TODO: Show more detail line information.
+ * CompileError prototype
+ *
+ * This prototype contains compile error information.
+ * @param line line object
+ *      line: line number
+ *      ... TODO: Show more detail information.
+ * @param offset offset in line
+ * @param message error message
  */
-TssCompiler.prototype._error = function (line) {
-    Log.getLog().error("TSS: (" + line.line + "," + line.error.offset +
-        ") " + line.error.message);
+TssCompiler.CompileError = function (line, offset, message) {
+    this.line = line;
+    this.offset = offset;
+    this.message = message;
+};
+
+/**
+ * Create string object shows error information.
+ */
+TssCompiler.CompileError.prototype.toString = function () {
+    return "TSS: { line: " + this.line.line + ", offset: " + this.offset +
+            " } " + this.message;
 };
 
 /**
@@ -70,22 +80,24 @@ TssCompiler.prototype._checkDirective = function (line) {
     var data = line.data;
     var length = data.byteLength();
     for (var i = 0; i < length; i++) {
-        var c = data.charAt(i);
-        if (' ' == c)
+        var c = data.at(i);
+        if (0 == c)
             continue;
-        if ('#' == c) {
-            data.setAt(i++, 0x20);
+        if ('#'.charCodeAt(0) == c) {
+            data.setAt(i++, 0);
             break;
         }
         line.directive = null;
         return;
     }
     for (var start = i; i < length; i++)
-        if (' ' == data.charAt(i))
+        if (0x20 == data.at(i))
             break;
+    // TODO: Currently primitives doesn't allow comments inside.
+    // e.g. "#TI{ comments }TLE" doesn't work.
     line.directive = data.slice(start, i).toString();
     for (var offset = start; offset < i; offset++)
-        data.setAt(offset, 0x20);
+        data.setAt(offset, 0);
     this._checkChannelDirective(line);
 };
 
@@ -112,8 +124,7 @@ TssCompiler.prototype._preprocessLine = function (context, offset, count) {
         count: count,
         data: null,
         empty: true,
-        directive: null,
-        error: null
+        directive: null
     };
     var line = this.source.slice(offset, offset + count);
     result.data = line;
@@ -122,29 +133,25 @@ TssCompiler.prototype._preprocessLine = function (context, offset, count) {
         if (context.commentNest > 0) {
             // In comment.
             if ('\\' == c)
-                line.setAt(i++, 0x20);
+                line.setAt(i++, 0);
             else if ('{' == c)
                 context.commentNest++;
             else if ('}' == c)
                 context.commentNest--;
-            line.setAt(i, 0x20);
+            line.setAt(i, 0);
         } else {
             if ('\\' == c) {
-                line.setAt(i++, 0x1b);
+                line.setAt(i++, 0);
                 result.empty = false;
             } else if ('{' == c) {
                 context.commentNest++;
-                line.setAt(i, 0x20);
+                line.setAt(i, 0);
             } else if ('}' == c) {
                 context.commentNest--;
-                line.setAt(i, 0x20);
-                if (context.commentNest < 0) {
-                    result.error = {
-                        offset: i,
-                        message: "'}' appears without '{'"
-                    };
-                    break;
-                }
+                line.setAt(i, 0);
+                if (context.commentNest < 0)
+                    throw new TssCompiler.CompileError(result, i,
+                            "'}' appears without '{'");
             } else {
                 if ('\t' == c)
                     line.setAt(i, 0x20);
@@ -158,9 +165,10 @@ TssCompiler.prototype._preprocessLine = function (context, offset, count) {
 };
 
 /**
- * Compile TSS source internally.
+ * Parse TSS source lines and classify into directive or channels.
+ * @raise TssCompiler.CompileError
  */
-TssCompiler.prototype._compile = function () {
+TssCompiler.prototype._parseLines = function () {
     var context = {
         line: 0,
         commentNest: 0
@@ -170,21 +178,11 @@ TssCompiler.prototype._compile = function () {
     for (var offset = 0; offset < length; context.line++) {
         var count = this.source.countLine(offset);
         var line = this._preprocessLine(context, offset, count);
-        if (null != line.error) {
-            this._error(line);
-            return line.error;
-        }
         if (!line.empty) {
             if (null == line.directive) {
-                if (-1 == channel) {
-                    line.error = {
-                        offset: 0,
-                        message: "invalid line without any directive"
-                    };
-                    line.error.offset = 0;
-                    this._error(line);
-                    return line.error;
-                }
+                if (-1 == channel)
+                    throw new TssCompiler.CompileError(line, 0,
+                            "invalid line without any directive");
                 line.directive = channel;
             }
             if (typeof line.directive == "number") {
@@ -193,6 +191,8 @@ TssCompiler.prototype._compile = function () {
                     this.channels[line.directive] = [];
                 this.channels[line.directive].push(line);
             } else {
+                if ("END" == line.directive)
+                    break;
                 this.directives.push(line);
             }
         }
@@ -208,11 +208,53 @@ TssCompiler.prototype._compile = function () {
             n = this.channels[i].length;
         Log.getLog().info("TSS: channel " + i + " has " + n + " line(s)");
     }
-    // TODO: Implement here.
-    // _parseDirectives()
-    // _parseChannels()
-    // These processings dont't have to take care of string or ArrayBuffer
-    // because they can just handle line buffer.
+};
+
+/**
+ * Parse directives.
+ * @raose TssCompiler.CompileError
+ */
+TssCompiler.prototype._parseDirectives = function () {
+    for (var i = 0; i < this.directives.length; i++) {
+        var directive = this.directives[i].directive;
+        if ("CHANNEL" == directive) {
+            Log.getLog().warn("TSS: #CHANNEL is not implemented");
+        } else if ("FINENESS" == directive) {
+            Log.getLog().warn("TSS: #FINENESS is not implemented");
+        } else if ("OCTAVE" == directive) {
+            Log.getLog().warn("TSS: #OCTAVE is not implemented");
+        } else if ("PRAGMA" == directive) {
+            Log.getLog().warn("TSS: #PRAGMA is not implemented");
+        } else if ("TABLE" == directive) {
+            Log.getLog().warn("TSS: #TABLE is not implemented");
+        } else if ("TITLE" == directive) {
+            Log.getLog().warn("TSS: #TITLE is not implemented");
+        } else if ("VOLUME" == directive) {
+            Log.getLog().warn("TSS: #VOLUME is not implemented");
+        } else if ("WAVE" == directive) {
+            Log.getLog().warn("TSS: #WAVE is not implemented");
+        } else {
+            throw new TssCompiler.CompileError(this.directives[i], 0,
+                    "unknown directive: " + directive);
+        }
+    }
+};
+
+/**
+ * Compile TSS source internally.
+ */
+TssCompiler.prototype._compile = function () {
+    try {
+        this._parseLines();
+        this._parseDirectives();
+        // TODO: Implement following functions
+        // this._parseChannels();
+        Log.getLog().warn("TSS: _parseChannels() is not implemented");
+        // this._generateTsd();
+        Log.getLog().warn("TSS: _generateTsd() is not implemented");
+    } catch (e) {
+        Log.getLog().error(e.toString());
+    }
     console.log(this);
 };
 
