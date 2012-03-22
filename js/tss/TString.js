@@ -219,11 +219,28 @@ TString.prototype._fromUint8Array = function (array) {
 };
 
 /**
- * Get a byte code from the interrnal UTF-8 byte array.
+ * Get a byte code from the internal UTF-8 byte array.
  * @param offset offset
  */
 TString.prototype.at = function (offset) {
     return this.object[offset];
+};
+
+/**
+ * Get string from the internal UTF-8 byte array.
+ * @param offset
+ */
+TString.prototype.charAt = function (offset) {
+    return String.fromCharCode(this.object[offset]);
+};
+
+/**
+ * Set a bytes code to the internal UTF-8 byte array.
+ * @param offset offset
+ * @param code code
+ */
+TString.prototype.setAt = function (offset, code) {
+    this.object[offset] = code;
 };
 
 /**
@@ -232,6 +249,15 @@ TString.prototype.at = function (offset) {
  */
 TString.prototype.byteLength = function () {
     return this.object.length;
+};
+
+/**
+ * Duplicate a part of this object.
+ * @param begin start offset
+ * @param end end offset (start + size)
+ */
+TString.prototype.slice = function (begin, end) {
+    return TString.createFromUint8Array(this.object.subarray(begin, end));
 };
 
 /**
@@ -270,6 +296,56 @@ TString.prototype.containASCII = function (offset, ascii) {
         if (this.object[offset + i] != ascii.charCodeAt(i))
             return false;
     return true;
+};
+
+/**
+ * Count line size in bytes except for line delimiter.
+ * @param offset start offset
+ */
+TString.prototype.countLine = function (offset) {
+    var count = 0;
+    for (var i = offset; i < this.object.length; i++) {
+        var c = this.object[i];
+        if ((0x0d == c)|| (0x0a == c))
+            break;
+        count++;
+    }
+    return count;
+};
+
+/**
+ * Count line delimiter size.
+ * @param offset start offset
+ */
+TString.prototype.countLineDelimiter = function (offset) {
+    if (offset >= this.object.length)
+        return 0;
+    var count = 0;
+    var c = this.object[offset++];
+    if (0x0d == c) {
+        if (offset == this.object.length)
+            return 1;
+        count++;
+        c = this.object[offset];
+    }
+    if (0x0a == c)
+        count++;
+    return count;
+};
+
+/**
+ * Return an alphabetical order position from 'a' or 'A' of character in
+ * offset if it is alphabet. Otherwise return -1.
+ * @param offset offset
+ * @return an alphabetical order position from 'a' or 'A', or -1.
+ */
+TString.prototype.alphabetIndex = function (offset) {
+    var c = this.object[offset];
+    if (('A'.charCodeAt(0) <= c) && (c <= 'Z'.charCodeAt(0)))
+        return c - 'A'.charCodeAt(0);
+    else if (('a'.charCodeAt(0) <= c) && (c <= 'z'.charCodeAt(0)))
+        return c - 'a'.charCodeAt(0);
+    return -1;
 };
 
 /**
