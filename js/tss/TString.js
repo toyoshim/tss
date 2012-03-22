@@ -217,3 +217,137 @@ TString.prototype._fromString = function (string) {
 TString.prototype._fromUint8Array = function (array) {
     this.object = array;
 };
+
+/**
+ * Get a byte code from the interrnal UTF-8 byte array.
+ * @param offset offset
+ */
+TString.prototype.at = function (offset) {
+    return this.object[offset];
+};
+
+/**
+ * Get the interrnal UTF-8 byte array length.
+ * @return length
+ */
+TString.prototype.byteLength = function () {
+    return this.object.length;
+};
+
+/**
+ * Check if this object contains the specified string from offset.
+ * @param offset start offset of the interrnal UTF-8 byte array
+ * @param string string to be checked
+ * @return true if the internal array contains specified data
+ */
+TString.prototype.containString = function (offset, string) {
+    var t = TString.createFromString(string);
+    return this.containUint8Array(offset, t.object);
+};
+
+/**
+ * Check if this object contains the specified byte sequence from offset.
+ * @param offset start offset of the internal UTF-8 byte array
+ * @param array Uint8Array object containing byte sequence to be checked
+ * @return true if the internal array contains specified data
+ */
+TString.prototype.containUint8Array = function (offset, array) {
+    for (var i = 0; i < array.length; i++)
+        if (this.object[offset + i] != array[i])
+            return false;
+    return true;
+};
+
+/**
+ * Check if this object contains the specified ASCII string from offset.
+ * The string must contain character in the range of 0x00 to 0x7f.
+ * @param offset start offset of the internal UTF-8 byte array
+ * @param ascii ASCII string to be checked
+ * @return true if the internal array contains specified data
+ */
+TString.prototype.containASCII = function (offset, ascii) {
+    for (var i = 0; i < ascii.length; i++)
+        if (this.object[offset + i] != ascii.charCodeAt(i))
+            return false;
+    return true;
+};
+
+/**
+ * Create UTF-16 string object from internal UTF-8 byte array from offset.
+ * @param offset start offset (default: 0)
+ * @param size size in byte (default: byteLength() - offset)
+ * @return UTF-16 string object
+ * @raise TypeError when internal UTF-8 byte array contains invalid code
+ */
+TString.prototype.toString = function (offset, size) {
+    if (arguments.length < 1)
+        offset = 0;
+    if (arguments.length < 2)
+        size = this.byteLength() - offset;
+    var result = "";
+    var first = true;
+    var length = 1;
+    var value = 0;
+    for (var i = 0; (i < size) && (i < this.object.length); i++) {
+        var c = this.object[offset + i];
+        if (first) {
+            if (c < 0x80) {
+                // 1 Byte UTF-8 string
+                result += String.fromCharCode(c);
+                continue;
+            }
+            first = false;
+            if (c < 0xc2) {
+                // Invalid character
+                throw new TypeError("TString: invalid UTF-8");
+            } else if (c < 0xe0) {
+                // 2 Bytes UTF-8 string
+                length = 2;
+                value = c & 0x1f;
+            } else if (c < 0xf0) {
+                // 3 Bytes UTF-8 string
+                length = 3;
+                value = c & 0x0f;
+            } else if (c < 0xf8) {
+                // 4 Bytes UTF-8 string
+                length = 4;
+                value = c & 0x07;
+            } else if (c < 0xfc) {
+                // 5 Bytes UTF-8 string
+                length = 5;
+                value = c & 0x03;
+            } else if (c < 0xfe) {
+                // 6 Bytes UTF-8 string
+                length = 6;
+                value = c & 0x01;
+            } else {
+                // Invalid character
+                throw new TypeError("TString: invalid UTF-8");
+            }
+            length--;
+        } else {
+            if ((c < 0x80) || (0xbf < c)) {
+                // Invalid character
+                throw new TypeError("TString: invalid UTF-8");
+            }
+            value = (value << 6) | (c & 0x3f);
+            length--;
+            if (0 == length) {
+                first = true;
+                if ((value < 0xd800) || (0xe000 <= value)) {
+                    result += String.fromCharCode(value);
+                } else {
+                    var u = (value >> 16) & 0x1f;
+                    var w = u - 1;
+                    var x = value & 0xffff;
+                    result += String.fromCharCode(
+                        0xd800 + (w << 6) + (x >> 10));
+                    result += String.fromCharCode(0xdc00 + (x & 0x3ff));
+                }
+            }
+        }
+    }
+    if(!first)
+        throw new TypeError("TString: invalid UTF-8");
+    return result;
+};

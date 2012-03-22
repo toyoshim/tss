@@ -9,7 +9,6 @@
  * @author Takashi Toyoshima <toyoshim@gmail.com>
  */
 function TsdPlayer () {
-    this.master = null;
     this.device = null;
     this.input = null;
     this.header = null;
@@ -154,96 +153,6 @@ TsdPlayer.prototype.setMasterChannel = function (channel) {
     this.device.setPlayer(this);
     channel.clearChannel();
     channel.addChannel(this.device);
-    this.master = channel;
-};
-
-/**
- * Compare input data with offset and string.
- * @param offset offset at input data to be compared
- * @param string string to be compared
- */
-TsdPlayer.prototype._compareWithString = function (offset, string) {
-    var length = string.length;
-    for (var i = 0; i < length; i++) {
-        if (string.charCodeAt(i) != this.input[offset + i])
-            return false;
-    }
-    return (0 == this.input[offset + length]);
-};
-
-/**
- * Build string object from a part from input data.
- * @param offset offst at input data to be used
- * @param size data size to be used
- */
-TsdPlayer.prototype._buildString = function (offset, size) {
-    var result = "";
-    var first = true;
-    var length = 1;
-    var value = 0;
-    for (var i = 0; (i < size) && (i < this.input.length); i++) {
-        var c = this.input[offset + i];
-        if (first) {
-            if (c < 0x80) {
-                // 1 Byte UTF-8 string
-                result += String.fromCharCode(c);
-                continue;
-            }
-            first = false;
-            if (c < 0xc2) {
-                // Invalid character
-                throw TypeError("Invalid UTF-8");
-            } else if (c < 0xe0) {
-                // 2 Bytes UTF-8 string
-                length = 2;
-                value = c & 0x1f;
-            } else if (c < 0xf0) {
-                // 3 Bytes UTF-8 string
-                length = 3;
-                value = c & 0x0f;
-            } else if (c < 0xf8) {
-                // 4 Bytes UTF-8 string
-                length = 4;
-                value = c & 0x07;
-            } else if (c < 0xfc) {
-                // 5 Bytes UTF-8 string
-                length = 5;
-                value = c & 0x03;
-            } else if (c < 0xfe) {
-                // 6 Bytes UTF-8 string
-                length = 6;
-                value = c & 0x01;
-            } else {
-                // Invalid character
-                throw TypeError("Invalid UTF-8");
-            }
-            length--;
-        } else {
-            if ((c < 0x80) || (0xbf < c)) {
-                // Invalid character
-                throw TypeError("Invalid UTF-8");
-            }
-            value = (value << 6) | (c & 0x3f);
-            length--;
-            if (0 == length) {
-                first = true;
-                if ((value < 0xd800) || (0xe000 <= value)) {
-                    result += String.fromCharCode(value);
-                } else {
-                    var u = (value >> 16) & 0x1f;
-                    var w = u - 1;
-                    var x = value & 0xffff;
-                    result += String.fromCharCode(
-                            0xd800 + (w << 6) + (x >> 10));
-                    result += String.fromCharCode(0xdc00 + (x & 0x3ff));
-                }
-            }
-        }
-    }
-    if(!first) {
-        throw TypeError("Invalid UTF-8");
-    }
-    return result;
 };
 
 /**
@@ -311,9 +220,8 @@ TsdPlayer.prototype._setTable = function (id, table) {
 TsdPlayer.prototype.play = function (newInput) {
     try {
         this.input = new Uint8Array(newInput);
-        this.timerCount = TsdPlayer._DEFAULT_TIMER_COUNT;
-        this.fixedCount = TsdPlayer._DEFAULT_TIMER_COUNT;
-        if (!this._compareWithString(0, "T'SoundSystem")) {
+        var tstring = TString.createFromUint8Array(this.input);
+        if (!tstring.containASCII(0, "T'SoundSystem")) {
             Log.getLog().warn("TSD: magic T'SoundSystem not found.");
             return false;
         }
@@ -331,7 +239,8 @@ TsdPlayer.prototype.play = function (newInput) {
 
         // Parse the music title.
         header.titleSize = this._readU16(16);
-        header.title = this._buildString(18, header.titleSize);
+        header.title = TString.createFromUint8Array(
+                this.input.subarray(18, 18 + header.titleSize)).toString();
         Log.getLog().info("TSD: title = " + header.title);
 
         var offset = 18 + ((header.titleSize + 1) & ~1);
@@ -436,7 +345,7 @@ TsdPlayer.prototype.play = function (newInput) {
         for (i = 0; i < numOfWave; i++) {
             // Wave table data for a SCC-like sound.
             if (32 != this.input[offset + 1]) {
-                Log.getLog().error("TSD: Invalid WAVE size");
+                Log.getLog().error("TSD: invalid WAVE size");
                 return false;
             }
             this.device.setWave(this.input[offset],

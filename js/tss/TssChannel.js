@@ -110,7 +110,7 @@ TssChannel.prototype.generate = function (length) {
  */
 TssChannel.prototype._CheckId = function (id) {
     if ((typeof id == "undefined") || (id > this.maxChannel))
-        throw RangeError("TSC: Invalid module channel: " + id);
+        throw new RangeError("TSC: Invalid module channel: " + id);
 };
 
 /**
@@ -194,7 +194,7 @@ TssChannel.prototype.getModuleVolume = function (id, ch) {
         return this.module[id].volume.l;
     else if (ch == TssChannel.MODULE_CHANNEL_R)
         return this.module[id].volume.r;
-    throw RangeError("TSC: Invalid volume channel:" + id)
+    throw new RangeError("TSC: Invalid volume channel:" + id)
 };
 
 /**
