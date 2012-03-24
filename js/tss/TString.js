@@ -13,6 +13,18 @@ function TString () {
     this.object = null;
 }
 
+TString.CODE_NUL = 0x00;
+TString.CODE_HT = 0x09;
+TString.CODE_LF = 0x0a;
+TString.CODE_CR = 0x0d;
+TString.CODE_SP = 0x20;
+TString.CODE_0 = 0x30;
+TString.CODE_9 = 0x39;
+TString.CODE_A = 0x41;
+TString.CODE_Z = 0x5a;
+TString.CODE_a = 0x61;
+TString.CODE_z = 0x7a;
+
 /**
  * Check if the specified code is BMP.
  * @param code character code in UTF-16
@@ -221,6 +233,7 @@ TString.prototype._fromUint8Array = function (array) {
 /**
  * Get a byte code from the internal UTF-8 byte array.
  * @param offset offset
+ * @return code
  */
 TString.prototype.at = function (offset) {
     return this.object[offset];
@@ -228,10 +241,34 @@ TString.prototype.at = function (offset) {
 
 /**
  * Get string from the internal UTF-8 byte array.
- * @param offset
+ * @param offset offset
+ * @return character
  */
 TString.prototype.charAt = function (offset) {
     return String.fromCharCode(this.object[offset]);
+};
+
+/**
+ * Get lower string from the internal UTF-8 byte array.
+ * @param offset offset
+ * @return character
+ */
+TString.prototype.lowerCharAt = function (offset) {
+    var code = this.object[offset];
+    if ((TString.CODE_A <= code) && (code <= TString.CODE_Z))
+        code |= 0x20;
+    return String.fromCharCode(code);
+};
+
+/**
+ * Get number from the interrnal UTF-8 byte array.
+ * @param offset offset
+ * @return the number if the code is number, otherwise -1
+ */
+TString.prototype.numberAt = function (offset) {
+    if (!this.isNumber(offset))
+        return -1;
+    return this.object[offset] - TString.CODE_0;
 };
 
 /**
@@ -241,6 +278,15 @@ TString.prototype.charAt = function (offset) {
  */
 TString.prototype.setAt = function (offset, code) {
     this.object[offset] = code;
+};
+
+/**
+ * Set a character to the internal UTF-8 byte array.
+ * @param offset offset
+ * @param ch character
+ */
+TString.prototype.setCharAt = function (offset, ch) {
+    this.object[offset] = ch.charCodeAt(0);
 };
 
 /**
@@ -306,7 +352,7 @@ TString.prototype.countLine = function (offset) {
     var count = 0;
     for (var i = offset; i < this.object.length; i++) {
         var c = this.object[i];
-        if ((0x0d == c)|| (0x0a == c))
+        if ((TString.CODE_CR == c)|| (TString.CODE_LF == c))
             break;
         count++;
     }
@@ -322,15 +368,32 @@ TString.prototype.countLineDelimiter = function (offset) {
         return 0;
     var count = 0;
     var c = this.object[offset++];
-    if (0x0d == c) {
+    if (TString.CODE_CR == c) {
         if (offset == this.object.length)
             return 1;
         count++;
         c = this.object[offset];
     }
-    if (0x0a == c)
+    if (TString.CODE_LF == c)
         count++;
     return count;
+};
+
+/**
+ * Count white saces.
+ * @param offset start offset
+ * @return number of spaces
+ */
+TString.prototype.countSpaces = function (offset) {
+    var n = 0;
+    for (var i = offset; i < this.object.length; i++) {
+        var c = this.object[i];
+        if ((TString.CODE_NUL != c) && (TString.CODE_HT != c) &&
+                (TString.CODE_SP != c))
+            break;
+        n++;
+    }
+    return n;
 };
 
 /**
@@ -341,11 +404,23 @@ TString.prototype.countLineDelimiter = function (offset) {
  */
 TString.prototype.alphabetIndex = function (offset) {
     var c = this.object[offset];
-    if (('A'.charCodeAt(0) <= c) && (c <= 'Z'.charCodeAt(0)))
-        return c - 'A'.charCodeAt(0);
-    else if (('a'.charCodeAt(0) <= c) && (c <= 'z'.charCodeAt(0)))
-        return c - 'a'.charCodeAt(0);
+    if ((TString.CODE_A <= c) && (c <= TString.CODE_Z))
+        return c - TString.CODE_A;
+    else if ((TString.CODE_a <= c) && (c <= TString.CODE_z))
+        return c - TString.CODE_a;
     return -1;
+};
+
+/**
+ * Check if the code in position of offset is a character for a number.
+ * @param offset offset
+ * @return true if the code is a character for a number.
+ */
+TString.prototype.isNumber = function (offset) {
+    var c = this.object[offset];
+    if ((c < TString.CODE_0) || (TString.CODE_9 < c))
+        return false;
+    return true;
 };
 
 /**

@@ -6,7 +6,7 @@
     <!-- range type input tag emulation for Firefox -->
     <!--script language="JavaScript" src="https://github.com/fryn/html5slider/raw/master/html5slider.js"></script-->
     <!-- include components -->
-    <!--
+    <!-- TODO: Remove comments
     <link href='http://fonts.googleapis.com/css?family=Exo' rel='stylesheet' type='text/css'>
     <link href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8/themes/cupertino/jquery-ui.css" rel="stylesheet" type="text/css"/>
     <script language="JavaScript" src="http://www.google.com/jsapi"></script>
@@ -390,11 +390,12 @@
             Log.getLog().info("  as ArrayBuffer (mozResponseArrayBuffer).");
             xh_res4 = xh_req4.mozResponseArrayBuffer;
         }
+        // TODO
         //if (0 == test) {
         //    test4start();
         //}
     };
-    xh_req4.send();
+    // TODO: xh_req4.send();
     var master4 = new MasterChannel();
     var player4 = new PsglogPlayer();
     player4.setMasterChannel(master4);
@@ -452,7 +453,7 @@
         }
         test7start();
     };
-    xh_req7.send();
+    // TODO: xh_req7.send();
     var div7 = document.getElementById("test7drop");
     var info7 = document.getElementById("test7info");
     var prog7 = document.getElementById("test7prog");
@@ -468,6 +469,7 @@
     master8.setVolume(1);
     var player8 = new TsdPlayer();
     player8.setMasterChannel(master8);
+    test8start();  // TODO: Remove this
 
     // TEST 5, 6 and 7
     function isParent(id, node) {
@@ -578,7 +580,7 @@
             var graph = Flotr.draw(container, [data], {
                 xaxis: {
                     ticks: xTicks,
-                    max: 400,
+                    max: 400
                 },
                 yaxis: {
                     ticks: [[-20, ''], -10, 0, 10, [20, '[dB]']],
