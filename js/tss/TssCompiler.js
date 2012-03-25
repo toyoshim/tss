@@ -10,7 +10,7 @@
  * @author Takashi Toyoshima <toyoshim@gmail.com>
  */
 function TssCompiler () {
-    this.logMmlCompile = true;
+    this.logMmlCompile = false;
     this.source = null;
     this.directives = [];
     this.channels = [];
@@ -23,6 +23,15 @@ function TssCompiler () {
 }
 
 TssCompiler.VERSION = 0.93;
+TssCompiler.MODE_NORMAL = 0;
+TssCompiler.MODE_FAMICOM = 1;
+TssCompiler.MODE_GAMEBOY = 2;
+TssCompiler.VOLUME_RANGE_MODE_NORMAL = 0;
+TssCompiler.VOLUME_RANGE_MODE_UPPER = 1;
+TssCompiler.VOLUME_RELATIVE_MODE_NORMAL = 0;
+TssCompiler.VOLUME_RELATIVE_MODE_REVERSE = 1;
+TssCompiler.OCTAVE_MODE_NORMAL = 0;
+TssCompiler.OCTAVE_MODE_REVERSE = 1;
 TssCompiler._DEFAULT_FINENESS = 368;
 TssCompiler._ALPHABET_COUNT = 'z'.charCodeAt(0) - 'a'.charCodeAt(0) + 1;
 
@@ -51,11 +60,125 @@ TssCompiler.CompileError.prototype.toString = function () {
 };
 
 /**
+ * Convert signed number to unsigned 8-bit integer.
+ * @param n signed number
+ * @return unsigned 8-bit integer
+ */
+TssCompiler._toUint8 = function (n) {
+    if ((n < -128) || (127 < n))
+        throw new RangeError("unsupported range");
+    if (n < 0)
+        n = 0x100 + n;
+    return n & 0xff;
+};
+
+/**
+ * Get a parameter encslosed by a brace like <foo bar>.
+ * @param line source data of line object
+ * @param offset start offset
+ * @return result object
+ *      begin: start offset
+ *      end: end offset
+ *      parameter: parameter of TString oject if success
+ */
+TssCompiler._getBracedParameter = function (line, offset) {
+    var data = line.data;
+    var begin = offset + data.countSpaces(offset);
+    if ('<' != data.charAt(begin))
+        return { begin: begin, end: begin, parameter: undefined };
+    begin++;
+    var n = 0;
+    var length = data.byteLength();
+    var c;
+    for (var i = begin; i < length; i++) {
+        c = data.at(i);
+        if ((0 == c) || ('\\'.charCodeAt(0) == c))
+            continue;
+        if ('>'.charCodeAt(0) == c)
+            break;
+        n++;
+    }
+    var end = begin + n - 1;
+    var param = TString.createFromUint8Array(new Uint8Array(n));
+    for (i = begin; i <= end; i++) {
+        c = data.at(i);
+        if ((0 == c) || ('\\'.charCodeAt(0) == c))
+            continue;
+        param.setAt(i - begin, c);
+    }
+    return {
+        begin: begin - 1,
+        end: end + 1,
+        parameter: param
+    }
+};
+
+/**
+ * Get a number parameter.
+ * @param line source data of line object
+ * @param offset start offset
+ * @throw TssCompiler.CompileError
+ * @return result object
+ *      begin: start offset
+ *      end: end offset
+ *      parameter: parameter of number
+ */
+TssCompiler._getNumberParameter = function (line, offset) {
+    var data = line.data;
+    var begin = offset + data.countSpaces(offset);
+    var sign = 1;
+    if ('-' == data.charAt(begin)) {
+        begin++;
+        begin += data.countSpaces(begin);
+        sign = -1;
+    }
+    var n = data.numberAt(begin);
+    if (n < 0)
+        return { begin: begin, end: begin, parameter: undefined };
+    var length = data.byteLength();
+    for (var i = begin + 1; i < length; i++) {
+        var result = data.numberAt(i);
+        if (result < 0)
+            return { begin: begin, end: i - 1, parameter: sign * n };
+        n = n * 10 + result;
+    }
+    return { begin: begin, end: i - 1, parameter: sign * n};
+};
+
+/**
+ * Get a character.
+ * @param line source data of line object
+ * @param offset offset start offset
+ * @param character charactet string to find
+ * @return -1 if the next non-space character is not comma, otherwise offset
+ */
+TssCompiler._getCharacter = function (line, offset, character) {
+    var data = line.data;
+    var position = offset + data.countSpaces(offset);
+    if (character != data.charAt(position))
+        return -1;
+    return position;
+};
+
+/**
+ * Check if the rest part of specified line has no data.
+ * @param line line object to be checked
+ * @param offset start offset
+ */
+TssCompiler.prototype._checkEnd = function (line, offset) {
+    var data = line.data;
+    offset += data.countSpaces(offset);
+    if (offset != data.byteLength())
+        return false;
+    return true;
+};
+
+/**
  * Check line.directive is channel directive (e.g. "#A", "#zx") then rewrite
  * line.directive with channel number.
  * @param line line object to check
  */
-TssCompiler.prototype._checkChannelDirective = function (line) {
+TssCompiler._checkChannelDirective = function (line) {
     if ((2 < line.directive.length) || (0 == line.directive.length))
         return;
     var n = TString.createFromString(line.directive);
@@ -80,7 +203,7 @@ TssCompiler.prototype._checkChannelDirective = function (line) {
  * and retrieve the directive (e.g. "#TITLE") from buffer.
  * @param line line object
  */
-TssCompiler.prototype._checkDirective = function (line) {
+TssCompiler._checkDirective = function (line) {
     var data = line.data;
     var length = data.byteLength();
     for (var i = 0; i < length; i++) {
@@ -102,7 +225,7 @@ TssCompiler.prototype._checkDirective = function (line) {
     line.directive = data.slice(start, i).toString();
     for (var offset = start; offset < i; offset++)
         data.setAt(offset, 0);
-    this._checkChannelDirective(line);
+    TssCompiler._checkChannelDirective(line);
 };
 
 /**
@@ -164,7 +287,7 @@ TssCompiler.prototype._preprocessLine = function (context, offset, count) {
         }
     }
     if (!result.empty)
-        this._checkDirective(result);
+        TssCompiler._checkDirective(result);
     return result;
 };
 
@@ -215,105 +338,6 @@ TssCompiler.prototype._parseLines = function () {
 };
 
 /**
- * Get a parameter encslosed by a brace like <foo bar>.
- * @param line source data of line object
- * @param offset start offset
- * @return result object
- *      begin: start offset
- *      end: end offset
- *      parameter: parameter of TString oject if success
- */
-TssCompiler.prototype._getBracedParameter = function (line, offset) {
-    var data = line.data;
-    var begin = offset + data.countSpaces(offset);
-    if ('<' != data.charAt(begin))
-        return { begin: begin, end: begin, parameter: undefined };
-    begin++;
-    var n = 0;
-    var length = data.byteLength();
-    for (var i = begin; i < length; i++) {
-        var c = data.at(i);
-        if ((0 == c) || ('\\'.charCodeAt(0) == c))
-            continue;
-        if ('>'.charCodeAt(0) == c)
-            break;
-        n++;
-    }
-    var end = begin + n - 1;
-    var param = TString.createFromUint8Array(new Uint8Array(n));
-    for (i = begin; i <= end; i++) {
-        var c = data.at(i);
-        if ((0 == c) || ('\\'.charCodeAt(0) == c))
-            continue;
-        param.setAt(i - begin, c);
-    }
-    return {
-        begin: begin - 1,
-        end: end + 1,
-        parameter: param
-    }
-};
-
-/**
- * Get a number parameter.
- * @param line source data of line object
- * @param offset start offset
- * @throw TssCompiler.CompileError
- * @return result object
- *      begin: start offset
- *      end: end offset
- *      parameter: parameter of number
- */
-TssCompiler.prototype._getNumberParameter = function (line, offset) {
-    var data = line.data;
-    var begin = offset + data.countSpaces(offset);
-    var sign = 1;
-    if ('-' == data.charAt(begin)) {
-        begin++;
-        begin += data.countSpaces(begin);
-        sign = -1;
-    }
-    var n = data.numberAt(begin);
-    if (n < 0)
-        return { begin: begin, end: begin, parameter: undefined };
-    var length = data.byteLength();
-    for (var i = begin + 1; i < length; i++) {
-        var result = data.numberAt(i);
-        if (result < 0)
-            return { begin: begin, end: i - 1, parameter: sign * n };
-        n = n * 10 + result;
-    }
-    return { begin: begin, end: i - 1, parameter: sign * n};
-};
-
-/**
- * Get comma.
- * @param line source data of line object
- * @param offset offset start offset
- * @return -1 if the next non-space character is not comma, otherwise offset
- */
-TssCompiler.prototype._getComma = function (line, offset) {
-    var data = line.data;
-    var position = offset + data.countSpaces(offset);
-    if (',' != data.charAt(position))
-        return -1;
-    return position;
-};
-
-/**
- * Check if the rest part of specified line has no data.
- * @param line line object to be checked
- * @param offset start offset
- */
-TssCompiler.prototype._checkEnd = function (line, offset) {
-    var data = line.data;
-    offset += data.countSpaces(offset);
-    if (offset != data.byteLength())
-        return false;
-    return true;
-};
-
-/**
  * Parse directives.
  * @raose TssCompiler.CompileError
  */
@@ -323,7 +347,7 @@ TssCompiler.prototype._parseDirectives = function () {
         var offset = 0;
         var result;
         if ("CHANNEL" == directive) {
-            result = this._getNumberParameter(this.directives[i], 0);
+            result = TssCompiler._getNumberParameter(this.directives[i], 0);
             if (typeof result.parameter == "undefined")
                 throw new TssCompiler.CompileError(this.directives[i],
                         result.begin, "number not found in #CHANNEL");
@@ -343,7 +367,7 @@ TssCompiler.prototype._parseDirectives = function () {
             // TODO
             Log.getLog().warn("TSS: #TABLE is not implemented");
         } else if ("TITLE" == directive) {
-            result = this._getBracedParameter(this.directives[i], 0);
+            result = TssCompiler._getBracedParameter(this.directives[i], 0);
             if (!result.parameter)
                 throw new TssCompiler.CompileError(this.directives[i],
                         result.begin, "syntax error in #TITLE");
@@ -370,47 +394,88 @@ TssCompiler.prototype._parseDirectives = function () {
  * Parse channel data.
  */
 TssCompiler.prototype._parseChannels = function () {
-    // TODO:
-    // cmdOctaveUp, cmdOCtabeDown, cmdVolumeUp, and cmdVolumeDown must reflect
-    // directive settings.
-    var cmdOctaveUp = '<';
-    var cmdOctaveDown = '>';
-    var cmdVolumeUp = '(';
-    var cmdVolumeDown = ')';
-    // TODO:
-    // volumeMsx and gateMax must reflect settings.
-    var volumeMax = 15;
-    var gateMax = 16;
+    var gateMax = 16;  // TODO: #GATE
     // Syntax information except for note premitives (cdefgabr).
+    var notImplemented = function (self, work, command, args) {
+        throw new TssCompiler.CompileError(work.lineObject, work.offset,
+                "command '" + command + "' not implemented");
+    };
     var syntax = {
         '$': {  // loop
             args: [],
-            callback: function (self, work, args) {
-                // TODO
+            callback: function (self, work, command, args) {
+                work.data.push(TsdPlayer._CMD_ENDLESS_LOOP_POINT);
             }
         },
         '%': {  // module
-            args: [
-                { def: 0, min: 0, max: 255 }
-            ],
-            callback: function (self, work, args) {
-                // TODO
+            args: [ { def: 0, min: 0, max: 255 } ],
+            callback: function (self, work, command, args) {
+                if (TssCompiler.MODE_FAMICOM == work.mode)
+                    throw new TssCompiler.CompileError(work.lineObject,
+                            work.offset,
+                            "'%' is not supported in famicom mode");
+                work.data.push(TsdPlayer._CMD_MODULE_CHANGE);
+                work.data.push(args[0]);
             }
         },
+        '(': {  // volume relative up (down)
+            args: [],  // TODO
+            callback: notImplemented
+        },
+        ')': {  // volume relative down (up)
+            args: [],  // TODO
+            callback: notImplemented
+        },
         '/': {  // local loop break
-            sequence: ":"
+            sequence: ":",
+            args: [],  // TODO
+            callback: notImplemented
         },
         '/:': {  // local loop begin
+            args: [],  // TODO
+            callback: notImplemented
         },
         ':/': {  // local loop end
+            args: [],  // TODO
+            callback: notImplemented
+        },
+        '<': {  // octave up (down)
+            args: [],
+            callback: function (self, work, command, args) {
+                if (TssCompiler.OCTAVE_MODE_NORMAL == work.octaveMode)
+                    work.currentOctave++;
+                else
+                    work.currentOctave--;
+            }
+        },
+        '>': {  // octave down (up)
+            args: [],
+            callback: function (self, work, command, args) {
+                if (TssCompiler.OCTAVE_MODE_NORMAL == work.octaveMode)
+                    work.currentOctave--;
+                else
+                    work.currentOctave++;
+            }
         },
         '@': {  // voice
             sequence: "iov",
-            args: [
-                { def: 0, min: 0, max: 255 }
-            ],
-            callback: function (self, work, args) {
-                // TODO
+            args: [ { def: 0, min: 0, max: 255 } ],
+            callback: function (self, work, command, args) {
+                if (TssCompiler.MODE_FAMICOM == work.mode) {
+                    if (work.lineObject.directive == 2)
+                        throw new TssCompiler.CompileError(work.lineObject,
+                                work.offset,
+                                "'@' is not supported in famicom mode " +
+                                        "channel 3");
+                    else if ((2 != args[0]) && (4 != args[0]) &&
+                            (6 != args[0]) && (7 != args[0]))
+                        throw new TssCompiler.CompileError(work.lineObject,
+                                work.offset,
+                                "voice id " + args[0] +
+                                        " is invalid in famicom mode");
+                }
+                work.data.push(TsdPlayer._CMD_VOICE_CHANGE);
+                work.data.push(args[0]);
             }
         },
         '@i': {  // input pipe
@@ -418,8 +483,9 @@ TssCompiler.prototype._parseChannels = function () {
                 { def: 0, min: 0, max: 8 },
                 { def: 0, min: 0, max: 3 }
             ],
-            callback: function (self, work, args) {
-                // TODO
+            callback: function (self, work, command, args) {
+                work.data.push(TsdPlayer._CMD_FM_IN);
+                work.data.push((args[0] << 4) | args[1]);
             }
         },
         '@o': {  // output pipe
@@ -427,129 +493,190 @@ TssCompiler.prototype._parseChannels = function () {
                 { def: 0, min: 0, max: 2 },
                 { def: 0, min: 0, max: 3 }
             ],
-            callback: function (self, work, args) {
-                // TODO
+            callback: function (self, work, command, args) {
+                work.data.push(TsdPlayer._CMD_FM_OUT);
+                work.data.push((args[0] << 4) | args[1]);
             }
         },
         '@v': {  // fine volume
+            args: [],  // TODO
+            callback: notImplemented
         },
         ']': {  // loop end
             args: [],
-            callback: function (self, work, args) {
-                // TODO
+            callback: function (self, work, command, args) {
+                if (0 == work.loop.count)
+                    throw new TssCompiler.CompileError(work.lineObject,
+                            work.offset, "']' found without '['");
+                if (--work.loop.count > 0)
+                    return;
+                work.loop.end.line = work.line;
+                work.loop.end.offset = work.offset;
+                work.line = work.loop.line;
+                work.offset = work.loop.offset;
+                work.lineObject = self.channels[ch][work.line];
             }
         },
         '[': {  // loop start
-            args: [
-                { def: 2, min: 2, max: 65535 }
-            ],
-            callback: function (self, work, args) {
-                // TODO
+            args: [ { def: 2, min: 2, max: 65535 } ],
+            callback: function (self, work, command, args) {
+                work.loop.count = args[0];
+                work.loop.line = work.line;
+                work.loop.offset = work.offset;
             }
         },
         '_': {  // relative volume up
+            args: [],  // TODO
+            callback: notImplemented
         },
         '|': {  // loop break
             args: [],
-            callback: function (self, work, args) {
-                // TODO
+            callback: function (self, work, command, args) {
+                if (--work.loop.count > 0)
+                    return;
+                work.line = work.loop.end.line;
+                work.offset = work.loop.end.offset;
+                work.lineObject = self.channels[ch][work.line];
             }
         },
         '~': {  // relative volume down
+            args: [],  // TODO
+            callback: notImplemented
         },
         k: {  // detune
-            args: [
-                { def: 0, min: -128, max: 127 }
-            ],
-            callback: function (self, work, args) {
-                // TODO
+            args: [ { def: 0, min: -128, max: 127 } ],
+            callback: function (self, work, command, args) {
+                work.data.push(TsdPlayer._CMD_DETUNE);
+                work.data.push(TssCompiler._toUint8(args[0]));
             }
         },
         l: {  // default note length
-            args: [
-                { def: 1, min: 0, max: 255 }
-            ],
-            callback: function (self, work, args) {
-                // TODO
+            args: [ { def: 4, min: 1, max: 1024 } ],
+            callback: function (self, work, command, args) {
+                work.defaultLength = args[0];
+                var position = TssCompiler._getCharacter(
+                        work.lineObject, work.offset, '.');
+                work.defaultDot = true;
+                if (position >= 0)
+                    work.offset = position + 1;
+                else
+                    work.defaultDot = false;
             }
         },
         m: {  // multiple
-            sequence: "p"
+            sequence: "p",
+            args: [],  // TODO
+            callback: notImplemented
         },
         mp: {  // pitch modulation
             args: [
                 { def: undefined, min: 0, max: 65535 },  // delay
                 { def: undefined, min: 0, max: 255 },  // depth
                 { def: undefined, min: 0, max: 255 },  // width
-                { def: undefined, min: -127, max: 127 },  // height
+                { def: undefined, min: -128, max: 127 },  // height
                 { def: undefined, min: 0, max: 255 }  // delta
             ],
-            callback: function (self, work, args) {
-                // TODO
+            callback: function (self, work, command, args) {
+                if (args[0]) {
+                    work.data.push(TsdPlayer._CMD_PITCH_MODULATION_DELAY);
+                    work.data.push(args[0]);
+                }
+                if (args.length < 2)
+                    return;
+                if (args[1]) {
+                    work.data.push(TsdPlayer._CMD_PITCH_MODULATION_DEPTH);
+                    work.data.push(args[1]);
+                }
+                if (args.length < 3)
+                    return;
+                if (args[2]) {
+                    work.data.push(TsdPlayer._CMD_PITCH_MODULATION_WIDTH);
+                    work.data.push(args[2]);
+                }
+                if (args.length < 4)
+                    return;
+                if (args[3]) {
+                    work.data.push(TsdPlayer._CMD_PITCH_MODULATION_HEIGHT);
+                    work.data.push(TssCompiler._toUint8(args[3]));
+                }
+                if (args.length < 5)
+                    return;
+                if (args[4]) {
+                    work.data.push(TsdPlayer._CMD_PITCH_MODULATION_DELTA);
+                    work.data.push(args[4]);
+                }
             }
         },
         n: {  // n/a
-            sequence: "ast"
+            sequence: "ast",
+            args: [],  // TODO
+            callback: notImplemented
         },
         na: {  // amp envelope
+            args: [],  // TODO
+            callback: notImplemented
         },
         ns: {  // note emvelope
+            args: [],  // TODO
+            callback: notImplemented
         },
         nt: {  // note shift
+            args: [],  // TODO
+            callback: notImplemented
         },
         o: {  // octave
-            args: [
-                { def: 4, min: 1, max: 8 }
-            ],
-            callback: function (self, work, args) {
-                // TODO
+            args: [ { def: 4, min: 1, max: 8 } ],
+            callback: function (self, work, command, args) {
+                work.currentOctave = args[0];
             }
         },
         p: {  // panpot
             sequence: "h",
-            args: [
-                { def: 0, min: 0, max: 3 }
-            ],
-            callback: function (self, work, args) {
-                // TODO
+            args: [ { def: 0, min: 0, max: 3 } ],
+            callback: function (self, work, command, args) {
+                work.data.push(TsdPlayer._CMD_PANPOT);
+                work.data.push(args[0]);
             }
         },
         ph: {  // key-on phase
+            args: [],  // TODO
+            callback: notImplemented
         },
         q: {  // gate time
-            args: [
-                { def: gateMax, min: 0, max: gateMax }
-            ],
-            callback: function (self, work, args) {
-                // TODO
+            args: [ { def: gateMax, min: 0, max: gateMax } ],
+            callback: function (self, work, command, args) {
+                work.currentGate = args[0];
             }
         },
         r: {  // note off
             args:[],
-            callback: function (self, work, args) {
+            callback: function (self, work, command, args) {
                 if (0 != args.length) {
-                    work.offset += data.countSpaces(work.offset);
-                    var c = data.charAt(work.offset);
+                    work.offset +=
+                            work.lineObject.data.countSpaces(work.offset);
+                    var c = work.lineObject.data.charAt(work.offset);
                     if (('-' == c) || ('+' == c))
                         work.offset++;
                     // TODO: handle -/+
                 }
                 for (;;) {
-                    var result = self._getNumberParameter(work.line,
-                        work.offset);
+                    var result = TssCompiler._getNumberParameter(
+                            work.lineObject, work.offset);
                     if (typeof result.parameter == "undefined") {
                         // TODO: take default value
                     } else {
                         // TODO: take result.parameter
                         work.offset = result.end + 1;
                     }
-                    work.offset += data.countSpaces(work.offset);
-                    if ('.' == data.charAt(work.offset)) {
+                    work.offset +=
+                            work.lineObject.data.countSpaces(work.offset);
+                    if ('.' == work.lineObject.data.charAt(work.offset)) {
                         // TODO: handle dot
                         work.offset++;
                     }
-                    work.offset += data.countSpaces(work.offset);
-                    if ('^' != data.charAt(work.offset))
+                    work.offset +=
+                            work.lineObject.data.countSpaces(work.offset);
+                    if ('^' != work.lineObject.data.charAt(work.offset))
                         break;
                     work.offset++;
                 }
@@ -560,71 +687,115 @@ TssCompiler.prototype._parseChannels = function () {
                 { def: 0, min: 0, max: 255 },
                 { def: 0, min: -128, max: 127 }
             ],
-            callback: function (self, work, args) {
-                // TODO
+            callback: function (self, work, command, args) {
+                work.data.push(TsdPlayer._CMD_SUSTAIN_MODE);
+                work.data.push(args[0]);
+                if (2 == args.length) {
+                    work.data.push(TsdPlayer._CMD_PORTAMENT);
+                    work.data.push(TssCompiler._toUint8(args[1]));
+                }
             }
         },
         t: {  // tempo
-            args: [
-                { def: 120, min: 1, max: 512 }
-            ],
-            callback: function (self, work, args) {
-                // TODO
+            args: [ { def: 120, min: 1, max: 512 } ],
+            callback: function (self, work, command, args) {
+                var n = ~~(22050 * 4 * 60 / 192 / args[0] + 0.5);
+                work.data.push(TsdPlayer._CMD_TEMPO);
+                work.data.push(n >> 8);
+                work.data.push(n & 0xff);
             }
         },
         v: {  // volume
             args: [
-                { def: 10, min: 0, max: volumeMax },
-                { def: 0, min: 0, max: volumeMax }
+                { def: 10, min: 0, max: 15 },
+                { def: 0, min: 0, max: 15 }
             ],
-            callback: function (self, work, args) {
-                // TODO
+            callback: function (self, work, command, args) {
+                if ((TsdPlayer.MODE_GAMEBOY == work.mode) &&
+                        (2 == work.lineObject.directive))
+                    for (var i = 0; i < args.length; i++)
+                        if (args[i] > 3)
+                            throw new TssCompiler.CompileError(work.lineObject,
+                                    work.offset, "volume must be less than 4" +
+                                            " for channel 2 in gameboy mode");
+                var base = 0;
+                var shift = 3;
+                if (TsdPlayer.MODE_GAMEBOY == work.mode)
+                    shift = 0;
+                else if (TsdPlayer.VOLUME_RANGE_MODE_NORMAL ==
+                        work.volumeRangeMode)
+                    shift = 4;
+                else
+                    base = 128;
+                if (1 == args.length) {
+                    // mono
+                    work.currentVolume.l = base + (args[0] << shift);
+                    work.data.push(TsdPlayer._CMD_VOLUME_MONO);
+                    work.data.push(work.currentVolume.l);
+                } else {
+                    // stereo
+                    work.currentVolume.l = base + (args[0] << shift);
+                    work.currentVolume.r = base + (args[1] << shift);
+                    work.data.push(TsdPlayer._CMD_VOLUME_LEFT);
+                    work.data.push(work.currentVolume.l);
+                    work.data.push(TsdPlayer._CMD_VOLUME_RIGHT);
+                    work.data.push(work.currentVolume.r);
+                }
             }
         },
         x: {  // volume and pitch mode
+            args: [],  // TODO
+            callback: notImplemented
         }
-    };
-    syntax[cmdOctaveUp] = {  // octave up
-        args: [],
-        callback: function (self, work, args) {
-            // TODO
-        }
-    };
-    syntax[cmdOctaveDown] = {  // octave down
-        args: [],
-        callback: function (self, work, args) {
-            // TODO
-        }
-    };
-    syntax[cmdVolumeUp] = {  // volume up
-    };
-    syntax[cmdVolumeDown] = {  // volume down
-    };
-    var work = {
-        offset: 0,
-        line: null
     };
     for (var ch = 0; ch < this.tag.channels; ch++) {
-        var lines = this.channels[ch].length;
-        for (var line = 0; line < lines; line++) {
-            work.line = this.channels[ch][line];
-            var data = work.line.data;
-            var length = data.byteLength();
-            for (work.offset = 0; work.offset < length; work.offset) {
-                work.offset += data.countSpaces(work.offset);
-                var c = data.lowerCharAt(work.offset);
+        var work = {
+            offset: 0,
+            line: 0,
+            lineObject: null,
+            // TODO: following modes must reflect settings.
+            mode: TssCompiler.MODE_NORMAL,
+            volumeRangeMode: TssCompiler.VOLUME_RANGE_MODE_NORMAL,
+            volumeRelativeMode: TssCompiler.VOLUME_RELATIVE_MODE_NORMAL,
+            octaveMode: TssCompiler.OCTAVE_MODE_NORMAL,
+            currentVolume: { l: 0, r: 0 },
+            currentOctave: 4,
+            currentGate: gateMax,
+            defaultDot: false,
+            defaultLength: 4,
+            loop: {
+                offset: 0,
+                line: 0,
+                count: 0,
+                end: {
+                    offset: 0,
+                    line: 0
+                }
+            },
+            data: []
+        };
+        for (work.line = 0; work.line < this.channels[ch].length;
+                work.line++) {
+            work.lineObject = this.channels[ch][work.line];
+            for (work.offset = 0;
+                    work.offset < work.lineObject.data.byteLength();
+                    work.offset) {
+                work.offset += work.lineObject.data.countSpaces(work.offset);
+                var c = work.lineObject.data.lowerCharAt(work.offset);
                 var args = [];
                 if (('a' <= c) && (c <= 'g')) {
                     args.push(c);
                     c = 'r';
                 }
                 if (!syntax[c])
-                    throw new TssCompiler.CompileError(work.line, work.offset,
+                    throw new TssCompiler.CompileError(work.lineObject,
+                        work.offset,
                         "unknown command " + c);
                 work.offset++;
                 if (syntax[c].sequence) {
-                    work.offset += data.countSpaces(work.offset);
-                    var next = data.lowerCharAt(work.offset);
+                    work.offset +=
+                            work.lineObject.data.countSpaces(work.offset);
+                    var next = work.lineObject.data.lowerCharAt(work.offset);
                     if (syntax[c].sequence.indexOf(next) >= 0) {
                         c += next;
                         work.offset++;
@@ -635,21 +806,17 @@ TssCompiler.prototype._parseChannels = function () {
                             "command " + c + " with parameters as follows");
                 for (var i = 0; i < syntax[c].args.length; i++) {
                     if (0 != i) {
-                        var position = this._getComma(work.line, work.offset);
-                        if (position < 0) {
-                            if (syntax[c].args[i].optional)
-                                throw new TssCompiler.CompileError(work.line,
-                                        work.offset,
-                                        "missing comma for '" + c + "'");
+                        var position = TssCompiler._getCharacter(
+                                work.lineObject, work.offset, ',');
+                        if (position < 0)
                             break;
-                        }
                         work.offset = position + 1;
                     }
-                    var result = this._getNumberParameter(work.line,
-                            work.offset);
+                    var result = TssCompiler._getNumberParameter(
+                            work.lineObject, work.offset);
                     if (typeof result.parameter == "undefined") {
                         if (typeof syntax[c].args[i].def == "undefined")
-                            throw new TssCompiler.CompileError(work.line,
+                            throw new TssCompiler.CompileError(work.lineObject,
                                     work.offset,
                                     "missing argument for '" + c + "'");
                         args.push(syntax[c].args[i].def);
@@ -661,11 +828,10 @@ TssCompiler.prototype._parseChannels = function () {
                 if (this.logMmlCompile)
                     Log.getLog().info(args);
                 if (syntax[c].callback)
-                    syntax[c].callback(this, work, args);
+                    syntax[c].callback(this, work, c, args);
             }
         }
     }
-    Log.getLog().warn("TSS: _parseChannels() is not completed");
 };
 
 /**
