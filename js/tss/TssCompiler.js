@@ -19,6 +19,7 @@ function TssCompiler () {
         title: null,
         channels: 0
     };
+    this.channelData = [];
     this.fineness = TssCompiler._DEFAULT_FINENESS;
 }
 
@@ -34,6 +35,15 @@ TssCompiler.OCTAVE_MODE_NORMAL = 0;
 TssCompiler.OCTAVE_MODE_REVERSE = 1;
 TssCompiler._DEFAULT_FINENESS = 368;
 TssCompiler._ALPHABET_COUNT = 'z'.charCodeAt(0) - 'a'.charCodeAt(0) + 1;
+TssCompiler._TONE_TABLE = {
+    'c': 0,
+    'd': 2,
+    'e': 4,
+    'f': 5,
+    'g': 7,
+    'a': 9,
+    'b': 11
+};
 
 /**
  * CompileError prototype
@@ -332,7 +342,8 @@ TssCompiler.prototype._parseLines = function () {
         var n = 0;
         if (undefined != this.channels[i])
             n = this.channels[i].length;
-        Log.getLog().info("TSS: channel " + i + " has " + n + " line(s)");
+        Log.getLog().info("TSS: channel " + (i + 1) + " has " + n +
+                " line(s)");
     }
 };
 
@@ -393,7 +404,7 @@ TssCompiler.prototype._parseDirectives = function () {
  * Parse channel data.
  */
 TssCompiler.prototype._parseChannels = function () {
-    var gateMax = 16;  // TODO: #GATE
+    var maxGate = 16;  // TODO: #GATE
     // Syntax information except for note premitives (cdefgabr).
     var notImplemented = function (self, work, command, args) {
         throw new TssCompiler.CompileError(work.lineObject, work.offset,
@@ -403,7 +414,7 @@ TssCompiler.prototype._parseChannels = function () {
         '$': {  // loop
             args: [],
             callback: function (self, work, command, args) {
-                work.data.push(TsdPlayer._CMD_ENDLESS_LOOP_POINT);
+                work.data.push(TsdPlayer.CMD_ENDLESS_LOOP_POINT);
             }
         },
         '%': {  // module
@@ -413,7 +424,7 @@ TssCompiler.prototype._parseChannels = function () {
                     throw new TssCompiler.CompileError(work.lineObject,
                             work.offset,
                             "'%' is not supported in famicom mode");
-                work.data.push(TsdPlayer._CMD_MODULE_CHANGE);
+                work.data.push(TsdPlayer.CMD_MODULE_CHANGE);
                 work.data.push(args[0]);
             }
         },
@@ -473,7 +484,7 @@ TssCompiler.prototype._parseChannels = function () {
                                 "voice id " + args[0] +
                                         " is invalid in famicom mode");
                 }
-                work.data.push(TsdPlayer._CMD_VOICE_CHANGE);
+                work.data.push(TsdPlayer.CMD_VOICE_CHANGE);
                 work.data.push(args[0]);
             }
         },
@@ -483,7 +494,7 @@ TssCompiler.prototype._parseChannels = function () {
                 { def: 0, min: 0, max: 3 }
             ],
             callback: function (self, work, command, args) {
-                work.data.push(TsdPlayer._CMD_FM_IN);
+                work.data.push(TsdPlayer.CMD_FM_IN);
                 work.data.push((args[0] << 4) | args[1]);
             }
         },
@@ -493,7 +504,7 @@ TssCompiler.prototype._parseChannels = function () {
                 { def: 0, min: 0, max: 3 }
             ],
             callback: function (self, work, command, args) {
-                work.data.push(TsdPlayer._CMD_FM_OUT);
+                work.data.push(TsdPlayer.CMD_FM_OUT);
                 work.data.push((args[0] << 4) | args[1]);
             }
         },
@@ -545,7 +556,7 @@ TssCompiler.prototype._parseChannels = function () {
         k: {  // detune
             args: [ { def: 0, min: -128, max: 127 } ],
             callback: function (self, work, command, args) {
-                work.data.push(TsdPlayer._CMD_DETUNE);
+                work.data.push(TsdPlayer.CMD_DETUNE);
                 work.data.push(TssCompiler._toUint8(args[0]));
             }
         },
@@ -553,13 +564,15 @@ TssCompiler.prototype._parseChannels = function () {
             args: [ { def: 4, min: 1, max: 1024 } ],
             callback: function (self, work, command, args) {
                 work.defaultLength = args[0];
-                var position = TssCompiler._getCharacter(
+                work.defaultDot = 0;
+                for (;;) {
+                    var position = TssCompiler._getCharacter(
                         work.lineObject, work.offset, '.');
-                work.defaultDot = true;
-                if (position >= 0)
+                    if (position < 0)
+                        break;
                     work.offset = position + 1;
-                else
-                    work.defaultDot = false;
+                    work.defaultDot++;
+                }
             }
         },
         m: {  // multiple
@@ -577,31 +590,31 @@ TssCompiler.prototype._parseChannels = function () {
             ],
             callback: function (self, work, command, args) {
                 if (args[0]) {
-                    work.data.push(TsdPlayer._CMD_PITCH_MODULATION_DELAY);
+                    work.data.push(TsdPlayer.CMD_PITCH_MODULATION_DELAY);
                     work.data.push(args[0]);
                 }
                 if (args.length < 2)
                     return;
                 if (args[1]) {
-                    work.data.push(TsdPlayer._CMD_PITCH_MODULATION_DEPTH);
+                    work.data.push(TsdPlayer.CMD_PITCH_MODULATION_DEPTH);
                     work.data.push(args[1]);
                 }
                 if (args.length < 3)
                     return;
                 if (args[2]) {
-                    work.data.push(TsdPlayer._CMD_PITCH_MODULATION_WIDTH);
+                    work.data.push(TsdPlayer.CMD_PITCH_MODULATION_WIDTH);
                     work.data.push(args[2]);
                 }
                 if (args.length < 4)
                     return;
                 if (args[3]) {
-                    work.data.push(TsdPlayer._CMD_PITCH_MODULATION_HEIGHT);
+                    work.data.push(TsdPlayer.CMD_PITCH_MODULATION_HEIGHT);
                     work.data.push(TssCompiler._toUint8(args[3]));
                 }
                 if (args.length < 5)
                     return;
                 if (args[4]) {
-                    work.data.push(TsdPlayer._CMD_PITCH_MODULATION_DELTA);
+                    work.data.push(TsdPlayer.CMD_PITCH_MODULATION_DELTA);
                     work.data.push(args[4]);
                 }
             }
@@ -633,7 +646,7 @@ TssCompiler.prototype._parseChannels = function () {
             sequence: "h",
             args: [ { def: 0, min: 0, max: 3 } ],
             callback: function (self, work, command, args) {
-                work.data.push(TsdPlayer._CMD_PANPOT);
+                work.data.push(TsdPlayer.CMD_PANPOT);
                 work.data.push(args[0]);
             }
         },
@@ -642,42 +655,115 @@ TssCompiler.prototype._parseChannels = function () {
             callback: notImplemented
         },
         q: {  // gate time
-            args: [ { def: gateMax, min: 0, max: gateMax } ],
+            args: [ { def: maxGate, min: 0, max: maxGate } ],
             callback: function (self, work, command, args) {
                 work.currentGate = args[0];
             }
         },
-        r: {  // note off
+        r: {  // note on/off
             args:[],
             callback: function (self, work, command, args) {
-                if (0 != args.length) {
-                    work.offset +=
-                            work.lineObject.data.countSpaces(work.offset);
-                    var c = work.lineObject.data.charAt(work.offset);
-                    if (('-' == c) || ('+' == c))
-                        work.offset++;
-                    // TODO: handle -/+
+                if ('r' != command) {
+                    if ((work.currentOctave < 1) || (8 < work.currentOctave))
+                        throw new TssCompiler.CompileError(work.lineObject,
+                                work.offset, "current octave is out of range");
                 }
+                work.offset +=
+                    work.lineObject.data.countSpaces(work.offset);
+                var c = work.lineObject.data.charAt(work.offset);
+                var fine = 0;
+                if (('-' == c) || ('+' == c) || ('#' == c)) {
+                    work.offset++;
+                    if ('-' == c)
+                        fine = -1;
+                    else
+                        fine = 1;
+                }
+                var totalCount = 0;
                 for (;;) {
                     var result = TssCompiler._getNumberParameter(
                             work.lineObject, work.offset);
+                    var length = 0;
+                    var dot = 0;
                     if (typeof result.parameter == "undefined") {
-                        // TODO: take default value
+                        length = work.defaultLength;
+                        dot = work.defaultDot;
                     } else {
-                        // TODO: take result.parameter
+                        length = result.parameter;
                         work.offset = result.end + 1;
                     }
-                    work.offset +=
-                            work.lineObject.data.countSpaces(work.offset);
-                    if ('.' == work.lineObject.data.charAt(work.offset)) {
-                        // TODO: handle dot
-                        work.offset++;
+                    for (;;) {
+                        var position = TssCompiler._getCharacter(
+                                work.lineObject, work.offset, '.');
+                        if (position < 0)
+                            break;
+                        work.offset = position + 1;
+                        dot++;
                     }
-                    work.offset +=
-                            work.lineObject.data.countSpaces(work.offset);
-                    if ('^' != work.lineObject.data.charAt(work.offset))
+                    if (0 != (work.clock % length))
+                        Log.getLog().warn("TSS: time resolution is not " +
+                                "enough for length " + length);
+                    var count = ~~(work.clock / length);
+                    totalCount += count;
+                    while (dot-- > 0) {
+                        if (0 != (count % 2))
+                            throw new TssCompiler.CompileError(work.lineObject,
+                                    work.offset, "too many . against time " +
+                                            "resolution");
+                        count /= 2;
+                        totalCount += count;
+                    }
+                    position = TssCompiler._getCharacter(work.lineObject,
+                        work.offset, '^');
+                    if (position < 0)
                         break;
-                    work.offset++;
+                    work.offset = position + 1;
+                }
+                // TODO: Handle '&'.
+                var restCount = 0;
+                work.count += totalCount;
+                if ('r' == command) {
+                    work.data.push(TsdPlayer.CMD_NOTE_OFF);
+                } else {
+                    // TODO: Handle note shift.
+                    fine += work.currentOctave * 12 +
+                            TssCompiler._TONE_TABLE[command];
+                    if (fine < 0) {
+                        Log.getLog().warn("TSS: too low tone (clamped)");
+                        fine = 0;
+                    } else if (fine > 127) {
+                        Log.getLog().warn("TSS: too high tone (clamped)");
+                        fine = 127;
+                    }
+                    work.data.push(fine);
+                    // TODO: Handle '&'.
+                    restCount = totalCount;
+                    totalCount =
+                            ~~(totalCount * work.currentGate / work.maxGate);
+                    restCount -= totalCount;
+                }
+                if (totalCount < 255) {
+                    work.data.push(totalCount);
+                } else if (totalCount < 65535) {
+                    work.data.push(255);
+                    work.data.push(totalCount >> 8);
+                    work.data.push(totalCount & 0xff);
+                } else {
+                    throw new TssCompiler.CompileError(work.lineObject,
+                            work.offset, "note length is too long");
+                }
+                if (restCount > 0) {
+                    work.data.push(TsdPlayer.CMD_NOTE_OFF)
+                    if (restCount < 255) {
+                        work.data.push(totalCount);
+                    } else if (restCount < 65535) {
+                        work.data.push(255);
+                        work.data.push(restCount >> 8);
+                        work.data.push(restCount & 0xff);
+                    } else {
+                        throw new TssCompiler.CompileError(work.lineObject,
+                            work.offset, "rest length is too long");
+                    }
                 }
             }
         },
@@ -687,10 +773,10 @@ TssCompiler.prototype._parseChannels = function () {
                 { def: 0, min: -128, max: 127 }
             ],
             callback: function (self, work, command, args) {
-                work.data.push(TsdPlayer._CMD_SUSTAIN_MODE);
+                work.data.push(TsdPlayer.CMD_SUSTAIN_MODE);
                 work.data.push(args[0]);
                 if (2 == args.length) {
-                    work.data.push(TsdPlayer._CMD_PORTAMENT);
+                    work.data.push(TsdPlayer.CMD_PORTAMENT);
                     work.data.push(TssCompiler._toUint8(args[1]));
                 }
             }
@@ -699,7 +785,7 @@ TssCompiler.prototype._parseChannels = function () {
             args: [ { def: 120, min: 1, max: 512 } ],
             callback: function (self, work, command, args) {
                 var n = ~~(22050 * 4 * 60 / 192 / args[0] + 0.5);
-                work.data.push(TsdPlayer._CMD_TEMPO);
+                work.data.push(TsdPlayer.CMD_TEMPO);
                 work.data.push(n >> 8);
                 work.data.push(n & 0xff);
             }
@@ -729,15 +815,15 @@ TssCompiler.prototype._parseChannels = function () {
                 if (1 == args.length) {
                     // mono
                     work.currentVolume.l = base + (args[0] << shift);
-                    work.data.push(TsdPlayer._CMD_VOLUME_MONO);
+                    work.data.push(TsdPlayer.CMD_VOLUME_MONO);
                     work.data.push(work.currentVolume.l);
                 } else {
                     // stereo
                     work.currentVolume.l = base + (args[0] << shift);
                     work.currentVolume.r = base + (args[1] << shift);
-                    work.data.push(TsdPlayer._CMD_VOLUME_LEFT);
+                    work.data.push(TsdPlayer.CMD_VOLUME_LEFT);
                     work.data.push(work.currentVolume.l);
-                    work.data.push(TsdPlayer._CMD_VOLUME_RIGHT);
+                    work.data.push(TsdPlayer.CMD_VOLUME_RIGHT);
                     work.data.push(work.currentVolume.r);
                 }
             }
@@ -752,6 +838,8 @@ TssCompiler.prototype._parseChannels = function () {
             offset: 0,
             line: 0,
             lineObject: null,
+            clock: 192, // TODO #CLOCK
+            maxGate: maxGate,
             // TODO: following modes must reflect settings.
             mode: TssCompiler.MODE_NORMAL,
             volumeRangeMode: TssCompiler.VOLUME_RANGE_MODE_NORMAL,
@@ -759,8 +847,8 @@ TssCompiler.prototype._parseChannels = function () {
             octaveMode: TssCompiler.OCTAVE_MODE_NORMAL,
             currentVolume: { l: 0, r: 0 },
             currentOctave: 4,
-            currentGate: gateMax,
-            defaultDot: false,
+            currentGate: maxGate,
+            defaultDot: 0,
             defaultLength: 4,
             loop: {
                 offset: 0,
@@ -771,6 +859,7 @@ TssCompiler.prototype._parseChannels = function () {
                     line: 0
                 }
             },
+            count: 0,
             data: []
         };
         for (work.line = 0; work.line < this.channels[ch].length;
@@ -782,10 +871,8 @@ TssCompiler.prototype._parseChannels = function () {
                 work.offset += work.lineObject.data.countSpaces(work.offset);
                 var c = work.lineObject.data.lowerCharAt(work.offset);
                 var args = [];
-                if (('a' <= c) && (c <= 'g')) {
-                    args.push(c);
+                if (('a' <= c) && (c <= 'g'))
                     c = 'r';
-                }
                 if (!syntax[c])
                     throw new TssCompiler.CompileError(work.lineObject,
                         work.offset,
@@ -830,6 +917,9 @@ TssCompiler.prototype._parseChannels = function () {
                     syntax[c].callback(this, work, c, args);
             }
         }
+        this.channelData[ch] = work.data;
+        Log.getLog().info("TSS: DATA " + (ch + 1) + "> " + work.data.length +
+                " Byte(s) / " + work.count + " Tick(s)");
     }
 };
 

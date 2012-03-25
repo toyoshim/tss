@@ -20,6 +20,39 @@ function TsdPlayer () {
 }
 
 TsdPlayer.VERSION = 0.93;
+TsdPlayer.CMD_LAST_NOTE = 0x7f;
+TsdPlayer.CMD_NOTE_OFF = 0x80;
+TsdPlayer.CMD_VOLUME_MONO = 0x81;
+TsdPlayer.CMD_SUSTAIN_MODE = 0x82;
+TsdPlayer.CMD_DETUNE = 0x83;
+TsdPlayer.CMD_PORTAMENT = 0x84;
+TsdPlayer.CMD_VOLUME_LEFT = 0x85;
+TsdPlayer.CMD_VOLUME_RIGHT = 0x86;
+TsdPlayer.CMD_PANPOT = 0x87;
+TsdPlayer.CMD_RELATIVE_VOLUME_UP = 0x88;
+TsdPlayer.CMD_RELATIVE_VOLUME_DOWN = 0x89;
+TsdPlayer.CMD_TEMPO = 0x90;
+TsdPlayer.CMD_FINENESS = 0x91;
+TsdPlayer.CMD_KEY_ON_PHASE = 0x92;
+TsdPlayer.CMD_MULTIPLE = 0x93;
+TsdPlayer.CMD_PITCH_MODULATION_DELAY = 0xa0;
+TsdPlayer.CMD_PITCH_MODULATION_DEPTH = 0xa1;
+TsdPlayer.CMD_PITCH_MODULATION_WIDTH = 0xa2;
+TsdPlayer.CMD_PITCH_MODULATION_HEIGHT = 0xa3;
+TsdPlayer.CMD_PITCH_MODULATION_DELTA = 0xa4;
+TsdPlayer.CMD_AMP_EMVELOPE = 0xb8;
+TsdPlayer.CMD_NOTE_EMVELOPE = 0xc8;
+TsdPlayer.CMD_ENDLESS_LOOP_POINT = 0xe0;
+TsdPlayer.CMD_LOCAL_LOOP_START = 0xe1;
+TsdPlayer.CMD_LOCAL_LOOP_BREAK = 0xe2;
+TsdPlayer.CMD_LOCAL_LOOP_END = 0xe3;
+TsdPlayer.CMD_FREQUENCY_MODE_CHANGE = 0xf0;
+TsdPlayer.CMD_VOLUME_MODE_CHANGE = 0xf1;
+TsdPlayer.CMD_FM_IN = 0xf8;
+TsdPlayer.CMD_FM_OUT = 0xf9;
+TsdPlayer.CMD_VOICE_CHANGE = 0xfd;
+TsdPlayer.CMD_MODULE_CHANGE = 0xfe;
+TsdPlayer.CMD_END = 0xff;
 TsdPlayer._DEFAULT_TIMER_COUNT = 368;
 TsdPlayer._TIMER_AUTOMATION = 0;
 TsdPlayer._TIMER_SEQUENCER = 1;
@@ -34,39 +67,6 @@ TsdPlayer._FREQUENCY_TYPE_FM = 2;
 TsdPlayer._FREQUENCY_TYPE_GB_SQUARE = 3;
 TsdPlayer._VOLUME_TYPE_NORMAL = 0;
 TsdPlayer._VOLUME_TYPE_FM = 1;
-TsdPlayer._CMD_LAST_NOTE = 0x7f;
-TsdPlayer._CMD_NOTE_OFF = 0x80;
-TsdPlayer._CMD_VOLUME_MONO = 0x81;
-TsdPlayer._CMD_SUSTAIN_MODE = 0x82;
-TsdPlayer._CMD_DETUNE = 0x83;
-TsdPlayer._CMD_PORTAMENT = 0x84;
-TsdPlayer._CMD_VOLUME_LEFT = 0x85;
-TsdPlayer._CMD_VOLUME_RIGHT = 0x86;
-TsdPlayer._CMD_PANPOT = 0x87;
-TsdPlayer._CMD_RELATIVE_VOLUME_UP = 0x88;
-TsdPlayer._CMD_RELATIVE_VOLUME_DOWN = 0x89;
-TsdPlayer._CMD_TEMPO = 0x90;
-TsdPlayer._CMD_FINENESS = 0x91;
-TsdPlayer._CMD_KEY_ON_PHASE = 0x92;
-TsdPlayer._CMD_MULTIPLE = 0x93;
-TsdPlayer._CMD_PITCH_MODULATION_DELAY = 0xa0;
-TsdPlayer._CMD_PITCH_MODULATION_DEPTH = 0xa1;
-TsdPlayer._CMD_PITCH_MODULATION_WIDTH = 0xa2;
-TsdPlayer._CMD_PITCH_MODULATION_HEIGHT = 0xa3;
-TsdPlayer._CMD_PITCH_MODULATION_DELTA = 0xa4;
-TsdPlayer._CMD_AMP_EMVELOPE = 0xb8;
-TsdPlayer._CMD_NOTE_EMVELOPE = 0xc8;
-TsdPlayer._CMD_ENDLESS_LOOP_POINT = 0xe0;
-TsdPlayer._CMD_LOCAL_LOOP_START = 0xe1;
-TsdPlayer._CMD_LOCAL_LOOP_BREAK = 0xe2;
-TsdPlayer._CMD_LOCAL_LOOP_END = 0xe3;
-TsdPlayer._CMD_FREQUENCY_MODE_CHANGE = 0xf0;
-TsdPlayer._CMD_VOLUME_MODE_CHANGE = 0xf1;
-TsdPlayer._CMD_FM_IN = 0xf8;
-TsdPlayer._CMD_FM_OUT = 0xf9;
-TsdPlayer._CMD_VOICE_CHANGE = 0xfd;
-TsdPlayer._CMD_MODULE_CHANGE = 0xfe;
-TsdPlayer._CMD_END = 0xff;
 TsdPlayer._NOTE_FREQUENCY_TABLE = [ null, null, null, null ];
 TsdPlayer._NOTE_PARAMETER_TABLE = [ null, null, null, null ];
 TsdPlayer._PARAMETER_FREQUENCY_TABLE = [ null, null,null, null ];
@@ -597,7 +597,7 @@ TsdPlayer.prototype._performSequencer = function () {
         for (;;) {
             var cmd = this.input[ch.baseOffset + ch.offset++];
             var dt;
-            if (cmd <= TsdPlayer._CMD_LAST_NOTE) {
+            if (cmd <= TsdPlayer.CMD_LAST_NOTE) {
                 // Note on.
                 this._noteOn(ch, cmd);
                 ch.wait = this.input[ch.baseOffset + ch.offset++];
@@ -607,7 +607,7 @@ TsdPlayer.prototype._performSequencer = function () {
                 }
                 if (0 != ch.wait)
                     break;
-            } else if (cmd == TsdPlayer._CMD_NOTE_OFF) {
+            } else if (cmd == TsdPlayer.CMD_NOTE_OFF) {
                 // Note off.
                 this._noteOff(ch);
                 ch.wait = this.input[ch.baseOffset + ch.offset++];
@@ -617,132 +617,132 @@ TsdPlayer.prototype._performSequencer = function () {
                 }
                 if (0 != ch.wait)
                     break;
-            } else if (cmd == TsdPlayer._CMD_VOLUME_MONO) {
+            } else if (cmd == TsdPlayer.CMD_VOLUME_MONO) {
                 // Set volume by monaural with the panpot setting.
                 dt = this.input[ch.baseOffset + ch.offset++];
                 if (ch.pan & TsdPlayer._PAN_L)
                     ch.volume.l = dt;
                 if (ch.pan & TsdPlayer._PAN_R)
                     ch.volume.r = dt;
-            } else if (cmd == TsdPlayer._CMD_SUSTAIN_MODE) {
+            } else if (cmd == TsdPlayer.CMD_SUSTAIN_MODE) {
                 // Set sustain setting.
                 ch.sustain = this.input[ch.baseOffset + ch.offset++];
-            } else if (cmd == TsdPlayer._CMD_DETUNE) {
+            } else if (cmd == TsdPlayer.CMD_DETUNE) {
                 // Set detune setting.
                 ch.detune = this._readI8(ch.baseOffset + ch.offset);
                 ch.offset++;
-            } else if (cmd == TsdPlayer._CMD_PORTAMENT) {
+            } else if (cmd == TsdPlayer.CMD_PORTAMENT) {
                 // Set portament setting.
                 ch.portament = this._readI8(ch.baseOffset + ch.offset);
                 ch.offset++;
                 // Pitch modulation is disabled when portament is set.
                 ch.pitchModulation.enable = false;
-            } else if (cmd == TsdPlayer._CMD_VOLUME_LEFT) {
+            } else if (cmd == TsdPlayer.CMD_VOLUME_LEFT) {
                 ch.offset++;
                 Log.getLog().info("TSD: volume left");
                 // TODO
-            } else if (cmd == TsdPlayer._CMD_VOLUME_RIGHT) {
+            } else if (cmd == TsdPlayer.CMD_VOLUME_RIGHT) {
                 ch.offset++;
                 Log.getLog().info("TSD: volume right");
                 // TODO
-            } else if (cmd == TsdPlayer._CMD_PANPOT) {
+            } else if (cmd == TsdPlayer.CMD_PANPOT) {
                 ch.pan = this.input[ch.baseOffset + ch.offset++];
-            } else if (cmd == TsdPlayer._CMD_RELATIVE_VOLUME_UP) {
+            } else if (cmd == TsdPlayer.CMD_RELATIVE_VOLUME_UP) {
                 ch.offset++;
                 Log.getLog().info("TSD: volume up");
                 // TODO
-            } else if (cmd == TsdPlayer._CMD_RELATIVE_VOLUME_DOWN) {
+            } else if (cmd == TsdPlayer.CMD_RELATIVE_VOLUME_DOWN) {
                 ch.offset++;
                 Log.getLog().info("TSD: volume down");
                 // TODO
-            } else if (cmd == TsdPlayer._CMD_TEMPO) {
+            } else if (cmd == TsdPlayer.CMD_TEMPO) {
                 // Set musical tempo.
                 dt = this._readU16(ch.baseOffset + ch.offset);
                 ch.offset += 2;
                 this._setSequencerFineness(dt);
-            } else if (cmd == TsdPlayer._CMD_FINENESS) {
+            } else if (cmd == TsdPlayer.CMD_FINENESS) {
                 // Set automation speed.
                 dt = this._readU16(ch.baseOffset + ch.offset);
                 ch.offset += 2;
                 this._setAutomationFineness(dt);
-            } else if (cmd == TsdPlayer._CMD_KEY_ON_PHASE) {
+            } else if (cmd == TsdPlayer.CMD_KEY_ON_PHASE) {
                 ch.offset++;
                 Log.getLog().info("TSD: key on phase");
                 // TODO
-            } else if (cmd == TsdPlayer._CMD_MULTIPLE) {
+            } else if (cmd == TsdPlayer.CMD_MULTIPLE) {
                 ch.offset++;
                 Log.getLog().info("TSD: multiple");
                 // TODO
-            } else if (cmd == TsdPlayer._CMD_PITCH_MODULATION_DELAY) {
+            } else if (cmd == TsdPlayer.CMD_PITCH_MODULATION_DELAY) {
                 dt = this._readU16(ch.baseOffset + ch.offset);
                 ch.offset += 2;
                 ch.pitchModulation.delay = dt;
                 ch.pitchModulation.enable = 0 != dt;
                 // Portament is disabled when pitch modulation is set.
                 ch.portament = 0;
-            } else if (cmd == TsdPlayer._CMD_PITCH_MODULATION_DEPTH) {
+            } else if (cmd == TsdPlayer.CMD_PITCH_MODULATION_DEPTH) {
                 dt = this.input[ch.baseOffset + ch.offset++];
                 ch.pitchModulation.depth = dt;
-            } else if (cmd == TsdPlayer._CMD_PITCH_MODULATION_WIDTH) {
+            } else if (cmd == TsdPlayer.CMD_PITCH_MODULATION_WIDTH) {
                 dt = this.input[ch.baseOffset + ch.offset++];
                 ch.pitchModulation.width = dt;
-            } else if (cmd == TsdPlayer._CMD_PITCH_MODULATION_HEIGHT) {
+            } else if (cmd == TsdPlayer.CMD_PITCH_MODULATION_HEIGHT) {
                 dt = this._readI8(ch.baseOffset + ch.offset);
                 ch.offset++;
                 ch.pitchModulation.height = dt;
-            } else if (cmd == TsdPlayer._CMD_PITCH_MODULATION_DELTA) {
+            } else if (cmd == TsdPlayer.CMD_PITCH_MODULATION_DELTA) {
                 dt = this.input[ch.baseOffset + ch.offset++];
                 ch.pitchModulation.delta = dt;
-            } else if (cmd == TsdPlayer._CMD_AMP_EMVELOPE) {
+            } else if (cmd == TsdPlayer.CMD_AMP_EMVELOPE) {
                 // Set amp emvelope
                 dt = this.input[ch.baseOffset + ch.offset++];
                 ch.ampEnvelope.id = dt;
                 dt = this.input[ch.baseOffset + ch.offset++];
                 ch.ampEnvelope.wait = dt;
                 ch.ampEnvelope.enable = 0 != dt;
-            } else if (cmd == TsdPlayer._CMD_ENDLESS_LOOP_POINT) {
+            } else if (cmd == TsdPlayer.CMD_ENDLESS_LOOP_POINT) {
                 // Set endless loop point here.
                 ch.loop.offset = ch.offset;
-            } else if (cmd == TsdPlayer._CMD_LOCAL_LOOP_START) {
+            } else if (cmd == TsdPlayer.CMD_LOCAL_LOOP_START) {
                 // Set local loop start point here.
                 dt = this.input[ch.baseOffset + ch.offset++];
                 ch.localLoop[dt].count =
                     this.input[ch.baseOffset + ch.offset++];
                 ch.localLoop[dt].offset = ch.offset;
-            } else if (cmd == TsdPlayer._CMD_LOCAL_LOOP_BREAK) {
+            } else if (cmd == TsdPlayer.CMD_LOCAL_LOOP_BREAK) {
                 // Quit local loop if current loop is the last one.
                 dt = this.input[ch.baseOffset + ch.offset++];
                 if (ch.localLoop[dt].count == 1)
                     ch.offset = ch.localLoop[dt].end;
-            } else if (cmd == TsdPlayer._CMD_LOCAL_LOOP_END) {
+            } else if (cmd == TsdPlayer.CMD_LOCAL_LOOP_END) {
                 // Do local loop unless current loop is the last one.
                 dt = this.input[ch.baseOffset + ch.offset++];
                 ch.localLoop[dt].end = ch.offset;
                 if (0 != --ch.localLoop[dt].count)
                     ch.offset = ch.localLoop[dt].offset;
-            } else if (cmd == TsdPlayer._CMD_FREQUENCY_MODE_CHANGE) {
+            } else if (cmd == TsdPlayer.CMD_FREQUENCY_MODE_CHANGE) {
                 // Set frequency mode.
                 ch.frequency.type = this.input[ch.baseOffset + ch.offset++];
-            } else if (cmd == TsdPlayer._CMD_VOLUME_MODE_CHANGE) {
+            } else if (cmd == TsdPlayer.CMD_VOLUME_MODE_CHANGE) {
                 // Set volume mode.
                 ch.volume.type = this.input[ch.baseOffset + ch.offset++];
-            } else if (cmd == TsdPlayer._CMD_FM_IN) {
+            } else if (cmd == TsdPlayer.CMD_FM_IN) {
                 // Set fm input pipe.
                 dt = this.input[ch.baseOffset + ch.offset++];
                 this._setFmInPipe(ch, dt >> 4, dt & 0x0f);
-            } else if (cmd == TsdPlayer._CMD_FM_OUT) {
+            } else if (cmd == TsdPlayer.CMD_FM_OUT) {
                 // Set fm output pipe.
                 dt = this.input[ch.baseOffset + ch.offset++];
                 this._setFmOutPipe(ch, dt >> 4, dt & 0x0f);
-            } else if (cmd == TsdPlayer._CMD_VOICE_CHANGE) {
+            } else if (cmd == TsdPlayer.CMD_VOICE_CHANGE) {
                 // Set voice number with fm mode.
                 dt = this.input[ch.baseOffset + ch.offset++];
                 this._setVoice(ch, dt)
-            } else if (cmd == TsdPlayer._CMD_MODULE_CHANGE) {
+            } else if (cmd == TsdPlayer.CMD_MODULE_CHANGE) {
                 // Set module type with frequency mode.
                 dt = this.input[ch.baseOffset + ch.offset++];
                 this._setModule(ch, dt)
-            } else if (cmd == TsdPlayer._CMD_END) {
+            } else if (cmd == TsdPlayer.CMD_END) {
                 if (0 != ch.loop.offset) {
                     // Perform endless loop
                     ch.offset = ch.loop.offset;
