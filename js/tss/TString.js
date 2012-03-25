@@ -184,7 +184,7 @@ TString._buildUint8ArrayString = function (string) {
         var code = string.charCodeAt(i);
         if (!TString._isBMP(code)) {
             if (++i >= string.length)
-                throw new RangeError("TString invalid surrogate pair");
+                throw new RangeError("TString: invalid surrogate pair");
             code = TString._decodeSurrogatePair(code, string.charCodeAt(i));
         }
         offset += TString._setUcs2(array, offset, code);
@@ -234,8 +234,11 @@ TString.prototype._fromUint8Array = function (array) {
  * Get a byte code from the internal UTF-8 byte array.
  * @param offset offset
  * @return code
+ * @raise RangeError when offset is out of range
  */
 TString.prototype.at = function (offset) {
+    if (offset >= this.object.byteLength)
+        throw new RangeError("TString: offset is out of range");
     return this.object[offset];
 };
 
@@ -243,18 +246,20 @@ TString.prototype.at = function (offset) {
  * Get string from the internal UTF-8 byte array.
  * @param offset offset
  * @return character
+ * @raise RangeError when offset is out of range
  */
 TString.prototype.charAt = function (offset) {
-    return String.fromCharCode(this.object[offset]);
+    return String.fromCharCode(this.at(offset));
 };
 
 /**
  * Get lower string from the internal UTF-8 byte array.
  * @param offset offset
  * @return character
+ * @raise RangeError when offset is out of range
  */
 TString.prototype.lowerCharAt = function (offset) {
-    var code = this.object[offset];
+    var code = this.at(offset);
     if ((TString.CODE_A <= code) && (code <= TString.CODE_Z))
         code |= 0x20;
     return String.fromCharCode(code);
@@ -275,8 +280,11 @@ TString.prototype.numberAt = function (offset) {
  * Set a bytes code to the internal UTF-8 byte array.
  * @param offset offset
  * @param code code
+ * @raise RangeError when offset is out of range
  */
 TString.prototype.setAt = function (offset, code) {
+    if (offset >= this.object.byteLength)
+        throw new RangeError("TString: offset is out of range");
     this.object[offset] = code;
 };
 
@@ -284,9 +292,10 @@ TString.prototype.setAt = function (offset, code) {
  * Set a character to the internal UTF-8 byte array.
  * @param offset offset
  * @param ch character
+ * @raise RangeError when offset is out of range
  */
 TString.prototype.setCharAt = function (offset, ch) {
-    this.object[offset] = ch.charCodeAt(0);
+    this.setAt(offset, ch.charCodeAt(0));
 };
 
 /**
@@ -417,6 +426,8 @@ TString.prototype.alphabetIndex = function (offset) {
  * @return true if the code is a character for a number.
  */
 TString.prototype.isNumber = function (offset) {
+    if (offset >= this.object.byteLength)
+        return false;
     var c = this.object[offset];
     if ((c < TString.CODE_0) || (TString.CODE_9 < c))
         return false;

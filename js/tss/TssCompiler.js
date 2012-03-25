@@ -136,6 +136,9 @@ TssCompiler._getBracedParameter = function (line, offset) {
 TssCompiler._getNumberParameter = function (line, offset) {
     var data = line.data;
     var begin = offset + data.countSpaces(offset);
+    var length = data.byteLength();
+    if (begin >= length)
+        return { begin: begin, end: begin, parameter: undefined };
     var sign = 1;
     if ('-' == data.charAt(begin)) {
         begin++;
@@ -145,7 +148,6 @@ TssCompiler._getNumberParameter = function (line, offset) {
     var n = data.numberAt(begin);
     if (n < 0)
         return { begin: begin, end: begin, parameter: undefined };
-    var length = data.byteLength();
     for (var i = begin + 1; i < length; i++) {
         var result = data.numberAt(i);
         if (result < 0)
@@ -165,6 +167,8 @@ TssCompiler._getNumberParameter = function (line, offset) {
 TssCompiler._getCharacter = function (line, offset, character) {
     var data = line.data;
     var position = offset + data.countSpaces(offset);
+    if (position >= data.byteLength())
+        return -1;
     if (character != data.charAt(position))
         return -1;
     return position;
@@ -670,14 +674,16 @@ TssCompiler.prototype._parseChannels = function () {
                 }
                 work.offset +=
                     work.lineObject.data.countSpaces(work.offset);
-                var c = work.lineObject.data.charAt(work.offset);
                 var fine = 0;
-                if (('-' == c) || ('+' == c) || ('#' == c)) {
-                    work.offset++;
-                    if ('-' == c)
-                        fine = -1;
-                    else
-                        fine = 1;
+                if (work.offset < work.lineObject.data.byteLength()) {
+                    var c = work.lineObject.data.charAt(work.offset);
+                    if (('-' == c) || ('+' == c) || ('#' == c)) {
+                        work.offset++;
+                        if ('-' == c)
+                            fine = -1;
+                        else
+                            fine = 1;
+                    }
                 }
                 var totalCount = 0;
                 for (;;) {
@@ -708,8 +714,8 @@ TssCompiler.prototype._parseChannels = function () {
                     while (dot-- > 0) {
                         if (0 != (count % 2))
                             throw new TssCompiler.CompileError(work.lineObject,
-                                    work.offset, "too many . against time " +
-                                            "resolution");
+                                    work.offset, "too many '.' against time" +
+                                            " resolution");
                         count /= 2;
                         totalCount += count;
                     }
@@ -738,10 +744,12 @@ TssCompiler.prototype._parseChannels = function () {
                     work.data.push(fine);
                     // TODO: Handle '&'.
                     restCount = totalCount;
-                    totalCount =
-                            ~~(totalCount * work.currentGate / work.maxGate);
+                    totalCount = ~~(totalCount * work.currentGate /
+                            work.maxGate);
                     restCount -= totalCount;
                 }
+                if (self.logMmlCompile)
+                    Log.getLog().info(totalCount + "," + restCount);
                 if (totalCount < 255) {
                     work.data.push(totalCount);
                 } else if (totalCount < 65535) {
@@ -784,7 +792,7 @@ TssCompiler.prototype._parseChannels = function () {
         t: {  // tempo
             args: [ { def: 120, min: 1, max: 512 } ],
             callback: function (self, work, command, args) {
-                var n = ~~(22050 * 4 * 60 / 192 / args[0] + 0.5);
+                var n = ~~(22050 * 4 * 60 / 192 / args[0]);
                 work.data.push(TsdPlayer.CMD_TEMPO);
                 work.data.push(n >> 8);
                 work.data.push(n & 0xff);
@@ -870,6 +878,7 @@ TssCompiler.prototype._parseChannels = function () {
                     work.offset) {
                 work.offset += work.lineObject.data.countSpaces(work.offset);
                 var c = work.lineObject.data.lowerCharAt(work.offset);
+                var command = c;
                 var args = [];
                 if (('a' <= c) && (c <= 'g'))
                     c = 'r';
@@ -884,12 +893,13 @@ TssCompiler.prototype._parseChannels = function () {
                     var next = work.lineObject.data.lowerCharAt(work.offset);
                     if (syntax[c].sequence.indexOf(next) >= 0) {
                         c += next;
+                        command = c;
                         work.offset++;
                     }
                 }
                 if (this.logMmlCompile)
-                    Log.getLog().info(
-                            "command " + c + " with parameters as follows");
+                    Log.getLog().info("command " + command +
+                            " with parameters as follows");
                 for (var i = 0; i < syntax[c].args.length; i++) {
                     if (0 != i) {
                         var position = TssCompiler._getCharacter(
@@ -914,7 +924,7 @@ TssCompiler.prototype._parseChannels = function () {
                 if (this.logMmlCompile)
                     Log.getLog().info(args);
                 if (syntax[c].callback)
-                    syntax[c].callback(this, work, c, args);
+                    syntax[c].callback(this, work, command, args);
             }
         }
         this.channelData[ch] = work.data;
