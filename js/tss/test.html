@@ -192,7 +192,18 @@
         function test8start() {
             var src = document.getElementById("test8tss");
             var tsc = new TssCompiler();
-            tsc.compile(src.innerText);
+            player8.play(tsc.compile(src.value));
+            filter.setChannel(master8);
+            test = 8;
+        }
+        function test8dl() {
+            var src = document.getElementById("test8tss");
+            var tsc = new TssCompiler();
+            var bb = new WebKitBlobBuilder();
+            bb.append(tsc.compile(src.value).buffer);
+            var blob = bb.getBlob();
+            var url = webkitURL.createObjectURL(blob);
+            open(url, false);
         }
     </script>
 </head>
@@ -272,11 +283,13 @@
 </div>
 <hr>
 <a name="tss"></a>
-<p class="title">8. TSS Player [work in progress]</p>
+<p class="title">8. TSS Player</p>
 <button onclick="test8start()">Compile & Play</button>
+<button onclick="test8dl()">Compile & Download</button>
 <button onclick="testxstop()">STOP</button>
-<div style="width: 100%; background-color: #000000; color: #ffffff;">
-    <pre id="test8tss">#TITLE &lt;SALAMANDER - BOSS BGM -&gt;
+<form><textarea id="test8tss" rows="20" style="width: 100%; background-color: #000000; color: #ffffff;">
+{ You can edit this form, then compile it from "Compile & Play" button. }
+#TITLE &lt;SALAMANDER - BOSS BGM -&gt;
 #CHANNEL 11
 #A	t200 %3 @1 v3 l4 q1 o5 s1 @o1,0 mp30,16,2,8 $
 	[&lt;c8&gt;f8&lt;c8&gt;f.&lt; c&gt;f&lt;c&gt; f2.&lt;c2.&gt; f8&lt;c8&gt;f8&lt;c.&gt; f&lt;c&gt;f&lt; c2.&gt;f2.
@@ -340,8 +353,7 @@
 	[f4&lt;f&gt;f4&lt;f&gt;f&lt;ff&gt;f&lt;f&gt;f ff&lt;f&gt;ff&lt;f&gt;
 	f4&lt;f&gt;f4&lt;f&gt;f&lt;ff&gt;f&lt;f&gt;f | &lt;dd&gt;gbdf]
 	l16 &lt;dddd&gt;bbbbgggg
-#END</pre>
-</div>
+#END</textarea></form>
 <hr>
 <hr>
 <pre>*** LOG (reversed order) ***</pre>

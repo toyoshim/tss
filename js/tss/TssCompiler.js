@@ -356,6 +356,7 @@ TssCompiler.prototype._parseLines = function () {
  * @raose TssCompiler.CompileError
  */
 TssCompiler.prototype._parseDirectives = function () {
+    // TODO: Check mandatory directives.
     for (var i = 0; i < this.directives.length; i++) {
         var directive = this.directives[i].directive;
         var offset = 0;
@@ -409,6 +410,7 @@ TssCompiler.prototype._parseDirectives = function () {
  */
 TssCompiler.prototype._parseChannels = function () {
     var maxGate = 16;  // TODO: #GATE
+    var fineness = 368;  // TODO: #FINENESS
     // Syntax information except for note premitives (cdefgabr).
     var notImplemented = function (self, work, command, args) {
         throw new TssCompiler.CompileError(work.lineObject, work.offset,
@@ -522,13 +524,14 @@ TssCompiler.prototype._parseChannels = function () {
                 if (0 == work.loop.count)
                     throw new TssCompiler.CompileError(work.lineObject,
                             work.offset, "']' found without '['");
-                if (--work.loop.count > 0)
+                if (--work.loop.count == 0)
                     return;
                 work.loop.end.line = work.line;
                 work.loop.end.offset = work.offset;
                 work.line = work.loop.line;
                 work.offset = work.loop.offset;
-                work.lineObject = self.channels[ch][work.line];
+                work.lineObject =
+                        self.channels[work.lineObject.directive][work.line];
             }
         },
         '[': {  // loop start
@@ -546,11 +549,12 @@ TssCompiler.prototype._parseChannels = function () {
         '|': {  // loop break
             args: [],
             callback: function (self, work, command, args) {
-                if (--work.loop.count > 0)
+                if (work.loop.count > 1)
                     return;
                 work.line = work.loop.end.line;
                 work.offset = work.loop.end.offset;
-                work.lineObject = self.channels[ch][work.line];
+                work.lineObject =
+                        self.channels[work.lineObject.directive][work.line];
             }
         },
         '~': {  // relative volume down
@@ -595,7 +599,8 @@ TssCompiler.prototype._parseChannels = function () {
             callback: function (self, work, command, args) {
                 if (args[0]) {
                     work.data.push(TsdPlayer.CMD_PITCH_MODULATION_DELAY);
-                    work.data.push(args[0]);
+                    work.data.push(args[0] >> 8);
+                    work.data.push(args[0]& 0xff);
                 }
                 if (args.length < 2)
                     return;
@@ -763,7 +768,7 @@ TssCompiler.prototype._parseChannels = function () {
                 if (restCount > 0) {
                     work.data.push(TsdPlayer.CMD_NOTE_OFF)
                     if (restCount < 255) {
-                        work.data.push(totalCount);
+                        work.data.push(restCount);
                     } else if (restCount < 65535) {
                         work.data.push(255);
                         work.data.push(restCount >> 8);
@@ -815,7 +820,7 @@ TssCompiler.prototype._parseChannels = function () {
                 var shift = 3;
                 if (TsdPlayer.MODE_GAMEBOY == work.mode)
                     shift = 0;
-                else if (TsdPlayer.VOLUME_RANGE_MODE_NORMAL ==
+                else if (TssCompiler.VOLUME_RANGE_MODE_NORMAL ==
                         work.volumeRangeMode)
                     shift = 4;
                 else
@@ -868,8 +873,14 @@ TssCompiler.prototype._parseChannels = function () {
                 }
             },
             count: 0,
-            data: []
+            data: [],
+            dataLength: 0
         };
+        if (0 == ch) {
+            work.data.push(TsdPlayer.CMD_FINENESS);
+            work.data.push(fineness >> 8);
+            work.data.push(fineness & 0xff);
+        }
         for (work.line = 0; work.line < this.channels[ch].length;
                 work.line++) {
             work.lineObject = this.channels[ch][work.line];
@@ -923,10 +934,22 @@ TssCompiler.prototype._parseChannels = function () {
                 }
                 if (this.logMmlCompile)
                     Log.getLog().info(args);
+                work.dataLength = work.data.length;
                 if (syntax[c].callback)
                     syntax[c].callback(this, work, command, args);
+                if (this.logMmlCompile) {
+                    var message = "> " + work.dataLength.toString(16) + ": ";
+                    for (i = work.dataLength; i < work.data.length; i++) {
+                        if (i != work.dataLength)
+                            message += ", ";
+                        message += work.data[i].toString(16);
+                    }
+                    Log.getLog().info(message);
+                }
+                work.dataLength = work.data.length;
             }
         }
+        work.data.push(TsdPlayer.CMD_END);
         this.channelData[ch] = work.data;
         Log.getLog().info("TSS: DATA " + (ch + 1) + "> " + work.data.length +
                 " Byte(s) / " + work.count + " Tick(s)");
@@ -937,10 +960,70 @@ TssCompiler.prototype._parseChannels = function () {
  * Generate TSD data.
  */
 TssCompiler.prototype._generateTsd = function () {
-    // TODO
-    Log.getLog().warn("TSS: _generateTsd() is not implemented");
-    console.log(this);
-    return null;
+    // Header size.
+    var titleSize = this.tag.title.byteLength();
+    if (0 != (titleSize % 2))
+        titleSize++;
+    var headerSize =
+            14 +  // "T'SoundSystem", 0x00
+            2 +  // Version.Release
+            2 +  // Title length
+            titleSize +  // title
+            2 +  // number of channels
+            8 * this.tag.channels +  // channel headers
+            4;  // voice data offset
+    var dataSize = headerSize;
+    Log.getLog().info("TSS: HEADER SIZE> " + dataSize);
+
+    // Data size.
+    var i;
+    for (i = 0; i < this.tag.channels; i++)
+        dataSize += this.channelData[i].length;
+    var voiceOffset = dataSize;
+
+    // TODO: Wave data size
+    dataSize += 2;
+
+    // TODO: Table data size
+    dataSize += 2;
+
+    // Create data.
+    var tsd = new Uint8Array(dataSize);
+    Log.getLog().info("TSS: TOTAL SIZE> " + dataSize);
+    var tsdWriter = TString.createFromUint8Array(tsd);
+    // Magic: "T'SoundSystem", 0x00
+    var offset = tsdWriter.setASCII(0, "T'SoundSystem");
+    // Version.Release
+    tsdWriter.setAt(offset++, ~~TssCompiler.VERSION);
+    tsdWriter.setAt(offset++, (~~(TssCompiler.VERSION * 100)) % 100);
+    // Title length, UTF-8 string, and padding.
+    offset = tsdWriter.setUint16(offset, this.tag.title.byteLength());
+    offset = tsdWriter.setTString(offset, this.tag.title);
+    if (0 == (this.tag.title.byteLength() % 2))
+        offset--;
+    // Number of channels.
+    offset = tsdWriter.setUint16(offset, this.tag.channels);
+    // Channel headers.
+    var channelOffset = headerSize;
+    for (i = 0; i < this.tag.channels; i++) {
+        var channelSize = this.channelData[i].length;
+        offset = tsdWriter.setUint32(offset, channelOffset);
+        offset = tsdWriter.setUint32(offset, channelSize);
+        // Channel data.
+        for (var n = 0; n < channelSize; n++)
+            tsdWriter.setAt(channelOffset + n, this.channelData[i][n]);
+        channelOffset += channelSize;
+    }
+    // Voice data offset.
+    offset = tsdWriter.setUint32(offset, voiceOffset);
+
+    // TODO: Wave data
+    offset = tsdWriter.setUint16(voiceOffset, 0);
+
+    // TODO: Table data
+    offset = tsdWriter.setUint16(offset, 0);
+
+    return tsd;
 };
 
 /**

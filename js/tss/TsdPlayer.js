@@ -329,7 +329,7 @@ TsdPlayer.prototype.play = function (newInput) {
             offset += 4;
             channel[i].size = this._readU32(offset);
             offset += 4;
-            Log.getLog().info("TSD: ch." + i + " offset = " +
+            Log.getLog().info("TSD: ch." + (i + 1) + " offset = " +
                     channel[i].baseOffset + ", size = " + channel[i].size);
         }
         Log.getLog().info(channel);

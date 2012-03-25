@@ -299,6 +299,58 @@ TString.prototype.setCharAt = function (offset, ch) {
 };
 
 /**
+ * Set a ASCII string to the internal UTF-8 byte array.
+ * @param offset offset
+ * @param string ASCII string
+ * @raise RangeError when offset is out of range
+ */
+TString.prototype.setASCII = function (offset, string) {
+    for (var i = 0; i < string.length; i++)
+        this.setAt(offset + i, string.charCodeAt(i));
+    this.setAt(offset + string.length, 0);
+    return offset + string.length + 1;
+};
+
+/**
+ * Set a TString to the internal UTF-8 byte array.
+ * @param offset offset
+ * @param string TString
+ * @raise RangeError when offset is out of range
+ */
+TString.prototype.setTString = function (offset, string) {
+    for (var i = 0; i < string.byteLength(); i++)
+        this.setAt(offset + i, string.at(i));
+    this.setAt(offset + string.byteLength(), 0);
+    return offset + string.byteLength() + 1;
+};
+
+/**
+ * Set a number to the internal UTF-8 byte array as Uint16.
+ * @param offset offset
+ * @param n Uint16 number
+ * @raise RangeError when offset is out of range
+ */
+TString.prototype.setUint16 = function (offset, n) {
+    this.setAt(offset, n >> 8);
+    this.setAt(offset + 1, n & 0xff);
+    return offset + 2;
+};
+
+/**
+ * Set a number to the internal UTF-8 byte array as Uint32.
+ * @param offset offset
+ * @param n Uint32 number
+ * @raise RangeError when offset is out of range
+ */
+TString.prototype.setUint32 = function (offset, n) {
+    this.setAt(offset, n >> 24);
+    this.setAt(offset + 1, (n >> 16) & 0xff);
+    this.setAt(offset + 2, (n >> 8) & 0xff);
+    this.setAt(offset + 3, n & 0xff);
+    return offset + 4;
+};
+
+/**
  * Get the interrnal UTF-8 byte array length.
  * @return length
  */
