@@ -89,7 +89,7 @@ TssCompiler._getBracedParameter = function (line, offset) {
     begin++;
     var n = 0;
     var length = data.byteLength();
-    var c;
+    var c = 0;
     for (var i = begin; i < length; i++) {
         c = data.at(i);
         if ((0 == c) || ('\\'.charCodeAt(0) == c))
@@ -168,9 +168,7 @@ TssCompiler._getCharacter = function (line, offset, character) {
 TssCompiler.prototype._checkEnd = function (line, offset) {
     var data = line.data;
     offset += data.countSpaces(offset);
-    if (offset != data.byteLength())
-        return false;
-    return true;
+    return offset == data.byteLength();
 };
 
 /**
@@ -206,8 +204,9 @@ TssCompiler._checkChannelDirective = function (line) {
 TssCompiler._checkDirective = function (line) {
     var data = line.data;
     var length = data.byteLength();
+    var c = 0;
     for (var i = 0; i < length; i++) {
-        var c = data.at(i);
+        c = data.at(i);
         if (0 == c)
             continue;
         if ('#'.charCodeAt(0) == c) {
