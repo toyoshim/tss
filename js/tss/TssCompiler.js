@@ -888,6 +888,8 @@ TssCompiler.prototype._parseChannels = function () {
                     work.offset < work.lineObject.data.byteLength();
                     work.offset) {
                 work.offset += work.lineObject.data.countSpaces(work.offset);
+                if (work.offset >= work.lineObject.data.byteLength())
+                    break;
                 var c = work.lineObject.data.lowerCharAt(work.offset);
                 var command = c;
                 var args = [];
@@ -901,6 +903,8 @@ TssCompiler.prototype._parseChannels = function () {
                 if (syntax[c].sequence) {
                     work.offset +=
                             work.lineObject.data.countSpaces(work.offset);
+                    if (work.offset >= work.lineObject.data.byteLength())
+                        break;
                     var next = work.lineObject.data.lowerCharAt(work.offset);
                     if (syntax[c].sequence.indexOf(next) >= 0) {
                         c += next;

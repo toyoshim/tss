@@ -33,7 +33,7 @@ TString.CODE_z = 0x7a;
 TString._isBMP = function (code) {
     if ((code < 0) || (0x10000 <= code))
         return false;
-    if (code < 0x8000)
+    if (code < 0xd800)
         return true;
     if (code >= 0xe000)
         return true;
