@@ -14,20 +14,25 @@ function TssCompiler () {
     this.source = null;
     this.directives = [];
     this.channels = [];
+    this.validWaves = 0,
     this.waves = [];
-    this.tag = {
+    this.tags = {
         title: null,
         channels: 0,
-        mode: TssCompiler.MODE_NORMAL
+        fineness: TssCompiler._DEFAULT_FINENESS
+    };
+    this.modes = {
+        hardware: TssCompiler.HARDWARE_MODE_NORMAL,
+        octave: TssCompiler.OCTAVE_MODE_NORMAL,
+        volumeRelative: TssCompiler.VOLUME_RELATIVE_MODE_NORMAL
     };
     this.channelData = [];
-    this.fineness = TssCompiler._DEFAULT_FINENESS;
 }
 
 TssCompiler.VERSION = 0.93;
-TssCompiler.MODE_NORMAL = 0;
-TssCompiler.MODE_FAMICOM = 1;
-TssCompiler.MODE_GAMEBOY = 2;
+TssCompiler.HARDWARE_MODE_NORMAL = 0;
+TssCompiler.HARDWARE_MODE_FAMICOM = 1;
+TssCompiler.HARDWARE_MODE_GAMEBOY = 2;
 TssCompiler.VOLUME_RANGE_MODE_NORMAL = 0;
 TssCompiler.VOLUME_RANGE_MODE_UPPER = 1;
 TssCompiler.VOLUME_RELATIVE_MODE_NORMAL = 0;
@@ -308,9 +313,11 @@ TssCompiler._checkDirective = function (line) {
     TssCompiler._checkChannelDirective(line);
 };
 
-TssCompiler.prototype._addWave = function (wave) {
-    Log.getLog().info("TSC: add wave " + this.waves.length);
-    this.waves[this.waves.length] = wave;
+TssCompiler.prototype._setWave = function (id, wave) {
+    Log.getLog().info("TSC: set wave " + id);
+    if (!this.waves[id])
+        this.validWaves++;
+    this.waves[id] = wave;
 };
 
 /**
@@ -336,7 +343,8 @@ TssCompiler.prototype._preprocessLine = function (context, offset, count) {
         count: count,
         data: null,
         empty: true,
-        directive: null
+        directive: null,
+        continuation: false
     };
     var line = this.source.slice(offset, offset + count);
     result.data = line;
@@ -385,20 +393,22 @@ TssCompiler.prototype._parseLines = function () {
         line: 1,
         commentNest: 0
     };
-    var channel = -1;
+    var channel = null;
     var length = this.source.byteLength();
     for (var offset = 0; offset < length; context.line++) {
         var count = this.source.countLine(offset);
         var line = this._preprocessLine(context, offset, count);
         if (!line.empty) {
             if (null == line.directive) {
-                if (-1 == channel)
+                if (null == channel)
                     throw new TssCompiler.CompileError(line, 0,
                             "invalid line without any directive");
                 line.directive = channel;
+                line.continuation = true;
+            } else {
+                channel = line.directive;
             }
             if (typeof line.directive == "number") {
-                channel = line.directive;
                 if (undefined == this.channels[line.directive])
                     this.channels[line.directive] = [];
                 this.channels[line.directive].push(line);
@@ -438,15 +448,31 @@ TssCompiler.prototype._parseDirectives = function () {
             if (typeof result.parameter == "undefined")
                 throw new TssCompiler.CompileError(this.directives[i],
                         result.begin, "number not found in #CHANNEL");
-            this.tag.channels = result.parameter;
+            this.tags.channels = result.parameter;
             offset = result.end + 1;
-            Log.getLog().info("TSS: CHANNEL> " + this.tag.channels);
+            Log.getLog().info("TSS: CHANNEL> " + this.tags.channels);
         } else if ("FINENESS" == directive) {
-            // TODO
-            Log.getLog().warn("TSS: #FINENESS is not implemented");
+            result = TssCompiler._getNumberParameter(this.directives[i], 0);
+            if (typeof result.parameter == "undefined")
+                throw new TssCompiler.CompileError(this.directives[i],
+                    result.begin, "number not found in #FINENESS");
+            this.tags.fineness = result.parameter;
+            offset = result.end + 1;
+            Log.getLog().info("TSS: FINENESS> " + this.tags.fineness);
         } else if ("OCTAVE" == directive) {
-            // TODO
-            Log.getLog().warn("TSS: #OCTAVE is not implemented");
+            result = TssCompiler._getStringParameter(this.directives[i], 0);
+            if (!result.parameter)
+                throw new TssCompiler.CompileError(this.directives[i],
+                        result.begin, "syntax error in #PRAGMA");
+            var octave = result.parameter.toString();
+            if (octave == "NORMAL")
+                this.tags.octaveMode = TssCompiler.OCTAVE_MODE_NORMAL;
+            else if (octave == "REVERSE")
+                this.tags.octaveMode = TssCompiler.OCTAVE_MODE_REVERSE;
+            else
+                throw new TssCompiler.CompileError(this.directive[i],
+                        result.begin, "invalid argument in #OCTAVE");
+            offset = result.end + 1;
         } else if ("PRAGMA" == directive) {
             result = TssCompiler._getStringParameter(this.directives[i], 0);
             if (!result.parameter)
@@ -454,10 +480,10 @@ TssCompiler.prototype._parseDirectives = function () {
                         result.begin, "syntax error in #PRAGMA");
             var pragma = result.parameter.toString();
             if (pragma == "FAMICOM") {
-                this.tag.mode = TssCompiler.MODE_FAMICOM;
-                this._addWave(TssCompiler._TRIANGLE_TABLE);
+                this.modes.hardware = TssCompiler.HARDWARE_MODE_FAMICOM;
+                this._setWave(0, TssCompiler._TRIANGLE_TABLE);
             } else if (pragma == "GAMEBOY") {
-                this.tag.mode = TssCompiler.MODE_GAMEBOY;
+                this.modes.hardware = TssCompiler.HARDWARE_MODE_GAMEBOY;
             } else {
                 throw new TssCompiler.CompileError(this.directives[i],
                         result.begin, "unknown pragma parameter " + pragma);
@@ -467,20 +493,34 @@ TssCompiler.prototype._parseDirectives = function () {
         } else if ("TABLE" == directive) {
             // TODO
             Log.getLog().warn("TSS: #TABLE is not implemented");
+            offset = this.directives[i].data.byteLength();
         } else if ("TITLE" == directive) {
             result = TssCompiler._getBracedParameter(this.directives[i], 0);
             if (!result.parameter)
                 throw new TssCompiler.CompileError(this.directives[i],
                         result.begin, "syntax error in #TITLE");
-            this.tag.title = result.parameter;
+            this.tags.title = result.parameter;
             offset = result.end + 1;
-            Log.getLog().info("TSS: TITLE> " + this.tag.title.toString());
+            Log.getLog().info("TSS: TITLE> " + this.tags.title.toString());
         } else if ("VOLUME" == directive) {
+            result = TssCompiler._getStringParameter(this.directives[i], 0);
+            if (!result.parameter)
+                throw new TssCompiler.CompileError(this.directives[i],
+                    result.begin, "syntax error in #VOLUME");
+            var volume = result.parameter.toString();
+            if (volume == "NORMAL")
+                this.tags.octaveMode = TssCompiler.VOLUME_RELATIVE_MODE_NORMAL;
+            else if (volume == "REVERSE")
+                this.tags.octaveMode =
+                        TssCompiler.VOLUME_RELATIVE_MODE_REVERSE;
+            else
+                throw new TssCompiler.CompileError(this.directive[i],
+                        result.begin, "invalid argument in #VOLUME");
+            offset = result.end + 1;
+        } else if ("WAV" == directive) {
             // TODO
-            Log.getLog().warn("TSS: #VOLUME is not implemented");
-        } else if ("WAVE" == directive) {
-            // TODO
-            Log.getLog().warn("TSS: #WAVE is not implemented");
+            Log.getLog().warn("TSS: #WAV is not implemented");
+            offset = this.directives[i].data.byteLength();
         } else {
             throw new TssCompiler.CompileError(this.directives[i], 0,
                     "unknown directive: " + directive);
@@ -496,7 +536,6 @@ TssCompiler.prototype._parseDirectives = function () {
  */
 TssCompiler.prototype._parseChannels = function () {
     var maxGate = 16;  // TODO: #GATE
-    var fineness = 368;  // TODO: #FINENESS
     // Syntax information except for note premitives (cdefgabr).
     var notImplemented = function (self, work, command, args) {
         throw new TssCompiler.CompileError(work.lineObject, work.offset,
@@ -512,7 +551,7 @@ TssCompiler.prototype._parseChannels = function () {
         '%': {  // module
             args: [ { def: 0, min: 0, max: 255 } ],
             callback: function (self, work, command, args) {
-                if (TssCompiler.MODE_FAMICOM == work.mode)
+                if (TssCompiler.HARDWARE_MODE_FAMICOM == work.mode)
                     throw new TssCompiler.CompileError(work.lineObject,
                             work.offset,
                             "'%' is not supported in famicom mode");
@@ -585,7 +624,7 @@ TssCompiler.prototype._parseChannels = function () {
             sequence: "iov",
             args: [ { def: 0, min: 0, max: 255 } ],
             callback: function (self, work, command, args) {
-                if (TssCompiler.MODE_FAMICOM == work.mode) {
+                if (TssCompiler.HARDWARE_MODE_FAMICOM == work.mode) {
                     if (work.lineObject.directive == 2)
                         throw new TssCompiler.CompileError(work.lineObject,
                                 work.offset,
@@ -608,8 +647,15 @@ TssCompiler.prototype._parseChannels = function () {
                 { def: 0, min: 0, max: 3 }
             ],
             callback: function (self, work, command, args) {
-                work.data.push(TsdPlayer.CMD_FM_IN);
-                work.data.push((args[0] << 4) | args[1]);
+                if (1 == args.length) {
+                    work.data.push(TsdPlayer.CMD_VOLUME_MONO);
+                    work.data.push(args[0]);
+                } else {
+                    work.data.push(TsdPlayer.CMD_VOLUME_LEFT);
+                    work.data.push(args[0]);
+                    work.data.push(TsdPlayer.CMD_VOLUME_RIGHT);
+                    work.data.push(args[1]);
+                }
             }
         },
         '@o': {  // output pipe
@@ -623,8 +669,14 @@ TssCompiler.prototype._parseChannels = function () {
             }
         },
         '@v': {  // fine volume
-            args: [],  // TODO
-            callback: notImplemented
+            args: [
+                { def: 10, min: 0, max: 255 },
+                { def: 0, min: 0, max: 255 }
+            ],
+            callback: function (self, work, command, args) {
+                work.data.push(TsdPlayer.CMD_FM_OUT);
+                work.data.push((args[0] << 4) | args[1]);
+            }
         },
         ']': {  // loop end
             args: [],
@@ -740,8 +792,15 @@ TssCompiler.prototype._parseChannels = function () {
             sequence: "ast"
         },
         na: {  // amp envelope
-            args: [],  // TODO
-            callback: notImplemented
+            args: [
+                { def: 0, min: 0, max: 255 },
+                { def: 0, min: 0, max: 255 }
+            ],
+            callback: function (self, work, command, args) {
+                work.data.push(TsdPlayer.CMD_AMP_EMVELOPE);
+                work.data.push(args[0]);
+                work.data.push(args[1]);
+            }
         },
         ns: {  // note emvelope
             args: [],  // TODO
@@ -915,7 +974,7 @@ TssCompiler.prototype._parseChannels = function () {
                 { def: 0, min: 0, max: 15 }
             ],
             callback: function (self, work, command, args) {
-                if ((TsdPlayer.MODE_GAMEBOY == work.mode) &&
+                if ((TsdPlayer.HARDWARE_MODE_GAMEBOY == work.mode) &&
                         (2 == work.lineObject.directive))
                     for (var i = 0; i < args.length; i++)
                         if (args[i] > 3)
@@ -924,7 +983,7 @@ TssCompiler.prototype._parseChannels = function () {
                                             " for channel 2 in gameboy mode");
                 var base = 0;
                 var shift = 3;
-                if (TsdPlayer.MODE_GAMEBOY == work.mode)
+                if (TsdPlayer.HARDWARE_MODE_GAMEBOY == work.mode)
                     shift = 0;
                 else if (TssCompiler.VOLUME_RANGE_MODE_NORMAL ==
                         work.volumeRangeMode)
@@ -948,22 +1007,43 @@ TssCompiler.prototype._parseChannels = function () {
             }
         },
         x: {  // volume and pitch mode
-            args: [],  // TODO
-            callback: notImplemented
+            args: [
+                { def: undefined, min: 0, max: 17 },
+                { def: undefined, min: 0, max: 3 }
+            ],
+            callback: function (self, work, command, args) {
+                if (args[0] == undefined) {
+                    if ((args[0] & 0x0f) > 1)
+                        throw new TssCompiler.CompileError(work.lineObject,
+                                work.offset, "invalid volume mode " +
+                                args[0] + " for 'x'");
+                    if ((args[0] & 0x10) == 0)
+                        work.volumeRangeMode =
+                                TssCompiler.VOLUME_RANGE_MODE_NORMAL;
+                    else
+                        work.volumeRangeMode =
+                                TssCompiler.VOLUME_RANGE_MODE_UPPER;
+                    work.data.push(TssCompiler.CMD_VOLUME_MODE_CHANGE);
+                    work.data.push(args[0] & 0x0f);
+                }
+                if (args[1] == undefined) {
+                    work.data.push(TssCompiler.CMD_FREQUENCY_MODE_CHANGE);
+                    work.data.push(args[1]);
+                }
+            }
         }
     };
-    for (var ch = 0; ch < this.tag.channels; ch++) {
+    for (var ch = 0; ch < this.tags.channels; ch++) {
         var work = {
             offset: 0,
             line: 0,
             lineObject: null,
             clock: 192, // TODO #CLOCK
             maxGate: maxGate,
-            mode: this.tag.mode,
-            // TODO: following modes must reflect settings.
+            mode: this.modes.hardware,
             volumeRangeMode: TssCompiler.VOLUME_RANGE_MODE_NORMAL,
-            volumeRelativeMode: TssCompiler.VOLUME_RELATIVE_MODE_NORMAL,
-            octaveMode: TssCompiler.OCTAVE_MODE_NORMAL,
+            volumeRelativeMode: this.modes.volumeRelative,
+            octaveMode: this.modes.octave,
             currentVolume: { l: 0, r: 0 },
             currentOctave: 4,
             currentGate: maxGate,
@@ -985,16 +1065,16 @@ TssCompiler.prototype._parseChannels = function () {
         };
         if (0 == ch) {
             work.data.push(TsdPlayer.CMD_FINENESS);
-            work.data.push(fineness >> 8);
-            work.data.push(fineness & 0xff);
+            work.data.push(this.tags.fineness >> 8);
+            work.data.push(this.tags.fineness & 0xff);
         }
-        if (TssCompiler.MODE_FAMICOM == work.mode) {
+        if (TssCompiler.HARDWARE_MODE_FAMICOM == work.mode) {
             work.data.push(TsdPlayer.CMD_MODULE_CHANGE);
             if (2 != ch)
                 work.data.push(1);
             else
                 work.data.push(4);
-        } else if (TssCompiler.MODE_GAMEBOY == work.mode) {
+        } else if (TssCompiler.HARDWARE_MODE_GAMEBOY == work.mode) {
             work.data.push(TsdPlayer.CMD_MODULE_CHANGE);
             if (3 == ch)
                 work.data.push(15);
@@ -1090,7 +1170,7 @@ TssCompiler.prototype._parseChannels = function () {
  */
 TssCompiler.prototype._generateTsd = function () {
     // Header size.
-    var titleSize = this.tag.title.byteLength();
+    var titleSize = this.tags.title.byteLength();
     if (0 != (titleSize % 2))
         titleSize++;
     var headerSize =
@@ -1099,21 +1179,23 @@ TssCompiler.prototype._generateTsd = function () {
             2 +  // Title length
             titleSize +  // title
             2 +  // number of channels
-            8 * this.tag.channels +  // channel headers
+            8 * this.tags.channels +  // channel headers
             4;  // voice data offset
     var dataSize = headerSize;
     Log.getLog().info("TSS: HEADER SIZE> " + dataSize);
 
     // Data size.
     var i;
-    for (i = 0; i < this.tag.channels; i++)
+    for (i = 0; i < this.tags.channels; i++)
         dataSize += this.channelData[i].length;
     var voiceOffset = dataSize;
 
     // Wave data size
     dataSize += 2;  // number of waves
-    Log.getLog().info("TSS: WAVE> " + this.waves.length);
+    Log.getLog().info("TSS: WAVE> " + this.validWaves);
     for (i = 0; i < this.waves.length; i++) {
+        if (!this.waves[i])
+            continue;
         Log.getLog().info("TSS:  " + i + "> " + this.waves[i].length);
         dataSize += 2 + this.waves[i].length;  // id, size, wave
     }
@@ -1131,15 +1213,15 @@ TssCompiler.prototype._generateTsd = function () {
     tsdWriter.setAt(offset++, ~~TssCompiler.VERSION);
     tsdWriter.setAt(offset++, (~~(TssCompiler.VERSION * 100)) % 100);
     // Title length, UTF-8 string, and padding.
-    offset = tsdWriter.setUint16(offset, this.tag.title.byteLength());
-    offset = tsdWriter.setTString(offset, this.tag.title);
-    if (0 == (this.tag.title.byteLength() % 2))
+    offset = tsdWriter.setUint16(offset, this.tags.title.byteLength());
+    offset = tsdWriter.setTString(offset, this.tags.title);
+    if (0 == (this.tags.title.byteLength() % 2))
         offset--;
     // Number of channels.
-    offset = tsdWriter.setUint16(offset, this.tag.channels);
+    offset = tsdWriter.setUint16(offset, this.tags.channels);
     // Channel headers.
     var channelOffset = headerSize;
-    for (i = 0; i < this.tag.channels; i++) {
+    for (i = 0; i < this.tags.channels; i++) {
         var channelSize = this.channelData[i].length;
         offset = tsdWriter.setUint32(offset, channelOffset);
         offset = tsdWriter.setUint32(offset, channelSize);
@@ -1152,8 +1234,10 @@ TssCompiler.prototype._generateTsd = function () {
     offset = tsdWriter.setUint32(offset, voiceOffset);
 
     // Wave data
-    offset = tsdWriter.setUint16(voiceOffset, this.waves.length);
-    for (i = 0; i < this.waves.length; i++) {
+    offset = tsdWriter.setUint16(voiceOffset, this.validWaves);
+    for (i = 0; i < this.validWaves; i++) {
+        if (!this.waves[i])
+            continue;
         tsdWriter.setAt(offset++, i);
         var dataLength = this.waves[i].length;
         tsdWriter.setAt(offset++, dataLength);
