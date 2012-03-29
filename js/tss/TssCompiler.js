@@ -17,7 +17,8 @@ function TssCompiler () {
     this.waves = [];
     this.tag = {
         title: null,
-        channels: 0
+        channels: 0,
+        mode: TssCompiler.MODE_NORMAL
     };
     this.channelData = [];
     this.fineness = TssCompiler._DEFAULT_FINENESS;
@@ -35,6 +36,9 @@ TssCompiler.OCTAVE_MODE_NORMAL = 0;
 TssCompiler.OCTAVE_MODE_REVERSE = 1;
 TssCompiler._DEFAULT_FINENESS = 368;
 TssCompiler._ALPHABET_COUNT = 'z'.charCodeAt(0) - 'a'.charCodeAt(0) + 1;
+TssCompiler._CODE_ESCAPE = '\\'.charCodeAt(0);
+TssCompiler._CODE_SHARP = '#'.charCodeAt(0);
+TssCompiler._CODE_GT = '>'.charCodeAt(0);
 TssCompiler._TONE_TABLE = {
     'c': 0,
     'd': 2,
@@ -44,6 +48,12 @@ TssCompiler._TONE_TABLE = {
     'a': 9,
     'b': 11
 };
+TssCompiler._TRIANGLE_TABLE = [
+       0,   16,   32,   48,   64,   80,   96,  112,
+     127,  112 ,  96,   80,   64,   48,   32,   16,
+       0,  -16,  -32,  -48,  -64,  -80,  -96, -112,
+    -128, -112,  -96,  -80,  -64,  -48,  -32,  -16
+];
 
 /**
  * CompileError prototype
@@ -51,7 +61,7 @@ TssCompiler._TONE_TABLE = {
  * This prototype contains compile error information.
  * @param line line object
  *      line: line number
- *      ... TODO: Show more detail information.
+ *      data: source of TString
  * @param offset offset in line
  * @param message error message
  */
@@ -65,8 +75,23 @@ TssCompiler.CompileError = function (line, offset, message) {
  * Create string object shows error information.
  */
 TssCompiler.CompileError.prototype.toString = function () {
+    var n = 0;
+    var c;
+    var i;
+    var data = this.line.data;
+    for (i = 0; i <= this.offset; i++) {
+        c = data.at(i);
+        if ((0 == c) || (TssCompiler._CODE_ESCAPE == c))
+            continue;
+        n++;
+    }
+    var hintArray = new Uint8Array(n--);
+    for (i = 0; i < n; i++)
+        hintArray[i] = 0x20;
+    hintArray[i] = '^'.charCodeAt(0);
+    var hint = TString.createFromUint8Array(hintArray).toString();
     return "TSS: { line: " + this.line.line + ", offset: " + this.offset +
-            " } " + this.message;
+            " } " + this.message + '\n' + data.toString() + '\n' + hint;
 };
 
 /**
@@ -93,28 +118,29 @@ TssCompiler._toUint8 = function (n) {
  */
 TssCompiler._getBracedParameter = function (line, offset) {
     var data = line.data;
+    var length = data.byteLength();
     var begin = offset + data.countSpaces(offset);
-    if ('<' != data.charAt(begin))
+    if ((begin >= length) || ('<' != data.charAt(begin)))
         return { begin: begin, end: begin, parameter: undefined };
     begin++;
     var n = 0;
-    var length = data.byteLength();
     var c = 0;
     for (var i = begin; i < length; i++) {
         c = data.at(i);
-        if ((0 == c) || ('\\'.charCodeAt(0) == c))
+        if ((0 == c) || (TssCompiler._CODE_ESCAPE == c))
             continue;
-        if ('>'.charCodeAt(0) == c)
+        if (TssCompiler._CODE_GT == c)
             break;
         n++;
     }
     var end = begin + n - 1;
     var param = TString.createFromUint8Array(new Uint8Array(n));
+    n = 0;
     for (i = begin; i <= end; i++) {
         c = data.at(i);
-        if ((0 == c) || ('\\'.charCodeAt(0) == c))
+        if ((0 == c) || (TssCompiler._CODE_ESCAPE == c))
             continue;
-        param.setAt(i - begin, c);
+        param.setAt(n++, c);
     }
     return {
         begin: begin - 1,
@@ -148,13 +174,54 @@ TssCompiler._getNumberParameter = function (line, offset) {
     var n = data.numberAt(begin);
     if (n < 0)
         return { begin: begin, end: begin, parameter: undefined };
+    var c = 0;
     for (var i = begin + 1; i < length; i++) {
+        c = data.at(i);
+        if ((0 == c) || (TssCompiler._CODE_ESCAPE == c))
+            continue;
         var result = data.numberAt(i);
         if (result < 0)
             return { begin: begin, end: i - 1, parameter: sign * n };
         n = n * 10 + result;
     }
     return { begin: begin, end: i - 1, parameter: sign * n};
+};
+
+/**
+ * Get a string parameter.
+ * @param line source data of line object
+ * @param offset start offset
+ * @return result object
+ *      begin: start offset
+ *      end: end offset
+ *      parameter: parameter of TString oject if success
+ */
+TssCompiler._getStringParameter = function (line, offset) {
+    var data = line.data;
+    var begin = offset + data.countSpaces(offset);
+    var length = data.byteLength();
+    var n = 0;
+    var c = 0;
+    for (var i = begin; i < length; i++) {
+        c = data.at(i);
+        if ((0 == c) || (TssCompiler._CODE_ESCAPE == c))
+            continue;
+        n++;
+    }
+    var end = begin + n - 1;
+    var param = TString.createFromUint8Array(new Uint8Array(n));
+    n = 0;
+    for (i = begin; i <= end; i++) {
+        c = data.at(i);
+        if ((0 == c) || (TssCompiler._CODE_ESCAPE == c))
+            continue;
+        param.setAt(n++, c);
+    }
+    return {
+        begin: begin,
+        end: end,
+        parameter: param
+    }
 };
 
 /**
@@ -223,7 +290,7 @@ TssCompiler._checkDirective = function (line) {
         c = data.at(i);
         if (0 == c)
             continue;
-        if ('#'.charCodeAt(0) == c) {
+        if (TssCompiler._CODE_SHARP == c) {
             data.setAt(i++, 0);
             break;
         }
@@ -239,6 +306,11 @@ TssCompiler._checkDirective = function (line) {
     for (var offset = start; offset < i; offset++)
         data.setAt(offset, 0);
     TssCompiler._checkChannelDirective(line);
+};
+
+TssCompiler.prototype._addWave = function (wave) {
+    Log.getLog().info("TSC: add wave " + this.waves.length);
+    this.waves[this.waves.length] = wave;
 };
 
 /**
@@ -376,8 +448,22 @@ TssCompiler.prototype._parseDirectives = function () {
             // TODO
             Log.getLog().warn("TSS: #OCTAVE is not implemented");
         } else if ("PRAGMA" == directive) {
-            // TODO
-            Log.getLog().warn("TSS: #PRAGMA is not implemented");
+            result = TssCompiler._getStringParameter(this.directives[i], 0);
+            if (!result.parameter)
+                throw new TssCompiler.CompileError(this.directives[i],
+                        result.begin, "syntax error in #PRAGMA");
+            var pragma = result.parameter.toString();
+            if (pragma == "FAMICOM") {
+                this.tag.mode = TssCompiler.MODE_FAMICOM;
+                this._addWave(TssCompiler._TRIANGLE_TABLE);
+            } else if (pragma == "GAMEBOY") {
+                this.tag.mode = TssCompiler.MODE_GAMEBOY;
+            } else {
+                throw new TssCompiler.CompileError(this.directives[i],
+                        result.begin, "unknown pragma parameter " + pragma);
+            }
+            offset = result.end + 1;
+            Log.getLog().info("TSS: PRAGMA> " + pragma);
         } else if ("TABLE" == directive) {
             // TODO
             Log.getLog().warn("TSS: #TABLE is not implemented");
@@ -444,16 +530,38 @@ TssCompiler.prototype._parseChannels = function () {
         },
         '/': {  // local loop break
             sequence: ":",
-            args: [],  // TODO
-            callback: notImplemented
+            args: [],
+            callback: function (self, work, command, args) {
+                if (work.localLoopId == 0)
+                    throw new TssCompiler.CompileError(work.lineObject,
+                        work.offset, "'/' found without '/:'");
+                work.data.push(TsdPlayer.CMD_LOCAL_LOOP_BREAK);
+                work.data.push(work.localLoopId - 1);
+            }
         },
         '/:': {  // local loop begin
-            args: [],  // TODO
-            callback: notImplemented
+            args: [ { def: 2, min: 2, max: 255 } ],
+            callback: function (self, work, command, args) {
+                if (work.localLoopId > 15)
+                    throw new TssCompiler.CompileError(work.lineObject,
+                            work.offset, "local loop is too deep (>16)");
+                work.data.push(TsdPlayer.CMD_LOCAL_LOOP_START);
+                work.data.push(work.localLoopId++);
+                work.data.push(args[0]);
+            }
+        },
+        ':': {  // n/a
+            sequence: "/"
         },
         ':/': {  // local loop end
-            args: [],  // TODO
-            callback: notImplemented
+            args: [],
+            callback: function (self, work, command, args) {
+                if (work.localLoopId == 0)
+                    throw new TssCompiler.CompileError(work.lineObject,
+                        work.offset, "':/' found without '/:'");
+                work.data.push(TsdPlayer.CMD_LOCAL_LOOP_END);
+                work.data.push(--work.localLoopId);
+            }
         },
         '<': {  // octave up (down)
             args: [],
@@ -629,9 +737,7 @@ TssCompiler.prototype._parseChannels = function () {
             }
         },
         n: {  // n/a
-            sequence: "ast",
-            args: [],  // TODO
-            callback: notImplemented
+            sequence: "ast"
         },
         na: {  // amp envelope
             args: [],  // TODO
@@ -853,8 +959,8 @@ TssCompiler.prototype._parseChannels = function () {
             lineObject: null,
             clock: 192, // TODO #CLOCK
             maxGate: maxGate,
+            mode: this.tag.mode,
             // TODO: following modes must reflect settings.
-            mode: TssCompiler.MODE_NORMAL,
             volumeRangeMode: TssCompiler.VOLUME_RANGE_MODE_NORMAL,
             volumeRelativeMode: TssCompiler.VOLUME_RELATIVE_MODE_NORMAL,
             octaveMode: TssCompiler.OCTAVE_MODE_NORMAL,
@@ -872,6 +978,7 @@ TssCompiler.prototype._parseChannels = function () {
                     line: 0
                 }
             },
+            localLoopId: 0,
             count: 0,
             data: [],
             dataLength: 0
@@ -880,6 +987,24 @@ TssCompiler.prototype._parseChannels = function () {
             work.data.push(TsdPlayer.CMD_FINENESS);
             work.data.push(fineness >> 8);
             work.data.push(fineness & 0xff);
+        }
+        if (TssCompiler.MODE_FAMICOM == work.mode) {
+            work.data.push(TsdPlayer.CMD_MODULE_CHANGE);
+            if (2 != ch)
+                work.data.push(1);
+            else
+                work.data.push(4);
+        } else if (TssCompiler.MODE_GAMEBOY == work.mode) {
+            work.data.push(TsdPlayer.CMD_MODULE_CHANGE);
+            if (3 == ch)
+                work.data.push(15);
+            else if (2 == ch)
+                work.data.push(14);
+            else
+                work.data.push(13);
+            work.data.push(TsdPlayer.CMD_FREQUENCY_MODE_CHANGE);
+            if (2 == ch)
+                work.data.push(3);
         }
         for (work.line = 0; work.line < this.channels[ch].length;
                 work.line++) {
@@ -898,7 +1023,7 @@ TssCompiler.prototype._parseChannels = function () {
                 if (!syntax[c])
                     throw new TssCompiler.CompileError(work.lineObject,
                         work.offset,
-                        "unknown command " + c);
+                        "unknown command '" + c + "'");
                 work.offset++;
                 if (syntax[c].sequence) {
                     work.offset +=
@@ -985,8 +1110,13 @@ TssCompiler.prototype._generateTsd = function () {
         dataSize += this.channelData[i].length;
     var voiceOffset = dataSize;
 
-    // TODO: Wave data size
-    dataSize += 2;
+    // Wave data size
+    dataSize += 2;  // number of waves
+    Log.getLog().info("TSS: WAVE> " + this.waves.length);
+    for (i = 0; i < this.waves.length; i++) {
+        Log.getLog().info("TSS:  " + i + "> " + this.waves[i].length);
+        dataSize += 2 + this.waves[i].length;  // id, size, wave
+    }
 
     // TODO: Table data size
     dataSize += 2;
@@ -1021,13 +1151,21 @@ TssCompiler.prototype._generateTsd = function () {
     // Voice data offset.
     offset = tsdWriter.setUint32(offset, voiceOffset);
 
-    // TODO: Wave data
-    offset = tsdWriter.setUint16(voiceOffset, 0);
+    // Wave data
+    offset = tsdWriter.setUint16(voiceOffset, this.waves.length);
+    for (i = 0; i < this.waves.length; i++) {
+        tsdWriter.setAt(offset++, i);
+        var dataLength = this.waves[i].length;
+        tsdWriter.setAt(offset++, dataLength);
+        for (var dataOffset = 0; dataOffset < dataLength; dataOffset++)
+            tsdWriter.setAt(offset++,
+                    TssCompiler._toUint8(this.waves[i][dataOffset]));
+    }
 
     // TODO: Table data
     offset = tsdWriter.setUint16(offset, 0);
 
-    return tsd;
+    return tsd.buffer;
 };
 
 /**
@@ -1041,6 +1179,7 @@ TssCompiler.prototype._compile = function () {
         return this._generateTsd();
     } catch (e) {
         Log.getLog().error(e.toString());
+        return null;
     }
 };
 

@@ -20,8 +20,6 @@ function TssChannel () {
     ];
     this.maxChannel = 0;
     this.wave = [];
-    for (var i = 0; i < 256; i++)
-        this.wave[i] = new Uint8Array(0);
 }
 
 TssChannel.MODULE_CHANNEL_L = 0;
@@ -206,6 +204,10 @@ TssChannel.prototype.getModuleVolume = function (id, ch) {
 TssChannel.prototype.setModuleType = function (id, type) {
     this._CheckId(id);
     this.module[id].setType(type);
+    if (TssChannel.Module.TYPE_SCC == type) {
+        if (!this.wave[0])
+            Log.getLog().warn("TSC: wave table 0 not found");
+    }
 };
 
 /**
@@ -228,6 +230,11 @@ TssChannel.prototype.getModuleType = function (id) {
 TssChannel.prototype.setModuleVoice = function (id, voice) {
     this._CheckId(id);
     this.module[id].voice = voice;
+    var type = this.getModuleType(id);
+    if (TssChannel.Module.TYPE_SCC == type) {
+        if (!this.wave[voice])
+            Log.getLog().warn("TSC: wave table " + voice + " not found");
+    }
 };
 
 /**
