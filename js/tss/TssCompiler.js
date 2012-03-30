@@ -14,8 +14,10 @@ function TssCompiler () {
     this.source = null;
     this.directives = [];
     this.channels = [];
-    this.validWaves = 0,
+    this.validWaves = 0;
     this.waves = [];
+    this.validTables = 0;
+    this.tables = [];
     this.tags = {
         title: null,
         channels: 0,
@@ -230,6 +232,157 @@ TssCompiler._getStringParameter = function (line, offset) {
 };
 
 /**
+ * Get a table parameter.
+ * @param lines source data array of line object
+ * @param offset start offset
+ * @return result object
+ *      begin: start offset
+ *      end: end offset
+ *      parameter: parameter
+ *          id: table id
+ *          table: table array
+ */
+TssCompiler._getTableParameter = function (_lines, _offset) {
+    var work = {
+        lines: _lines,
+        line: 0,
+        offset: _offset
+    };
+    var table = [];
+    var begin = work.offset;
+    var directive = work.lines[0].directive;
+
+    // Get ID.
+    var n = TssCompiler._getNumberParameter(
+            work.lines[work.line], work.offset);
+    if (typeof n.parameter == "undefined")
+        throw new TssCompiler.CompileError(work.lines[work.line], n.begin,
+                "id number not found in #" + directive);
+    var id = n.parameter;
+    if ((id < 0) || (255 < id))
+        throw new TssCompiler.CompileError(work.lines[work.line], n.begin,
+                "id " + id + " is out or range 0 to 255 in #" + directive);
+    work.offset = n.end + 1;
+
+    // Check comma after ID.
+    TssCompiler._checkCharacter(work, ',',
+            "',' not found after id number in #" + directive);
+
+    // Check '<'.
+    TssCompiler._checkCharacter(work, '<',
+            "'<' not found in #" + directive);
+
+    for (;;) {
+        var ch = TssCompiler._findNextCharacter(work,
+                "incomplete entry in #" + directive);
+        if ('(' == ch) {
+            // (x,y),n expansion.
+            work.offset++;
+            var firstNumberNotFound = "number not found after '(' in #" +
+                    directive;
+            TssCompiler._findNextCharacter(work, firstNumberNotFound);
+            n = TssCompiler._getNumberParameter(work.lines[work.line],
+                    work.offset);
+            if (typeof n.parameter == "undefined")
+                throw new TssCompiler.CompileError(work.lines[work.line],
+                        n.begin, firstNumberNotFound);
+            var x = n.parameter;
+            var numberOutOfRange = "number is out of range -128 to 127 in #" +
+                    directive;
+            if ((x < -128) || (127 < x))
+                throw new TssCompiler.CompileError(work.lines[work.line],
+                        n.begin, numberOutOfRange);
+            work.offset = n.end + 1;
+
+            TssCompiler._checkCharacter(work, ',',
+                    "',' not found after the first number after '(' in #" +
+                    directive);
+
+            var secondNumberNotFound = "the second number not found after " +
+                    "'(' in #" + directive;
+            TssCompiler._findNextCharacter(work, secondNumberNotFound);
+            n = TssCompiler._getNumberParameter(work.lines[work.line],
+                work.offset);
+            if (typeof n.parameter == "undefined")
+                throw new TssCompiler.CompileError(work.lines[work.line],
+                    n.begin, secondNumberNotFound);
+            var y = n.parameter;
+            if ((y < -128) || (127 < y))
+                throw new TssCompiler.CompileError(work.lines[work.line],
+                    n.begin, numberOutOfRange);
+            work.offset = n.end + 1;
+
+            TssCompiler._checkCharacter(work, ')',
+                    "')' not found after the second number in #" + directive);
+
+            TssCompiler._checkCharacter(work, ',',
+                    "',' not found after '(x,y)' syntax in #" + directive);
+
+            var lastNumberNotFound = "number not found after '(x,y),' " +
+                    "syntax in #" + directive;
+            TssCompiler._findNextCharacter(work, lastNumberNotFound);
+            n = TssCompiler._getNumberParameter(work.lines[work.line],
+                    work.offset);
+            if (typeof n.parameter == "undefined")
+                throw new TssCompiler.CompileError(work.lines[work.line],
+                    n.begin, lastNumberNotFound);
+            var count = n.parameter;
+            work.offset = n.end + 1;
+
+            var expand = [];
+            for (var i = 0; i < count; i++) {
+                var element = ~~(x + (y - x) * i / (count - 1));
+                expand.push(element);
+                table.push(element);
+            }
+
+            Log.getLog().info("TSS: expanding (" + x + "," + y + ")," + count +
+                    " to " + expand);
+        } else {
+            // Single element.
+            var numberNotFound = "number not found in #" + directive;
+            TssCompiler._findNextCharacter(work, numberNotFound);
+            n = TssCompiler._getNumberParameter(work.lines[work.line],
+                    work.offset);
+            if (typeof n.parameter == "undefined")
+                throw new TssCompiler.CompileError(work.lines[work.line],
+                        n.begin, numberNotFound);
+            if ((n.parameter < -128) || (127 < n.parameter))
+                throw new TssCompiler.CompileError(work.lines[work.line],
+                    n.begin, numberOutOfRange);
+            work.offset = n.end + 1;
+            table.push(n.parameter);
+        }
+        var delimiterNotFound = "',' or '>' not found in #" + directive;
+        ch = TssCompiler._findNextCharacter(work, delimiterNotFound);
+        if (',' == ch) {
+            work.offset++;
+        } else if ('>' == ch) {
+            work.offset++;
+            break;
+        } else {
+            throw new TssCompiler.CompileError(work.lines[work.line],
+                    work.offset, delimiterNotFound);
+        }
+    }
+    try {
+        TssCompiler._findNextCharacter(work, "");
+    } catch (e) {
+        Log.getLog().info("TSS: table complete " + table);
+        return {
+            begin: begin,
+            end: work.offset,
+            parameter: {
+                id: id,
+                table: table
+            }
+        };
+    }
+    throw new TssCompiler.CompileError(work.lines[work.line],
+            work.offset, "unknown data after table in #" + directive);
+};
+
+/**
  * Get a character.
  * @param line source data of line object
  * @param offset offset start offset
@@ -247,11 +400,55 @@ TssCompiler._getCharacter = function (line, offset, character) {
 };
 
 /**
+ * Find the next character in plural lines.
+ * @param work object which will be updated after the function call
+ *      lines an array of line objects
+ *      line line number of the array
+ *      offset offset in the line
+ * @param message error message
+ * @return the next character
+ * @raise TssCompiler.CompileError if search reach to the end of lines
+ */
+TssCompiler._findNextCharacter = function (work, message) {
+    var length = work.lines.length;
+    if (TssCompiler._checkEnd(work.lines[work.line], work.offset) &&
+        ((work.line + 1) < length)) {
+        work.line++;
+        work.offset = 0;
+    }
+    work.offset += work.lines[work.line].data.countSpaces(work.offset);
+    if (work.offset == work.lines[work.line].data.byteLength())
+        throw new TssCompiler.CompileError(work.lines[work.line], work.offset,
+                message);
+    return work.lines[work.line].data.charAt(work.offset);
+};
+
+/**
+ * Check if the specified character is found.
+ * @param work object which will be updated after the function call
+ *      lines an array of line objects
+ *      line line number of the array
+ *      offset offset in the line
+ * @param ch character to check
+ * @param message error message
+ * @raise TssCompiler.CompileError if the specified character is not found
+ */
+TssCompiler._checkCharacter = function (work, ch, message) {
+    TssCompiler._findNextCharacter(work, message);
+    var result = TssCompiler._getCharacter(work.lines[work.line], work.offset,
+            ch);
+    if (result < 0)
+        throw new TssCompiler.CompileError(work.lines[work.line], work.offset,
+                message);
+    work.offset = result + 1;
+}
+
+/**
  * Check if the rest part of specified line has no data.
  * @param line line object to be checked
  * @param offset start offset
  */
-TssCompiler.prototype._checkEnd = function (line, offset) {
+TssCompiler._checkEnd = function (line, offset) {
     var data = line.data;
     offset += data.countSpaces(offset);
     return offset == data.byteLength();
@@ -313,11 +510,28 @@ TssCompiler._checkDirective = function (line) {
     TssCompiler._checkChannelDirective(line);
 };
 
+/**
+ * Set wave table data.
+ * @param id id
+ * @param wave wave table
+ */
 TssCompiler.prototype._setWave = function (id, wave) {
     Log.getLog().info("TSC: set wave " + id);
     if (!this.waves[id])
         this.validWaves++;
     this.waves[id] = wave;
+};
+
+/**
+ * Set enverope table data.
+ * @param id id
+ * @param table enverope table
+ */
+TssCompiler.prototype._setTable = function (id, table) {
+    Log.getLog().info("TSC: set table " + id + "; size = " + table.length);
+    if (!this.tables[id])
+        this.validTables++;
+    this.tables[id] = table;
 };
 
 /**
@@ -353,7 +567,7 @@ TssCompiler.prototype._preprocessLine = function (context, offset, count) {
         if (context.commentNest > 0) {
             // In comment.
             if ('\\' == c)
-                line.setCharAt(i++, '\\');
+                line.setAt(i++, 0);
             else if ('{' == c)
                 context.commentNest++;
             else if ('}' == c)
@@ -491,9 +705,17 @@ TssCompiler.prototype._parseDirectives = function () {
             offset = result.end + 1;
             Log.getLog().info("TSS: PRAGMA> " + pragma);
         } else if ("TABLE" == directive) {
-            // TODO
-            Log.getLog().warn("TSS: #TABLE is not implemented");
-            offset = this.directives[i].data.byteLength();
+            var lines = [];
+            for (;; i++) {
+                lines.push(this.directives[i]);
+                if ((i + 1) == this.directives.length)
+                    break;
+                if (!this.directives[i + 1].continuation)
+                    break;
+            }
+            result = TssCompiler._getTableParameter(lines, 0);
+            this._setTable(result.parameter.id, result.parameter.table);
+            offset = result.end;
         } else if ("TITLE" == directive) {
             result = TssCompiler._getBracedParameter(this.directives[i], 0);
             if (!result.parameter)
@@ -518,14 +740,26 @@ TssCompiler.prototype._parseDirectives = function () {
                         result.begin, "invalid argument in #VOLUME");
             offset = result.end + 1;
         } else if ("WAV" == directive) {
-            // TODO
-            Log.getLog().warn("TSS: #WAV is not implemented");
-            offset = this.directives[i].data.byteLength();
+            var lines = [];
+            for (;; i++) {
+                lines.push(this.directives[i]);
+                if ((i + 1) == this.directives.length)
+                    break;
+                if (!this.directives[i + 1].continuation)
+                    break;
+            }
+            result = TssCompiler._getTableParameter(lines, 0);
+            if (32 != result.parameter.table.length)
+                throw new TssCompiler.CompileError(this.directive[i],
+                        result.begin, "invalid wave table size " +
+                        result.parameter.table.length);
+            this._setWave(result.parameter.id, result.parameter.table);
+            offset = result.end;
         } else {
             throw new TssCompiler.CompileError(this.directives[i], 0,
                     "unknown directive: " + directive);
         }
-        if (!this._checkEnd(this.directives[i], offset))
+        if (!TssCompiler._checkEnd(this.directives[i], offset))
             throw new TssCompiler.CompileError(this.directives[i], offset,
                     "syntax error after #" + directive);
     }
@@ -647,15 +881,8 @@ TssCompiler.prototype._parseChannels = function () {
                 { def: 0, min: 0, max: 3 }
             ],
             callback: function (self, work, command, args) {
-                if (1 == args.length) {
-                    work.data.push(TsdPlayer.CMD_VOLUME_MONO);
-                    work.data.push(args[0]);
-                } else {
-                    work.data.push(TsdPlayer.CMD_VOLUME_LEFT);
-                    work.data.push(args[0]);
-                    work.data.push(TsdPlayer.CMD_VOLUME_RIGHT);
-                    work.data.push(args[1]);
-                }
+                work.data.push(TsdPlayer.CMD_FM_IN);
+                work.data.push((args[0] << 4) | args[1]);
             }
         },
         '@o': {  // output pipe
@@ -674,8 +901,15 @@ TssCompiler.prototype._parseChannels = function () {
                 { def: 0, min: 0, max: 255 }
             ],
             callback: function (self, work, command, args) {
-                work.data.push(TsdPlayer.CMD_FM_OUT);
-                work.data.push((args[0] << 4) | args[1]);
+                if (1 == args.length) {
+                    work.data.push(TsdPlayer.CMD_VOLUME_MONO);
+                    work.data.push(args[0]);
+                } else {
+                    work.data.push(TsdPlayer.CMD_VOLUME_LEFT);
+                    work.data.push(args[0]);
+                    work.data.push(TsdPlayer.CMD_VOLUME_RIGHT);
+                    work.data.push(args[1]);
+                }
             }
         },
         ']': {  // loop end
@@ -1200,8 +1434,15 @@ TssCompiler.prototype._generateTsd = function () {
         dataSize += 2 + this.waves[i].length;  // id, size, wave
     }
 
-    // TODO: Table data size
-    dataSize += 2;
+    // Table data size
+    dataSize += 2;  // number of tables
+    Log.getLog().info("TSS: TABLE> " + this.validTables);
+    for (i = 0; i < this.tables.length; i++) {
+        if (!this.tables[i])
+            continue;
+        Log.getLog().info("TSS:  " + i + "> " + this.tables[i].length);
+        dataSize += 2 + this.tables[i].length;  // id, size, table
+    }
 
     // Create data.
     var tsd = new Uint8Array(dataSize);
@@ -1246,8 +1487,18 @@ TssCompiler.prototype._generateTsd = function () {
                     TssCompiler._toUint8(this.waves[i][dataOffset]));
     }
 
-    // TODO: Table data
-    offset = tsdWriter.setUint16(offset, 0);
+    // Table data
+    offset = tsdWriter.setUint16(offset, this.validTables);
+    for (i = 0; i < this.validTables; i++) {
+        if (!this.tables[i])
+            continue;
+        tsdWriter.setAt(offset++, i);
+        dataLength = this.tables[i].length;
+        tsdWriter.setAt(offset++, dataLength);
+        for (dataOffset = 0; dataOffset < dataLength; dataOffset++)
+            tsdWriter.setAt(offset++,
+                TssCompiler._toUint8(this.tables[i][dataOffset]));
+    }
 
     return tsd.buffer;
 };
