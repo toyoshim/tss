@@ -23,6 +23,8 @@
     <script language="JavaScript" src="TssChannel.js"></script>
     <script language="JavaScript" src="TssCompiler.js"></script>
     <script language="JavaScript" src="TsdPlayer.js"></script>
+    <script language="JavaScript" src="MidiChannel.js"></script>
+    <script language="JavaScript" src="SmfPlayer.js"></script>
     <!-- control callback scripts -->
     <script language="JavaScript">
         google.load("jquery", "1.7.1");
@@ -205,6 +207,18 @@
             var url = webkitURL.createObjectURL(blob);
             open(url, false);
         }
+        function test9flash() {
+            flash9 = testxflash(flash9, div9, test9flash);
+        }
+        function test9prog(e) {
+            testxprog(e, prog9);
+        }
+        function test9start(e) {
+            test9prog(e);
+            player9.play(reader9.result);
+            filter.setChannel(master9);
+            test = 9;
+        }
     </script>
 </head>
 <body>
@@ -355,6 +369,33 @@
 	l16 &lt;dddd&gt;bbbbgggg
 #END</textarea></form>
 <hr>
+<a name="smf"></a>
+<p class="title">9. SMF Player</p>
+<button onclick="testxstop()">STOP</button>
+<span style="background-color: #000000;">
+<span id="test9ch0">*</span>
+<span id="test9ch1">*</span>
+<span id="test9ch2">*</span>
+<span id="test9ch3">*</span>
+<span id="test9ch4">*</span>
+<span id="test9ch5">*</span>
+<span id="test9ch6">*</span>
+<span id="test9ch7">*</span>
+<span id="test9ch8">*</span>
+<span id="test9ch9">*</span>
+<span id="test9ch10">*</span>
+<span id="test9ch11">*</span>
+<span id="test9ch12">*</span>
+<span id="test9ch13">*</span>
+<span id="test9ch14">*</span>
+<span id="test9ch15">*</span>
+</span>
+<div id="test9drop" style="width: 100%; height: 100pt; background-color: #000000; color: #ffffff;">
+    <pre>DRAG SMF FILE TO HERE</pre>
+    <pre id="test9info"></pre>
+    <pre id="test9prog"></pre>
+</div>
+<hr>
 <hr>
 <pre>*** LOG (reversed order) ***</pre>
 <div id="log"></div>
@@ -479,9 +520,46 @@
     master8.setVolume(1);
     var player8 = new TsdPlayer();
     player8.setMasterChannel(master8);
-    test8start();  // TODO: Remove this
+    // test8start();  // TODO: Remove this
 
-    // TEST 5, 6 and 7
+    // TEST 9
+    var vol9 = [
+            16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16];
+    var div9 = document.getElementById("test9drop");
+    var info9 = document.getElementById("test9info");
+    var prog9 = document.getElementById("test9prog");
+    var flash9 = 0;
+    var reader9 = null;
+    var master9 = new MasterChannel();
+    master9.setVolume(1);
+    var player9 = new SmfPlayer();
+    function DisplayMidiChannel () {
+    }
+    DisplayMidiChannel.prototype = new MidiChannel();
+    DisplayMidiChannel.prototype.constructor = DisplayMidiChannel;
+    DisplayMidiChannel.prototype.processEvents = function (events) {
+        if (0xf0 <= events.midiData[0])
+            return;
+        var ch = events.midiData[0] & 0x0f;
+        vol9[ch] = 16;
+    };
+    var display9 = new DisplayMidiChannel();
+    player9.setDevice(SmfPlayer.TRACK_DEFAULT, display9);
+    player9.setMasterChannel(master9);
+
+    function volumeCallback() {
+        for (var i = 0; i < 16; i++) {
+            if (0 == vol9[i])
+                continue;
+            vol9[i]--;
+            var name = "#test9ch" + i;
+            var c = vol9[i].toString(16);
+            $(name).css("color", "#" + c + c + c + c + c + c);
+        }
+    }
+    setInterval(volumeCallback, 10);
+
+    // TEST 5, 6, 7, and 9
     function isParent(id, node) {
         while (node) {
             if (node.id == id)
@@ -496,18 +574,27 @@
             div5.style.backgroundColor = "#888888";
             div6.style.backgroundColor = "#000000";
             div7.style.backgroundColor = "#000000";
+            div9.style.backgroundColor = "#000000";
         } else if (isParent("test6drop", e.target)) {
             div5.style.backgroundColor = "#000000";
             div6.style.backgroundColor = "#888888";
             div7.style.backgroundColor = "#000000";
+            div9.style.backgroundColor = "#000000";
         } else if (isParent("test7drop", e.target)) {
             div5.style.backgroundColor = "#000000";
             div6.style.backgroundColor = "#000000";
             div7.style.backgroundColor = "#888888";
+            div9.style.backgroundColor = "#000000";
+        } else if (isParent("test9drop", e.target)) {
+            div5.style.backgroundColor = "#000000";
+            div6.style.backgroundColor = "#000000";
+            div7.style.backgroundColor = "#000000";
+            div9.style.backgroundColor = "#888888";
         } else {
             div5.style.backgroundColor = "#000000";
             div6.style.backgroundColor = "#000000";
             div7.style.backgroundColor = "#000000";
+            div9.style.backgroundColor = "#000000";
             done = false;
         }
         if (done) {
@@ -541,6 +628,13 @@
             reader7 = reader;
             prog = test7prog;
             kick = test7start;
+        } else if (isParent("test9drop", e.target)) {
+            info = info9;
+            flash9 = 5;
+            setTimeout(test9flash, 50);
+            reader9 = reader;
+            prog = test9prog;
+            kick = test9start;
         } else {
             done = false;
         }
