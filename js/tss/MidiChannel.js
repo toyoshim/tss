@@ -96,7 +96,12 @@ MidiChannel.prototype.processEvents = function (events) {
             case 0x9:  // note on
                 if (this.events.length < 3)
                     return done;
-                this.processNoteOn(channel, this.events[1], this.events[2]);
+                if (0 == this.events[2])
+                    this.processNoteOff(channel, this.events[1],
+                            this.events[2]);
+                else
+                    this.processNoteOn(channel, this.events[1],
+                            this.events[2]);
                 this.events.splice(0, 3);
                 break;
             case 0xa:  // key pressure

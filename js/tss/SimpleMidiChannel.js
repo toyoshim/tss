@@ -11,6 +11,7 @@
  */
 function SimpleMidiChannel (frequency) {
     this.buffer = null;
+    this.count = SimpleMidiChannel._COUNT_CYCLE;
     this.voices = [];
     this.activeVoices = 0;
     this.searchingVoice = 0;
@@ -26,8 +27,9 @@ SimpleMidiChannel.prototype = new MidiChannel();
 SimpleMidiChannel.prototype.constructor = SimpleMidiChannel;
 
 SimpleMidiChannel._MAX_CHANNEL = 16;
-SimpleMidiChannel._MAX_VOICE = 32;
+SimpleMidiChannel._MAX_VOICE = 64;
 SimpleMidiChannel._OFF = -1;
+SimpleMidiChannel._COUNT_CYCLE = 4096;
 
 /**
  * Generate partial sound stream internally.
@@ -59,6 +61,8 @@ SimpleMidiChannel.prototype._findVoice = function () {
         this.voices[voice].keyOff();
         this.noteMaps[ch][note] = SimpleMidiChannel._OFF;
         this.activeVoices--;
+        Log.getLog.info("SimpleMIDI: voice overflow, force to key-off; " +
+                "ch = " + ch + ", note = " + note + ", voice = " + voice);
     } else {
         for (var i = 0; i < SimpleMidiChannel._MAX_VOICE; i++) {
             // Search inactive channel.
@@ -67,12 +71,12 @@ SimpleMidiChannel.prototype._findVoice = function () {
                 voice -= SimpleMidiChannel._MAX_VOICE;
             if (!this.voices[voice].isActive()) {
                 this.searchingVoice = voice + i;
-                if (this.searchingVoice >= SimpleMidiChannel._MAX_VOICE)
-                    this.searchingVoice -= SimpleMidiChannel._MAX_VOICE;
                 break;
             }
         }
     }
+    if (this.searchingVoice >= SimpleMidiChannel._MAX_VOICE)
+        this.searchingVoice -= SimpleMidiChannel._MAX_VOICE;
     return voice;
 };
 
@@ -98,7 +102,28 @@ SimpleMidiChannel.prototype.getBuffer = function () {
  * @param length sound length in short to generate
  */
 SimpleMidiChannel.prototype.generate = function (length) {
-    this._generate(0, length - 1);
+    for (var offset = 0; length > 0; ) {
+        if (this.count <= length) {
+            this._generate(offset, offset + this.count - 1);
+            offset += this.count;
+            length -= this.count;
+            this.count = SimpleMidiChannel._COUNT_CYCLE;
+            // Process key release.
+            for (var v = 0; v < SimpleMidiChannel._MAX_VOICE; v++) {
+                if (this.voices[v].isActive())
+                    continue;
+                var diff = this.voices[v].velocity >> 8;
+                if (0 != diff)
+                    this.voices[v].velocity -= diff;
+                else
+                    this.voices[v].velocity -= 0;
+            }
+        } else {
+            this._generate(offset, offset + length - 1);
+            this.count -= SimpleMidiChannel._COUNT_CYCLE;
+            break;
+        }
+    }
 };
 
 /**
@@ -125,11 +150,14 @@ SimpleMidiChannel.prototype.processNoteOff = function (ch, note, velocity) {
  * @param velocity key on velocity
  */
 SimpleMidiChannel.prototype.processNoteOn = function (ch, note, velocity) {
-    var voice = this._findVoice();
+    var voice = this.noteMaps[ch][note];
+    if (SimpleMidiChannel._OFF == voice) {
+        voice = this._findVoice();
+        this.noteMaps[ch][note] = voice;
+        this.activeVoices++;
+    }
 
-    this.noteMaps[ch][note] = voice;
     this.voices[voice].keyOn(ch, note, velocity);
-    this.activeVoices++;
 };
 
 /**
@@ -144,6 +172,9 @@ SimpleMidiChannel.prototype.processSystemReset = function () {
     for (var ch = 0; ch < SimpleMidiChannel._MAX_CHANNEL; ch++)
         for (var note = 0; note < 0x80; note++)
             this.noteMaps[ch][note] = SimpleMidiChannel._OFF;
+
+    this.activeVoices = 0;
+    this.searchingVoice = 0;
 };
 
 SimpleMidiChannel.Voice = function () {
@@ -179,7 +210,7 @@ SimpleMidiChannel.Voice.prototype.keyOn = function (ch, note, velocity) {
 SimpleMidiChannel.Voice.prototype.keyOff = function () {
     this.channel = -1;
     this.note = -1;
-    this.velocity = 0;
+    this.velocity >>= 1;
     this.active = false;
 };
 

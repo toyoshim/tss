@@ -205,7 +205,7 @@ SmfPlayer.prototype.setDevice = function (track, device) {
 SmfPlayer.prototype.updateDevice = function () {
     if (this.error)
         return;
-    for (var track = 0; track < this.numberOftracks; track++) {
+    for (var track = 0; track < this.numberOfTracks; track++) {
         var work = this.tracks[track];
         if (!work.active)
             continue;
@@ -245,10 +245,15 @@ SmfPlayer.prototype.updateDevice = function () {
                     break;
                 }
                 if (SmfPlayer._SMF_META_TRACK_NAME == type) {
-                    var text = TString.createFromUint8Array(
-                        work.data.subarray(work.offset + 3,
-                            work.offset + dataLength));
-                    Log.getLog().info("SMF: track name; " + text.toString());
+                    try {
+                        var text = TString.createFromUint8Array(
+                            work.data.subarray(work.offset + 3,
+                                work.offset + dataLength));
+                        Log.getLog().info("SMF: track name; " +
+                                text.toString());
+                    } catch (e) {
+                        Log.getLog().warn("SMF: track name is not UTF-8 text");
+                    }
                 } else if (SmfPlayer._SMF_META_SET_TEMPO == type) {
                     this.usecTempo = (work.data[work.offset + 3] << 16) |
                         (work.data[work.offset + 4] << 8) |
@@ -309,7 +314,7 @@ SmfPlayer.prototype.play = function (newInput) {
             }
             headerProcessed = true;
             var format = this._readUint16(offset);
-            this.numberOftracks = this._readUint16(offset + 2);
+            this.numberOfTracks = this._readUint16(offset + 2);
             this.timeUnit = this._readUint16(offset + 4);
             if (6 != chunkHeader.length)
                 Log.getLog().warn("SMF: invalid chunk header length: " +
@@ -323,6 +328,9 @@ SmfPlayer.prototype.play = function (newInput) {
                     Log.getLog().warn("SMF: invalid track number in format 0");
                     this.numberOfTracks = 1;
                 }
+            } else {
+                // TODO
+                Log.getLog().warn("SMF: format 1 support looks buggy for now");
             }
         } else if (SmfPlayer._SMF_CHUNK_TRACK == chunkHeader.type) {
             Log.getLog().info("SMF: track chunk " + processedTracks);

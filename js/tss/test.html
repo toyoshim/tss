@@ -217,6 +217,8 @@
         function test9start(e) {
             test9prog(e);
             display9.processSystemReset();
+            for (var i = 0; i < 16; i++)
+                note9[i] = 0;
             player9.play(reader9.result);
             filter.setChannel(master9);
             test = 9;
@@ -526,7 +528,9 @@
 
     // TEST 9
     var vol9 = [
-            16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16];
+            64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64 ];
+    var note9 = [
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ];
     var div9 = document.getElementById("test9drop");
     var info9 = document.getElementById("test9info");
     var prog9 = document.getElementById("test9prog");
@@ -540,11 +544,17 @@
     DisplayMidiChannel.prototype = new SimpleMidiChannel();
     DisplayMidiChannel.prototype.constructor = DisplayMidiChannel;
     DisplayMidiChannel.prototype.processNoteOn = function (ch, note, v) {
-        var val = v >> 3;
-        if (val > 16)
-            val = 16;
-        vol9[ch] = val;
+        vol9[ch] = v;
+        note9[ch]++;
         SimpleMidiChannel.prototype.processNoteOn.apply(this, [ ch, note, v ]);
+    };
+    DisplayMidiChannel.prototype.processNoteOff = function (ch, note, v) {
+        note9[ch]--;
+        if (note9[ch] <= 0) {
+            note9[ch] = 0;
+            vol9[ch] = 16;
+        }
+        SimpleMidiChannel.prototype.processNoteOff.apply(this, [ ch, note, v ]);
     };
     var display9 = new DisplayMidiChannel();
     player9.setDevice(SmfPlayer.TRACK_DEFAULT, display9);
@@ -555,8 +565,11 @@
             if (0 == vol9[i])
                 continue;
             vol9[i]--;
+            var v = vol9[i] >> 3;
+            if (v > 16)
+                v = 16;
             var name = "#test9ch" + i;
-            var c = vol9[i].toString(16);
+            var c = v.toString(16);
             $(name).css("color", "#" + c + c + c + c + c + c);
         }
     }
