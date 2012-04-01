@@ -537,11 +537,11 @@
     }
     DisplayMidiChannel.prototype = new MidiChannel();
     DisplayMidiChannel.prototype.constructor = DisplayMidiChannel;
-    DisplayMidiChannel.prototype.processEvents = function (events) {
-        if (0xf0 <= events.midiData[0])
-            return;
-        var ch = events.midiData[0] & 0x0f;
-        vol9[ch] = 16;
+    DisplayMidiChannel.prototype.processNoteOn = function (ch, note, v) {
+        var val = v >> 3;
+        if (val > 16)
+            val = 16;
+        vol9[ch] = val;
     };
     var display9 = new DisplayMidiChannel();
     player9.setDevice(SmfPlayer.TRACK_DEFAULT, display9);

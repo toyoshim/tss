@@ -30,8 +30,7 @@ SmfPlayer._SMF_CHUNK_TRACK = ('M'.charCodeAt(0) << 24) |
     'k'.charCodeAt(0);
 SmfPlayer._SMF_FORMAT_0 = 0;
 SmfPlayer._SMF_FORMAT_1 = 1;
-SmfPlayer._SMF_EVENT_SYSEX_F0 = 0xf0;
-SmfPlayer._SMF_EVENT_SYSEX_F7 = 0xf7;
+SmfPlayer._SMF_EVENT_SYSEX = 0xf0;
 SmfPlayer._SMF_EVENT_META = 0xff;
 SmfPlayer._SMF_META_SEQUENCE_NUMBER = 0x00;
 SmfPlayer._SMF_META_TEXT = 0x01;
@@ -189,16 +188,13 @@ SmfPlayer.prototype.updateDevice = function () {
                 this.error = true;
                 break;
             }
-            if ((SmfPlayer._SMF_EVENT_SYSEX_F0 == event) ||
-                (SmfPlayer._SMF_EVENT_SYSEX_F7 == event)) {
+            if (SmfPlayer._SMF_EVENT_SYSEX == event) {
                 dataLength = 2 + work.data[work.offset + 1];
                 if (work.offset + dataLength > length) {
                     Log.getLog().error("SMF: invalid sysex data");
                     this.error = true;
                     break;
                 }
-                this._sendEvent(track, work.data.subarray(
-                        work.offset, work.offset + dataLength));
             } else if (SmfPlayer._SMF_EVENT_META == event) {
                 var type = work.data[work.offset + 1];
                 dataLength = 3 + work.data[work.offset + 2];
@@ -222,10 +218,14 @@ SmfPlayer.prototype.updateDevice = function () {
                 } else {
                     Log.getLog().info("SMF: meta type " + type);
                 }
-            } else {
-                this._sendEvent(track, work.data.subarray(
-                    work.offset, work.offset + dataLength));
+            } else if (0xf0 == (event & 0xf0)) {
+                Log.getLog().error("SMF: unsupported system common message " +
+                        event.toString(16));
+                this.error = true;
+                break;
             }
+            this._sendEvent(track, work.data.subarray(
+                    work.offset, work.offset + dataLength));
             work.offset += dataLength;
 
             var deltaTime = this._readUint(work.data, work.offset);
