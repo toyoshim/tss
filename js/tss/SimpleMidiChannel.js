@@ -11,13 +11,70 @@
  */
 function SimpleMidiChannel (frequency) {
     this.buffer = null;
-    this.phase = 0;
-    this.freq = 440;
-    this.data = 8192;
+    this.voices = [];
+    this.activeVoices = 0;
+    this.searchingVoice = 0;
+    this.noteMaps = [];
+    for (var i = 0; i < SimpleMidiChannel._MAX_VOICE; i++)
+        this.voices[i] = new SimpleMidiChannel.Voice();
+    for (var ch = 0; ch < SimpleMidiChannel._MAX_CHANNEL; ch++)
+        this.noteMaps[ch] = new Array(0x80);
+    this.processSystemReset();
 }
 
 SimpleMidiChannel.prototype = new MidiChannel();
 SimpleMidiChannel.prototype.constructor = SimpleMidiChannel;
+
+SimpleMidiChannel._MAX_CHANNEL = 16;
+SimpleMidiChannel._MAX_VOICE = 32;
+SimpleMidiChannel._OFF = -1;
+
+/**
+ * Generate partial sound stream internally.
+ * @param begin start offset
+ * @param end end offset
+ */
+SimpleMidiChannel.prototype._generate = function (begin, end) {
+    // Initialize stream.
+    for (var i = begin; i <= end; i++)
+        this.buffer[i] = 0;
+    // Add all voices streams.
+    for (var v = 0; v < SimpleMidiChannel._MAX_VOICE; v++)
+        this.voices[v].generate(this.buffer, begin, end);
+};
+
+/**
+ * Find usable voice number.
+ */
+SimpleMidiChannel.prototype._findVoice = function () {
+    var voice = 0;
+    if (SimpleMidiChannel._MAX_VOICE == this.activeVoices) {
+        // All voices are used. Reuse the voice which are keyed-on almost
+        // firstly.
+        voice = this.searchingVoice++;
+
+        // Key-off the target voice.
+        var ch = this.voices[voice].getChannel();
+        var note = this.voices[voice].getNote();
+        this.voices[voice].keyOff();
+        this.noteMaps[ch][note] = SimpleMidiChannel._OFF;
+        this.activeVoices--;
+    } else {
+        for (var i = 0; i < SimpleMidiChannel._MAX_VOICE; i++) {
+            // Search inactive channel.
+            voice = this.searchingVoice + i;
+            if (voice >= SimpleMidiChannel._MAX_VOICE)
+                voice -= SimpleMidiChannel._MAX_VOICE;
+            if (!this.voices[voice].isActive()) {
+                this.searchingVoice = voice + i;
+                if (this.searchingVoice >= SimpleMidiChannel._MAX_VOICE)
+                    this.searchingVoice -= SimpleMidiChannel._MAX_VOICE;
+                break;
+            }
+        }
+    }
+    return voice;
+};
 
 /**
  * @see MasterChannel
@@ -41,15 +98,7 @@ SimpleMidiChannel.prototype.getBuffer = function () {
  * @param length sound length in short to generate
  */
 SimpleMidiChannel.prototype.generate = function (length) {
-    for (var i = 0; i < length; i += 2) {
-        this.phase += this.freq * 2;
-        if (this.phase > MasterChannel.SAMPLE_FREQUENCY) {
-            this.phase -= MasterChannel.SAMPLE_FREQUENCY;
-            this.data = -this.data;
-        }
-        this.buffer[i + 0] = this.data;
-        this.buffer[i + 1] = this.data;
-    }
+    this._generate(0, length - 1);
 };
 
 /**
@@ -60,7 +109,12 @@ SimpleMidiChannel.prototype.generate = function (length) {
  * @param velocity key off velocity
  */
 SimpleMidiChannel.prototype.processNoteOff = function (ch, note, velocity) {
-    // TODO
+    var voice = this.noteMaps[ch][note];
+    if (SimpleMidiChannel._OFF == voice)
+        return;
+    this.noteMaps[ch][note] = SimpleMidiChannel._OFF;
+    this.voices[voice].keyOff();
+    this.activeVoices--;
 };
 
 /**
@@ -71,8 +125,75 @@ SimpleMidiChannel.prototype.processNoteOff = function (ch, note, velocity) {
  * @param velocity key on velocity
  */
 SimpleMidiChannel.prototype.processNoteOn = function (ch, note, velocity) {
-    // TODO
-    if (0 != ch)
+    var voice = this._findVoice();
+
+    this.noteMaps[ch][note] = voice;
+    this.voices[voice].keyOn(ch, note, velocity);
+    this.activeVoices++;
+};
+
+/**
+ * Process system reset message event.
+ * @see MidiChannel
+ */
+SimpleMidiChannel.prototype.processSystemReset = function () {
+    for (var i = 0; i < SimpleMidiChannel._MAX_VOICE; i++)
+        this.voices[i].keyOff();
+
+    // Note map per MIDI channel showing which note are played by which voice.
+    for (var ch = 0; ch < SimpleMidiChannel._MAX_CHANNEL; ch++)
+        for (var note = 0; note < 0x80; note++)
+            this.noteMaps[ch][note] = SimpleMidiChannel._OFF;
+};
+
+SimpleMidiChannel.Voice = function () {
+    this.phase = 0;
+    this.frequency = 440;
+    this.velocity = 0;
+    this.channel = -1;
+    this.note = -1;
+    this.active = false;
+};
+
+SimpleMidiChannel.Voice.prototype.getChannel = function () {
+    return this.channel;
+};
+
+SimpleMidiChannel.Voice.prototype.getNote = function () {
+    return this.note;
+};
+
+SimpleMidiChannel.Voice.prototype.isActive = function () {
+    return this.active;
+};
+
+SimpleMidiChannel.Voice.prototype.keyOn = function (ch, note, velocity) {
+    this.channel = ch;
+    this.note = note;
+    this.frequency = MidiChannel.getFrequencyForNote(note);
+    this.velocity = velocity << 5;
+    this.phase = 0;
+    this.active = true;
+};
+
+SimpleMidiChannel.Voice.prototype.keyOff = function () {
+    this.channel = -1;
+    this.note = -1;
+    this.velocity = 0;
+    this.active = false;
+};
+
+SimpleMidiChannel.Voice.prototype.generate = function (buffer, begin, end) {
+    if (0 == this.velocity)
         return;
-    this.freq = MidiChannel.getFrequencyForNote(note);
+
+    for (var i = begin; i <= end; i += 2) {
+        this.phase += this.frequency * 2;
+        if (this.phase > MasterChannel.SAMPLE_FREQUENCY) {
+            this.phase -= MasterChannel.SAMPLE_FREQUENCY;
+            this.velocity = -this.velocity;
+        }
+        buffer[i + 0] += this.velocity;
+        buffer[i + 1] += this.velocity;
+    }
 };
