@@ -24,6 +24,7 @@
     <script language="JavaScript" src="TssCompiler.js"></script>
     <script language="JavaScript" src="TsdPlayer.js"></script>
     <script language="JavaScript" src="MidiChannel.js"></script>
+    <script language="JavaScript" src="SimpleMidiChannel.js"></script>
     <script language="JavaScript" src="SmfPlayer.js"></script>
     <!-- control callback scripts -->
     <script language="JavaScript">
@@ -535,13 +536,14 @@
     var player9 = new SmfPlayer();
     function DisplayMidiChannel () {
     }
-    DisplayMidiChannel.prototype = new MidiChannel();
+    DisplayMidiChannel.prototype = new SimpleMidiChannel();
     DisplayMidiChannel.prototype.constructor = DisplayMidiChannel;
     DisplayMidiChannel.prototype.processNoteOn = function (ch, note, v) {
         var val = v >> 3;
         if (val > 16)
             val = 16;
         vol9[ch] = val;
+        SimpleMidiChannel.prototype.processNoteOn.apply(this, [ ch, note, v ]);
     };
     var display9 = new DisplayMidiChannel();
     player9.setDevice(SmfPlayer.TRACK_DEFAULT, display9);

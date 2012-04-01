@@ -3,7 +3,7 @@
  */
 
 /**
- * SlaveChannel prototype
+ * SimpleSlaveChannel prototype
  *
  * This prototype implements simple fixed frequency slave channel.
  * @author Takashi Toyoshima <toyoshim@gmail.com>

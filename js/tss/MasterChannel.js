@@ -101,6 +101,7 @@ MasterChannel.prototype.setPlayer = function (newPlayer) {
  * @param msec time interval
  */
 MasterChannel.prototype.setPlayerInterval = function (msec) {
+    // TODO: this.intervalLength looks half of expected length.
     this.intervalLength = (MasterChannel.SAMPLE_FREQUENCY * msec) /
             MasterChannel.MSEC_PER_SEC;
     this.intervalLength = ~~this.intervalLength;

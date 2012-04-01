@@ -146,7 +146,9 @@ SmfPlayer.prototype._readChunkHeader = function (offset) {
 SmfPlayer.prototype._updateTimer = function () {
     var interval = (this.usecTempo / 1000) / this.timeUnit;
     Log.getLog().info("SMF: set timer interval as " + interval);
-    this.masterChannel.setPlayerInterval(interval);
+    // TODO: setPlayerInterval has a bug on interval value handling.
+    // We must set doubled value to work around.
+    this.masterChannel.setPlayerInterval(interval * 2);
 };
 
 /**
@@ -154,8 +156,47 @@ SmfPlayer.prototype._updateTimer = function () {
  * @param channel master channel
  */
 SmfPlayer.prototype.setMasterChannel = function (channel) {
+    if (!channel) {
+        this.masterChannel = null;
+        return;
+    }
+
+    channel.clearChannel();
+    if (this.defaultDevice)
+        channel.addChannel(this.defaultDevice);
+    for (var i = 0; i < this.devices.length; i++) {
+        if (!this.devices[i])
+            continue;
+        channel.addChannel(this.devices[i]);
+    }
     channel.setPlayer(this);
     this.masterChannel = channel;
+};
+
+/**
+ * Set playback device for each track. If track is SmfPlayer.TRACK_DEFAULT
+ * the device will be used for tracks which doesn't have specific setting.
+ * @param track track to set
+ * @param device device
+ */
+SmfPlayer.prototype.setDevice = function (track, device) {
+    if (SmfPlayer.TRACK_DEFAULT == track) {
+        if (this.masterChannel) {
+            if (this.defaultDevice)
+                this.masterChannel.removeChannel(this.defaultDevice);
+            if (device)
+                this.masterChannel.addChannel(device);
+        }
+        this.defaultDevice = device;
+    } else {
+        if (this.masterChannel) {
+            if (this.devices[track])
+                this.masterChannel.removeChannel(this.devices[track]);
+            if (device)
+                this.masterChannel.addChannel(device);
+        }
+        this.devices[track] = device;
+    }
 };
 
 /**
@@ -243,19 +284,6 @@ SmfPlayer.prototype.updateDevice = function () {
             work.offset += deltaTime.length;
         } while (0 == work.count);
     }
-};
-
-/**
- * Set playback device for each track. If track is SmfPlayer.TRACK_DEFAULT
- * the device will be used for tracks which doesn't have specific setting.
- * @param track track to set
- * @param device device
- */
-SmfPlayer.prototype.setDevice = function (track, device) {
-    if (SmfPlayer.TRACK_DEFAULT == track)
-        this.defaultDevice = device;
-    else
-        this.devices[track] = device;
 };
 
 /**
