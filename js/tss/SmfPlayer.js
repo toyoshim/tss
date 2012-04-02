@@ -278,7 +278,6 @@ SmfPlayer.prototype.updateDevice = function () {
             if (SmfPlayer._SMF_EVENT_META != event)
                 this._sendEvent(track, work.data.subarray(
                         work.offset, work.offset + dataLength));
-            Log.getLog().info("SMF: event length " + dataLength);
             work.offset += dataLength;
 
             var deltaTime = this._readUint(work.data, work.offset);
