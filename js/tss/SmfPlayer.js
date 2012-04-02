@@ -269,9 +269,16 @@ SmfPlayer.prototype.updateDevice = function () {
                         event.toString(16));
                 this.error = true;
                 break;
+            } else if (event < 0x80) {
+                Log.getLog().warn("SMF: skip invalid data " +
+                        event.toString(16));
+                work.offset++;
+                continue;
             }
-            this._sendEvent(track, work.data.subarray(
-                    work.offset, work.offset + dataLength));
+            if (SmfPlayer._SMF_EVENT_META != event)
+                this._sendEvent(track, work.data.subarray(
+                        work.offset, work.offset + dataLength));
+            Log.getLog().info("SMF: event length " + dataLength);
             work.offset += dataLength;
 
             var deltaTime = this._readUint(work.data, work.offset);

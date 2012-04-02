@@ -13,7 +13,7 @@ function MidiChannel () {
 }
 
 MidiChannel.EVENT_TYPE_MIDI = 0;
-MidiChannel._NOTE_FREQUENCY_TABLE = new Array(0x80);
+MidiChannel._NOTE_FREQUENCY_TABLE = [];
 MidiChannel._MIDI_EVENT_SYSEX = 0xf0;
 MidiChannel._MIDI_EVENT_MTC_QUOTER_FRAME_MESSAGE = 0xf1;
 MidiChannel._MIDI_EVENT_SONG_POSITION_POINTER = 0xf2;
@@ -26,8 +26,7 @@ MidiChannel._MIDI_EVENT_CONTINUE = 0xfb;
 MidiChannel._MIDI_EVENT_STOP = 0xfc;
 MidiChannel._MIDI_EVENT_ACTIVE_SENCING = 0xfe;
 MidiChannel._MIDI_EVENT_SYSTEM_RESET = 0xff;
-MidiChannel._MIDI_EVENT_SYSTEM_LENGTH = [
-    -1, 2, 3, 2, -1, -1, 1, 1, 1, -1, 1, 1, 1, -1, 1, 1 ];
+MidiChannel._MIDI_EVENT_SYSTEM_LENGTH = [ -1, 2, 3, 2, -1, -1, 1, 1 ];
 
 // Calculate tables.
 (function () {
@@ -79,10 +78,13 @@ MidiChannel.prototype.processEvents = function (events) {
                     events.midiData[i]);
             events.midiData[i] &= 0xff;
         }
-        // TODO: Realtime event must be handled immediately without pushing
-        // into the event array. It also help to handle injected events between
-        // other events' data.
-        this.events.push(events.midiData[i]);
+        if (events.midiData[i] >= 0xf8) {
+            if (MidiChannel._MIDI_EVENT_SYSTEM_RESET == events.midiData[i])
+                this.processSystemReset();
+            else
+                this.processSystemRealtimeMessage([ events.midiData[i] ]);
+        } else
+            this.events.push(events.midiData[i]);
     }
 
     for (var done = 0; 0 != this.events.length; done++) {
@@ -143,33 +145,7 @@ MidiChannel.prototype.processEvents = function (events) {
                 this.events.splice(0, 3);
                 break;
             case 0xf:  // system messages
-                if (MidiChannel._MIDI_EVENT_SYSTEM_RESET == event) {
-                    // meta data
-                    if (this.events.length == 1) {
-                        // Handle single 0xff event as system reset
-                        Log.getLog().warn("MIDI: single 0xff is detected");
-                        this.events.splice(0, 1);
-                        this.processSystemReset();
-                    } else {
-                        // Handle 0xff sequence
-                        if (this.events[1] >= 0x80) {
-                            // The next data must be a control byte, so this
-                            // event must not be a meta data.
-                            this.events.splice(0, 1);
-                            this.processSystemReset();
-                        } else {
-                            // The next data is data byte, so this event must
-                            // be a meta data.
-                            if (this.events.length < 3)
-                                return done;
-                            var metaLength = 3 + this.events[2];
-                            if (this.events.length < metaLength)
-                                return done;
-                            this.processMetaData(this.events.splice(0,
-                                    metaLength));
-                        }
-                    }
-                } else if (MidiChannel._MIDI_EVENT_SYSEX == event) {
+                if (MidiChannel._MIDI_EVENT_SYSEX == event) {
                     // system exclusive
                     for (var sysexLength = 1; sysexLength < this.events.length;
                             sysexLength++) {
@@ -181,10 +157,10 @@ MidiChannel.prototype.processEvents = function (events) {
                         return done;
                     this.processSystemExclusive(this.events.splice(0,
                         sysexLength + 1));
-                } else {
-                    // system common, and realtime
+                } else if (event < 0xf8) {
+                    // system common
                     var systemLength =
-                            MidiChannel._MIDI_EVENT_SYSTEM_LENGTH[event & 0xf];
+                            MidiChannel._MIDI_EVENT_SYSTEM_LENGTH[event & 0x7];
                     if (systemLength < 0) {
                         Log.getLog().warn("MIDI: unknown system message " +
                                 event.toString(16));
@@ -193,10 +169,9 @@ MidiChannel.prototype.processEvents = function (events) {
                     if (this.events.length < systemLength)
                         return done;
                     var systemMessage = this.events.splice(0, systemLength);
-                    if (event < 0xf8)
-                        this.processSystemCommonMessage(systemMessage);
-                    else
-                        this.processSystemRealtimeMessage(systemMessage);
+                    this.processSystemCommonMessage(systemMessage);
+                } else {
+                    Log.getLog().error("MIDI: unexpected realtime event");
                 }
                 break;
         }
