@@ -79,6 +79,9 @@ MidiChannel.prototype.processEvents = function (events) {
                     events.midiData[i]);
             events.midiData[i] &= 0xff;
         }
+        // TODO: Realtime event must be handled immediately without pushing
+        // into the event array. It also help to handle injected events between
+        // other events' data.
         this.events.push(events.midiData[i]);
     }
 
