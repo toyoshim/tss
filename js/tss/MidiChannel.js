@@ -72,6 +72,7 @@ MidiChannel.getFrequencyForNote = function (note) {
  */
 MidiChannel.prototype.processEvents = function (events) {
     // Append MIDI events to internal array.
+    // TODO: Expand running status here.
     for (var i = 0; i < events.midiData.length; i++) {
         if ((events.midiData[i] < 0x00) || (0xff < events.midiData[i])) {
             Log.getLog().warn("MIDI: midiData[" + i + "] is out of range, " +

@@ -220,6 +220,13 @@ SmfPlayer.prototype.updateDevice = function () {
                 break;
             }
             var event = work.data[work.offset];
+            // Handle running status.
+            if (event >= 0x80) {
+                work.lastEvent = event;
+            } else {
+                event = work.lastEvent;
+                work.offset--;
+            }
             var dataLength = 3;
             if ((0xc0 <= event) && (event < 0xe0))
                 dataLength = 2;
@@ -265,6 +272,7 @@ SmfPlayer.prototype.updateDevice = function () {
                     Log.getLog().info("SMF: meta type " + type);
                 }
             } else if (0xf0 == (event & 0xf0)) {
+                // Handle running status.
                 Log.getLog().error("SMF: unsupported system common message " +
                         event.toString(16));
                 this.error = true;
@@ -275,9 +283,13 @@ SmfPlayer.prototype.updateDevice = function () {
                 work.offset++;
                 continue;
             }
-            if (SmfPlayer._SMF_EVENT_META != event)
-                this._sendEvent(track, work.data.subarray(
-                        work.offset, work.offset + dataLength));
+            if (SmfPlayer._SMF_EVENT_META != event) {
+                var eventData = new Uint8Array(dataLength);
+                eventData[0] = event;
+                for (var offset = 1; offset < dataLength; offset++)
+                    eventData[offset] = work.data[work.offset + offset];
+                this._sendEvent(track, eventData);
+            }
             work.offset += dataLength;
 
             var deltaTime = this._readUint(work.data, work.offset);
@@ -334,9 +346,6 @@ SmfPlayer.prototype.play = function (newInput) {
                     Log.getLog().warn("SMF: invalid track number in format 0");
                     this.numberOfTracks = 1;
                 }
-            } else {
-                // TODO
-                Log.getLog().warn("SMF: format 1 support looks buggy for now");
             }
         } else if (SmfPlayer._SMF_CHUNK_TRACK == chunkHeader.type) {
             Log.getLog().info("SMF: track chunk " + processedTracks);
@@ -358,6 +367,7 @@ SmfPlayer.prototype.play = function (newInput) {
                 data: subArray,
                 offset: deltaTime.length,
                 count: deltaTime.value + 1,
+                lastEvent: 0,
                 active: true
             };
         }

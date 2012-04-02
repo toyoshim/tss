@@ -78,7 +78,7 @@ TssChannel.prototype.setPlayer = function (newPlayer) {
 TssChannel.prototype.generate = function (length) {
     var offset = 0;
     while (offset < length) {
-        var timerCount = length >> 2;
+        var timerCount = (length - offset) >> 2;
         var timerId;
         for (timerId = 0; timerId < 2; timerId++) {
             if (this.timer[timerId].enable &&

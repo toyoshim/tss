@@ -112,7 +112,7 @@ SimpleMidiChannel.prototype.generate = function (length) {
             for (var v = 0; v < SimpleMidiChannel._MAX_VOICE; v++) {
                 if (this.voices[v].isActive())
                     continue;
-                var diff = this.voices[v].velocity >> 8;
+                var diff = this.voices[v].velocity >> 3;
                 if (0 != diff)
                     this.voices[v].velocity -= diff;
                 else
@@ -120,7 +120,7 @@ SimpleMidiChannel.prototype.generate = function (length) {
             }
         } else {
             this._generate(offset, offset + length - 1);
-            this.count -= SimpleMidiChannel._COUNT_CYCLE;
+            this.count -= length;
             break;
         }
     }

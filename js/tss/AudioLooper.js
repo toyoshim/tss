@@ -10,7 +10,10 @@
  * @author Takashi Toyoshima <toyoshim@gmail.com>
  *
  */
-function AudioLooper () {
+function AudioLooper (bufferSize) {
+    this.bufferSize = 4096;  // 92msec
+    if (arguments.length > 0)
+        this.bufferSize = bufferSize;
     // Initialize variables.
     this.channel = null;
     this.initialized = true;
@@ -26,7 +29,6 @@ function AudioLooper () {
         }
 
         // Allocate JavaScript synthesis node.
-        this.bufferSize = 4096;
         this.jsNode = this.audioContext.createJavaScriptNode(this.bufferSize);
 
         // Connect to output audio device.
@@ -59,7 +61,6 @@ function AudioLooper () {
         // Set up output buffer.
         this.bufferId = 0;
         this.bufferPage = 4;
-        this.bufferSize = 4096; // 92msec
         this.bufferWritten = 0;
         this.buffer = new Array(this.bufferPage);
         var arraySize = this.bufferSize * this.audioChannel;

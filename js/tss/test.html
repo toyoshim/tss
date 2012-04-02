@@ -230,14 +230,14 @@
 <p>Enable Web Audio API on Chrome at chrome://flags or just use FileFox 4 or later</p>
 <hr>
 <p class="title">Filter Type</p>
-<button name="LPF">LPF</button>
-<button name="HPF">HPF</button>
-<button name="BPF">BPF</button>
-<button name="BEF">BEF</button>
-<button name="APF">APF</button>
-<button name="PEQ">EQ</button>
-<button name="LOS">Low Shelf</button>
-<button name="HIS">High Shelf</button>
+<button class="biquad" name="LPF">LPF</button>
+<button class="biquad" name="HPF">HPF</button>
+<button class="biquad" name="BPF">BPF</button>
+<button class="biquad" name="BEF">BEF</button>
+<button class="biquad" name="APF">APF</button>
+<button class="biquad" name="PEQ">EQ</button>
+<button class="biquad" name="LOS">Low Shelf</button>
+<button class="biquad" name="HIS">High Shelf</button>
 <p class="title">Cutoff Frequency</p>
 <div id="frequency" style="width: 400px; margin-left: 50px;"></div>
 <p class="title">Resonance</p>
@@ -374,7 +374,7 @@
 #END</textarea></form>
 <hr>
 <a name="smf"></a>
-<p class="title">9. SMF Player</p>
+<p class="title">9. SMF Player / Virtual Instrument Interface Test</p>
 <button onclick="testxstop()">STOP</button>
 <span style="background-color: #000000;">
 <span id="test9ch0">*</span>
@@ -400,13 +400,21 @@
     <pre id="test9prog"></pre>
 </div>
 <hr>
+<a name="midi"></a>
+<p class="title">10. Software MIDI Keyboard / Virtual Instrument Interface Test</p>
+<div id="test10midi" tabindex="0" style="width: 100%; height: 70pt; background-color: #000000; color: #ffffff;">
+    <pre>Activate this area, then play instrument with keyboard.</pre>
+    <pre>  S D   G H J</pre>
+    <pre> Z X C V B N M</pre>
+</div>
+<hr>
 <hr>
 <pre>*** LOG (reversed order) ***</pre>
 <div id="log"></div>
 <script language="JavaScript">
     Log.setLog(new Log("log", true));
     var test = 0;
-    var looper = new AudioLooper();
+    var looper = new AudioLooper(512);
     var filter = new BiquadFilterChannel();
     looper.setChannel(filter);
 
@@ -574,6 +582,60 @@
         }
     }
     setInterval(volumeCallback, 10);
+
+    // TEST 10
+    var master10 = new MasterChannel();
+    var device10 = new SimpleMidiChannel();
+    master10.setVolume(1);
+    master10.addChannel(device10);
+
+    var codeToNote = {
+        90: 72,  // C
+        83: 73,  // C#
+        88: 74,  // D
+        68: 75,  // D#
+        67: 76,  // E
+        86: 77,  // F
+        71: 78,  // F#
+        66: 79,  // G
+        72: 80,  // G#
+        78: 81,  // A
+        74: 82,  // A#
+        77: 83   // B
+    };
+    var noteOn = [];
+    $('#test10midi').keydown(function(e) {
+        var note = codeToNote[e.keyCode];
+        if (!note)
+            return;
+        if (noteOn[note])
+            return;
+        noteOn[note] = true;
+        if (9 == test) {
+            display9.processNoteOn(0, note, 100);
+        } else {
+            if (10 != test) {
+                filter.setChannel(master10);
+                test = 10;
+            }
+            device10.processNoteOn(0, note, 100);
+        }
+    });
+    $('#test10midi').keyup(function(e) {
+        var note = codeToNote[e.keyCode];
+        if (!note)
+            return;
+        noteOn[note] = false;
+        if (9 == test) {
+            display9.processNoteOff(0, note, 0);
+        } else {
+            if (10 != test) {
+                filter.setChannel(master10);
+                test = 10;
+            }
+            device10.processNoteOff(0, note, 0);
+        }
+    });
 
     // TEST 5, 6, 7, and 9
     function isParent(id, node) {
@@ -749,14 +811,13 @@
             width: '400px',
             height: '200px'
         });
-        $('button').css({
+        $('button.biquad').css({
             fontSize: '10px'
         }).button().click(function() {
                     window.filterType = this.getAttribute('name');
                     redrawPreview();
                 });
         window.filterType = BiquadFilterChannel.TYPE_LPF;
-        window.tss = new AudioLooper();
         redrawPreview();
     });
 </script>
