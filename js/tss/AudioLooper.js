@@ -71,7 +71,11 @@ function AudioLooper (bufferSize) {
 
         // Register callback with 50msec interval.
         this.audio.owner = this;
-        setInterval(function (object) { object.onAudioInterval() }, 50, this);
+
+        // Set half time of buffer playback time.
+        var interval = this.bufferSize * 1000 / 44100 / 2;
+        setInterval(function (object) { object.onAudioInterval() }, interval,
+            this);
 
         return;
     }
