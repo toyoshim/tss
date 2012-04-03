@@ -19,3 +19,5 @@ SoundFont2.prototype.load = function (data) {
     var sf2 = new Uint8Array(data);
     Log.getLog().info("SF2: loading sf2 data; size = " + sf2.byteLength);
 };
+
+exports.SoundFont2 = SoundFont2;

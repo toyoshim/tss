@@ -30,7 +30,9 @@ function Log (id, reverse) {
 
     if (id == undefined) {
         // Try to use native console.
-        if (window.console != undefined) {
+        // node.js doesn't have window, but has console.log.
+        if ((typeof window === "undefined") ||
+                (window.console != undefined)) {
             this.print = function (object) {
                 console.log(object);
             }
@@ -134,3 +136,5 @@ Log.prototype.info = function (message) {
     }
     this.print(message);
 };
+
+exports.Log = Log;
