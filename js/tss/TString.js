@@ -581,3 +581,5 @@ TString.prototype.toString = function (offset, size) {
         throw new TypeError("TString: invalid UTF-8");
     return result;
 };
+
+exports.TString = TString;
