@@ -17,6 +17,7 @@ function SmfPlayer () {
     this.usecTempo = 1000 * 1000;
     this.timeUnit = 480;
     this.error = false;
+    this.handleFalcomStyleInfiniteLoop = true;
 }
 
 SmfPlayer.TRACK_DEFAULT = -1;
@@ -254,12 +255,35 @@ SmfPlayer.prototype.updateDevice = function () {
                 if (SmfPlayer._SMF_META_TRACK_NAME == type) {
                     try {
                         var text = TString.createFromUint8Array(
-                            work.data.subarray(work.offset + 3,
-                                work.offset + dataLength));
+                                work.data.subarray(work.offset + 3,
+                                        work.offset + dataLength));
                         Log.getLog().info("SMF: track name; " +
                                 text.toString());
                     } catch (e) {
                         Log.getLog().warn("SMF: track name is not UTF-8 text");
+                    }
+                } else if (SmfPlayer._SMF_META_MARKER == type) {
+                    try {
+                        var marker = TString.createFromUint8Array(
+                                work.data.subarray(work.offset + 3,
+                                        work.offset + dataLength));
+                        Log.getLog().info("SMF: marker; " + marker.toString());
+                    } catch (e) {
+                        Log.getLog().warn("SMF: marker is not UTF-8 text");
+                    }
+                    if (this.handleFalcomStyleInfiniteLoop &&
+                            (1 == work.data[work.offset + 2])) {
+                        var mark = work.data[work.offset + 3];
+                        if (0x41 == mark) {
+                            work.loopOffset = work.offset;
+                            Log.getLog().info("SMF: marker A handled as " +
+                                    "infinite loop start in falcom style");
+                        } else if (0x42 == mark) {
+                            work.offset = work.loopOffset;
+                            Log.getLog().info("SMF: marker B handled as " +
+                                "infinite loop end in falcom style");
+                            continue;
+                        }
                     }
                 } else if (SmfPlayer._SMF_META_SET_TEMPO == type) {
                     this.usecTempo = (work.data[work.offset + 3] << 16) |
@@ -368,6 +392,7 @@ SmfPlayer.prototype.play = function (newInput) {
                 offset: deltaTime.length,
                 count: deltaTime.value + 1,
                 lastEvent: 0,
+                loopOffset: 0,
                 active: true
             };
         }
