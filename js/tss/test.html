@@ -26,6 +26,7 @@
     <script language="JavaScript" src="MidiChannel.js"></script>
     <script language="JavaScript" src="SimpleMidiChannel.js"></script>
     <script language="JavaScript" src="SmfPlayer.js"></script>
+    <script language="JavaScript" src="SoundFont2.js"></script>
     <!-- control callback scripts -->
     <script language="JavaScript">
         google.load("jquery", "1.7.1");
@@ -143,31 +144,31 @@
             ctx4.putImageData(img4, 0, 0);
         }
         function test5flash() {
-            flash5 = testxflash(flash5, div5, test5flash);
+            flash = testxflash(flash, div5, test5flash);
         }
         function test5prog(e) {
             testxprog(e, prog5);
         }
         function test5start(e) {
             test5prog(e);
-            player5.play(reader5.result);
+            player5.play(reader.result);
             filter.setChannel(master5);
             test = 5;
         }
         function test6flash() {
-            flash6 = testxflash(flash6, div6, test6flash);
+            flash = testxflash(flash, div6, test6flash);
         }
         function test6prog(e) {
             testxprog(e, prog6);
         }
         function test6start(e) {
             test6prog(e);
-            player6.play(reader6.result);
+            player6.play(reader.result);
             filter.setChannel(master6);
             test = 6;
         }
         function test7flash() {
-            flash7 = testxflash(flash7, div7, test7flash);
+            flash = testxflash(flash, div7, test7flash);
         }
         function test7prog(e) {
             testxprog(e, prog7);
@@ -175,7 +176,7 @@
         function test7start(e) {
             if (e) {
                 test7prog(e);
-                player7.play(reader7.result);
+                player7.play(reader.result);
             } else {
                 player7.play(xh_res7);
             }
@@ -209,7 +210,7 @@
             open(url, false);
         }
         function test9flash() {
-            flash9 = testxflash(flash9, div9, test9flash);
+            flash = testxflash(flash, div9, test9flash);
         }
         function test9prog(e) {
             testxprog(e, prog9);
@@ -219,9 +220,21 @@
             display9.processSystemReset();
             for (var i = 0; i < 16; i++)
                 note9[i] = 0;
-            player9.play(reader9.result);
+            player9.play(reader.result);
             filter.setChannel(master9);
             test = 9;
+        }
+        function test11flash() {
+            flash = testxflash(flash, div11, test11flash);
+        }
+        function test11prog(e) {
+            testxprog(e, prog11);
+        }
+        function test11start(e) {
+            test11prog(e);
+            var sf2 = new SoundFont2();
+            sf2.load(reader.result);
+            test = 11;
         }
     </script>
 </head>
@@ -408,6 +421,14 @@
     <pre> Z X C V B N M</pre>
 </div>
 <hr>
+<a name="sf2"></a>
+<p class="title">11. Sound Font 2 Test [work in progress]</p>
+<div id="test11drop" tabindex="0" style="width: 100%; height: 100pt; background-color: #000000; color: #ffffff;">
+    <pre>DRAG SF2 FILE TO HERE</pre>
+    <pre id="test11info"></pre>
+    <pre id="test11prog"></pre>
+</div>
+<hr>
 <hr>
 <pre>*** LOG (reversed order) ***</pre>
 <div id="log"></div>
@@ -453,12 +474,7 @@
             Log.getLog().info("  as ArrayBuffer (mozResponseArrayBuffer).");
             xh_res4 = xh_req4.mozResponseArrayBuffer;
         }
-        // TODO
-        //if (0 == test) {
-        //    test4start();
-        //}
     };
-    // TODO: xh_req4.send();
     var master4 = new MasterChannel();
     var player4 = new PsglogPlayer();
     player4.setMasterChannel(master4);
@@ -484,8 +500,6 @@
     var div5 = document.getElementById("test5drop");
     var info5 = document.getElementById("test5info");
     var prog5 = document.getElementById("test5prog");
-    var flash5 = 0;
-    var reader5 = null;
     var master5 = new MasterChannel();
     var player5 = new VgmPlayer();
     player5.setMasterChannel(master5);
@@ -494,8 +508,6 @@
     var div6 = document.getElementById("test6drop");
     var info6 = document.getElementById("test6info");
     var prog6 = document.getElementById("test6prog");
-    var flash6 = 0;
-    var reader6 = null;
     var master6 = new MasterChannel();
     var player6 = new Mp3PlayerChannel();
     master6.addChannel(player6);
@@ -514,14 +526,10 @@
             Log.getLog().info("  as ArrayBuffer (mozResponseArrayBuffer).");
             xh_res7 = xh_req7.mozResponseArrayBuffer;
         }
-        test7start();
     };
-    // TODO: xh_req7.send();
     var div7 = document.getElementById("test7drop");
     var info7 = document.getElementById("test7info");
     var prog7 = document.getElementById("test7prog");
-    var flash7 = 0;
-    var reader7 = null;
     var master7 = new MasterChannel();
     master7.setVolume(1);
     var player7 = new TsdPlayer();
@@ -532,7 +540,6 @@
     master8.setVolume(1);
     var player8 = new TsdPlayer();
     player8.setMasterChannel(master8);
-    // test8start();  // TODO: Remove this
 
     // TEST 9
     var vol9 = [
@@ -542,8 +549,6 @@
     var div9 = document.getElementById("test9drop");
     var info9 = document.getElementById("test9info");
     var prog9 = document.getElementById("test9prog");
-    var flash9 = 0;
-    var reader9 = null;
     var master9 = new MasterChannel();
     master9.setVolume(1);
     var player9 = new SmfPlayer();
@@ -637,7 +642,12 @@
         }
     });
 
-    // TEST 5, 6, 7, and 9
+    // TEST 11
+    var div11 = document.getElementById("test11drop");
+    var info11 = document.getElementById("test11info");
+    var prog11 = document.getElementById("test11prog");
+
+    // TEST 5, 6, 7, 9, and 11
     function isParent(id, node) {
         while (node) {
             if (node.id == id)
@@ -646,77 +656,28 @@
         }
         return false;
     }
+    var parents = [
+            "test5drop", "test6drop", "test7drop", "test9drop", "test11drop" ];
+    var divs = [ div5, div6, div7, div9, div11 ];
     window.addEventListener("dragover", function (e) {
-        var done = true;
-        if (isParent("test5drop", e.target)) {
-            div5.style.backgroundColor = "#888888";
-            div6.style.backgroundColor = "#000000";
-            div7.style.backgroundColor = "#000000";
-            div9.style.backgroundColor = "#000000";
-        } else if (isParent("test6drop", e.target)) {
-            div5.style.backgroundColor = "#000000";
-            div6.style.backgroundColor = "#888888";
-            div7.style.backgroundColor = "#000000";
-            div9.style.backgroundColor = "#000000";
-        } else if (isParent("test7drop", e.target)) {
-            div5.style.backgroundColor = "#000000";
-            div6.style.backgroundColor = "#000000";
-            div7.style.backgroundColor = "#888888";
-            div9.style.backgroundColor = "#000000";
-        } else if (isParent("test9drop", e.target)) {
-            div5.style.backgroundColor = "#000000";
-            div6.style.backgroundColor = "#000000";
-            div7.style.backgroundColor = "#000000";
-            div9.style.backgroundColor = "#888888";
-        } else {
-            div5.style.backgroundColor = "#000000";
-            div6.style.backgroundColor = "#000000";
-            div7.style.backgroundColor = "#000000";
-            div9.style.backgroundColor = "#000000";
-            done = false;
-        }
-        if (done) {
-            e.preventDefault();
+        e.preventDefault();
+        for (var i = 0; parents[i]; i++) {
+            if (isParent(parents[i], e.target))
+                divs[i].style.backgroundColor = "#888888";
+            else
+                divs[i].style.backgroundColor = "#000000";
         }
     }, false);
+    var flash = 0;
+    var reader = null;
+    var infos = [ info5, info6, info7, info9, info11 ];
+    var tests = [test5flash, test6flash, test7flash, test9flash, test11flash ];
+    var progs = [ test5prog, test6prog, test7prog, test9prog, test11prog ];
+    var kicks = [ test5start, test6start, test7start, test9start, test11start ];
     window.addEventListener("drop", function (e) {
-        var done = true;
-        var info = null;
-        var reader = new FileReader();
-        var prog = null;
-        var kick = null;
-        if (isParent("test5drop", e.target)) {
-            info = info5;
-            flash5 = 5;
-            setTimeout(test5flash, 50);
-            reader5 = reader;
-            prog = test5prog;
-            kick = test5start;
-        } else if (isParent("test6drop", e.target)) {
-            info = info6;
-            flash6 = 5;
-            setTimeout(test6flash, 50);
-            reader6 = reader;
-            prog = test6prog;
-            kick = test6start;
-        } else if (isParent("test7drop", e.target)) {
-            info = info7;
-            flash7 = 5;
-            setTimeout(test7flash, 50);
-            reader7 = reader;
-            prog = test7prog;
-            kick = test7start;
-        } else if (isParent("test9drop", e.target)) {
-            info = info9;
-            flash9 = 5;
-            setTimeout(test9flash, 50);
-            reader9 = reader;
-            prog = test9prog;
-            kick = test9start;
-        } else {
-            done = false;
-        }
-        if (done) {
+        for (var i = 0; parents[i]; i++) {
+            if (!isParent(parents[i], e.target))
+                continue;
             e.preventDefault();
             var file = e.dataTransfer.files[0];
             var msg = "";
@@ -728,11 +689,15 @@
                 msg += file.type;
             else
                 msg += "Unknown";
-                info.innerText = msg;
-            reader.onloadstart = prog;
-            reader.onprogress = prog;
-            reader.onload = kick;
+            infos[i].innerText = msg;
+            flash  = 5;
+            setTimeout(tests[i], 50);
+            reader = new FileReader();
+            reader.onloadstart = progs[i];
+            reader.onprogress = progs[i];
+            reader.onload = kicks[i];
             reader.readAsArrayBuffer(file);
+            break;
         }
     }, false);
     $(function () {
