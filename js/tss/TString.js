@@ -77,7 +77,10 @@ TString._decodeSurrogatePair = function (first, second) {
     var w = (first >> 6) & 0xf;
     var u = w + 1;
     var x = ((first & 0x3f) << 10) | (second & 0x3ff);
-    return (u << 16) + x;
+    var i32 = (u << 16) + x;
+    if (i32 < 0)
+        return 0x100000000 + i32;
+    return i32;
 };
 
 /**

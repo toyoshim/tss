@@ -182,8 +182,11 @@ TsdPlayer.prototype._readU16 = function (offset) {
  * @return read data
  */
 TsdPlayer.prototype._readU32 = function (offset) {
-    return (this.input[offset] << 24) | (this.input[offset + 1] << 16) |
+    var i32 = (this.input[offset] << 24) | (this.input[offset + 1] << 16) |
             (this.input[offset + 2] << 8) | this.input[offset + 3];
+    if (i32 < 0)
+        return 0x100000000 + i32;
+    return i32;
 };
 
 /**

@@ -79,10 +79,13 @@ SmfPlayer.prototype._readUint16 = function (offset) {
  * @return unsigned 32bit data
  */
 SmfPlayer.prototype._readUint32 = function (offset) {
-    return (this.input[offset] << 24) |
+    var i32 = (this.input[offset] << 24) |
             (this.input[offset + 1] << 16) |
             (this.input[offset + 2] << 8) |
             this.input[offset + 3];
+    if (i32 < 0)
+        return 0x100000000 + i32;
+    return i32;
 };
 
 /**
