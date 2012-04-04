@@ -9,33 +9,82 @@
  * @author Takashi Toyoshima <toyoshim@gmail.com>
  */
 function SoundFont2 () {
-    this.versionTag = { major: 0, minor: 0 };
-    this.soundEngine = "";
-    this.name = "";
+    this.riff = null;
 }
 
 SoundFont2._FOURCC_RIFF = 'RIFF';
-SoundFont2._FOURCC_SFBK = 'sfbk';  // SounfFont block
+SoundFont2._FOURCC_SFBK = 'sfbk';
 SoundFont2._FOURCC_LIST = 'LIST';
 SoundFont2._FOURCC_INFO = 'INFO';  // Supplemental Information
 SoundFont2._FOURCC_SDTA = 'sdta';  // The Sample Binary Data
 SoundFont2._FOURCC_PDTA = 'pdta';  // The Preset, Instrument, and Sample
-                                   // Header Data
+                                   // Header data
 SoundFont2._FOURCC_IFIL = 'ifil';  // Refers to the version of the Sound Font
-                                   // RIFF File
+                                   // RIFF file
 SoundFont2._FOURCC_ISNG = 'isng';  // Refers to the target Sound Engine
 SoundFont2._FOURCC_INAM = 'INAM';  // Refers to the Sound Font Bank Name
-// TODO: irom, iver, ICRD, IENG, IPRD, ICOP, ICMT, and ISFT
+SoundFont2._FOURCC_IROM = 'irom';  // Refers to the Sound ROM Name
+SoundFont2._FOURCC_IVER = 'iver';  // Refers to the Sound ROM Version
+SoundFont2._FOURCC_ICRD = 'ICRD';  // Refers to the Date of Creation of the
+                                   // Bank
+SoundFont2._FOURCC_IENG = 'IENG';  // Sound Designers and Engineers for the
+                                   // Bank
+SoundFont2._FOURCC_IPRD = 'IPRD';  // Product for which the Bank was intended
+SoundFont2._FOURCC_ICOP = 'ICOP';  // Contains any Copyright message
+SoundFont2._FOURCC_ICMT = 'ICMT';  // Contains any Comments on the Bank
+SoundFont2._FOURCC_ISFT = 'ISFT';  // The SoundFont tools used to create and
+                                   // alter the bank
 SoundFont2._FOURCC_SMPL = 'smpl';  // The Digital Audio Samples
 SoundFont2._FOURCC_PHDR = 'phdr';  // The Preset Headers
-SoundFont2._FOURCC_PBAD = 'pbag';  // The Preset Index List
-SoundFont2._FOURCC_PMOD = 'pmod';  // The Preset Modulator List
-SoundFont2._FOURCC_PGEN = 'pgen';  // The Preset Generator List
+SoundFont2._FOURCC_PBAG = 'pbag';  // The Preset Index list
+SoundFont2._FOURCC_PMOD = 'pmod';  // The Preset Modulator list
+SoundFont2._FOURCC_PGEN = 'pgen';  // The Preset Generator list
 SoundFont2._FOURCC_INST = 'inst';  // The Instrument Names and Indices
-SoundFont2._FOURCC_IBAG = 'ibag';  // The Instrument Index List
-SoundFont2._FOURCC_IMOD = 'imod';  // The Instrument Modulator List
-SoundFont2._FOURCC_IGEN = 'igen';  // The Instrument Generator List
+SoundFont2._FOURCC_IBAG = 'ibag';  // The Instrument Index list
+SoundFont2._FOURCC_IMOD = 'imod';  // The Instrument Modulator list
+SoundFont2._FOURCC_IGEN = 'igen';  // The Instrument Generator list
 SoundFont2._FOURCC_SHDR = 'shdr';  // The Sample Headers
+SoundFont2._TYPE_VERSION = 1;
+SoundFont2._TYPE_STRING = 2;
+SoundFont2._FORMAT = { id: SoundFont2._FOURCC_RIFF };
+
+(function () {
+    var info = {};
+    info[SoundFont2._FOURCC_IFIL] = SoundFont2._TYPE_VERSION;
+    info[SoundFont2._FOURCC_ISNG] = SoundFont2._TYPE_STRING;
+    info[SoundFont2._FOURCC_INAM] = SoundFont2._TYPE_STRING;
+    info[SoundFont2._FOURCC_IROM] = true;
+    info[SoundFont2._FOURCC_IVER] = true;
+    info[SoundFont2._FOURCC_ICRD] = true;
+    info[SoundFont2._FOURCC_IENG] = true;
+    info[SoundFont2._FOURCC_IPRD] = true;
+    info[SoundFont2._FOURCC_ICOP] = true;
+    info[SoundFont2._FOURCC_ICMT] = true;
+    info[SoundFont2._FOURCC_ISFT] = true;
+    var sdta = {};
+    sdta[SoundFont2._FOURCC_SMPL] = true;
+    var pdta = {};
+    pdta[SoundFont2._FOURCC_PHDR] = true;
+    pdta[SoundFont2._FOURCC_PBAG] = true;
+    pdta[SoundFont2._FOURCC_PMOD] = true;
+    pdta[SoundFont2._FOURCC_PGEN] = true;
+    pdta[SoundFont2._FOURCC_INST] = true;
+    pdta[SoundFont2._FOURCC_IBAG] = true;
+    pdta[SoundFont2._FOURCC_IMOD] = true;
+    pdta[SoundFont2._FOURCC_IGEN] = true;
+    pdta[SoundFont2._FOURCC_SHDR] = true;
+    var sfbk = { id: SoundFont2._FOURCC_LIST };
+    sfbk[SoundFont2._FOURCC_INFO] = info;
+    sfbk[SoundFont2._FOURCC_SDTA] = sdta;
+    sfbk[SoundFont2._FOURCC_PDTA] = pdta;
+    SoundFont2._FORMAT[SoundFont2._FOURCC_SFBK] = sfbk;
+})();
+
+// TODO: toString()
+SoundFont2.Error = function (format, message) {
+    this.format = format;
+    this.message = message;
+};
 
 SoundFont2._readU16 = function (array, offset) {
     return (array[offset + 1] << 8) | array[offset];
@@ -58,9 +107,13 @@ SoundFont2._readFCC = function (array, offset) {
             String.fromCharCode(array[offset + 3]);
 };
 
-SoundFont2._readChunk = function (array, offset) {
+SoundFont2._readHeader = function (array, offset) {
+    if ((offset + 8) > array.byteLength)
+        return undefined;
     var id = SoundFont2._readFCC(array, offset);
     var size = SoundFont2._readU32(array, offset + 4);
+    if ((offset + 8 + size) > array.byteLength)
+        return undefined;
     var data = array.subarray(offset + 8, offset + 8 + size);
     var nextOffset = offset + 8 + size;
     if (0 != (nextOffset & 1))
@@ -73,6 +126,51 @@ SoundFont2._readChunk = function (array, offset) {
     };
 };
 
+SoundFont2._readChunk = function (format, data) {
+    var result = {};
+    for (var offset = 0; offset < data.byteLength; offset = chunk.nextOffset) {
+        var chunk = SoundFont2._readHeader(data, offset);
+        if (!chunk)
+            throw new SoundFont2.Error(format, "Invalid chunk header");
+        var fourcc = "";
+        var payload = null;
+        if (format.id) {
+            if (chunk.id != format.id)
+                throw new SoundFont2.Error(format, "Chunk ID '" + chunk.id +
+                        "' mismatch");
+            if (chunk.size < 4)
+                throw new SoundFont2.Error(format, "Chunk size is too small");
+            fourcc = SoundFont2._readFCC(chunk.data, 0);
+            payload = chunk.data.subarray(4, chunk.data.byteLength);
+        } else {
+            fourcc = chunk.id;
+            payload = chunk.data;
+        }
+        if (typeof format[fourcc] === "undefined")
+            throw new SoundFont2.Error(format, "Chunk header '" + fourcc +
+                    "' is unknown");
+        if (typeof format[fourcc] == "object") {
+            result[fourcc] =
+                    SoundFont2._readChunk(format[fourcc], payload);
+        } else if (typeof format[fourcc] == "number") {
+            if (SoundFont2._TYPE_VERSION == format[fourcc]) {
+                result[fourcc] = {
+                    major: SoundFont2._readU16(payload, 0),
+                    minor: SoundFont2._readU16(payload, 2)
+                };
+            } else if (SoundFont2._TYPE_STRING == format[fourcc]) {
+                result[fourcc] =
+                        TString.createFromUint8Array(payload).toString();
+            } else {
+                throw new SoundFont2.Error(format, "Internal error");
+            }
+        } else {
+            result[fourcc] = { _: payload }; 
+        }
+    }
+    return result;
+};
+
 /**
  * Load SoundFont2 of ArrayBuffer.
  * @param data ArrayBuffer containing SoundFont2
@@ -80,103 +178,22 @@ SoundFont2._readChunk = function (array, offset) {
 SoundFont2.prototype.load = function (data) {
     var sf2 = new Uint8Array(data);
     Log.getLog().info("SF2: loading sf2 data; size = " + sf2.byteLength);
-
-    // Check RIFF File Format.
-    Log.getLog().info("SF2: checking RIFF");
-    var riff = SoundFont2._readChunk(sf2, 0);
-    if ((SoundFont2._FOURCC_RIFF != riff.id) ||
-            (riff.nextOffset != sf2.byteLength)) {
-        Log.getLog().error("SF2: broken RIFF file");
-        return false;
+    try {
+        this.riff = SoundFont2._readChunk(SoundFont2._FORMAT, sf2);
+        Log.getLog().info("SF2: loaded.");
+        Log.getLog().info(this.riff);
+        var info = this.riff[SoundFont2._FOURCC_SFBK][SoundFont2._FOURCC_INFO];
+        var version = info[SoundFont2._FOURCC_IFIL];
+        Log.getLog().info("SF2: Version " + version.major + "." +
+                version.minor);
+        Log.getLog().info("SF2: SoundEngine " + info[SoundFont2._FOURCC_ISNG]);
+        Log.getLog().info("SF2: Name " + info[SoundFont2._FOURCC_INAM]);
+        return true;
+    } catch (e) {
+        // TODO
+        Log.getLog().error(e);
     }
-    
-    // Check SoundFont 2 RIFF File Format Level 0.
-    Log.getLog().info("SF2: checking level 0");
-    var sfbk = SoundFont2._readFCC(riff.data, 0);
-    if (SoundFont2._FOURCC_SFBK != sfbk) {
-        Log.getLog().error("SF2: RIFF file has wrong magic " + sfbk);
-        return false;
-    }
-    var chunk;
-    var offset;
-    var info = null;
-    var sdta = null;
-    var pdta = null;
-    for (offset = 4; offset < riff.data.byteLength;
-            offset = chunk.nextOffset) {
-        chunk = SoundFont2._readChunk(riff.data, offset);
-        if (SoundFont2._FOURCC_LIST != chunk.id) {
-            Log.getLog().error("SF2: level 0 contains wrong magic " +
-                    chunk.id);
-        }
-        var list = SoundFont2._readFCC(chunk.data, 0);
-        if (SoundFont2._FOURCC_INFO == list)
-            info = chunk.data;
-        else if (SoundFont2._FOURCC_SDTA == list)
-            sdta = chunk.data;
-        else if (SoundFont2._FOURCC_PDTA == list)
-            pdta = chunk.data;
-        else
-            Log.getLog().warn("SF2: level 0 contains unknown chunk " + list);
-    }
-    if (!info || !sdta || !pdta) {
-        Log.getLog().error("SF2: level 0 miss mandatory chunk");
-        return false;
-    }
-
-    // Check SoundFont 2 RIFF File Format Level 1.
-    var ifil = null;
-    var isng = null;
-    var inam = null;
-    Log.getLog().info("SF2: checking level 1 INFO chunk");
-    for (offset = 4; offset < info.byteLength;
-            offset = chunk.nextOffset) {
-        chunk = SoundFont2._readChunk(info, offset);
-        if (SoundFont2._FOURCC_IFIL == chunk.id)
-            ifil = chunk.data;
-        else if (SoundFont2._FOURCC_ISNG == chunk.id)
-            isng = chunk.data;
-        else if (SoundFont2._FOURCC_INAM == chunk.id)
-            inam = chunk.data;
-        else  // TODO: irom, iver, ICRD, IENG, IPRD, ICOP, ICMT, and ISFT
-            Log.getLog().info("SF2: ignore optional chunk " + chunk.id);
-    }
-    if (!ifil || !isng || !inam) {
-        Log.getLog().error("SF2: level 1 INFO miss mandatory chunk");
-        return false;
-    }
-    
-    Log.getLog().info("SF2: checking level 1 sdta chunk");
-    var smpl = null;
-    for (offset = 4; offset < sdta.byteLength; offset = chunk.nextOffset) {
-        chunk = SoundFont2._readChunk(sdta, offset);
-        if (SoundFont2._FOURCC_SMPL != chunk.id) {
-            Log.getLog().warn("SF2: unknown chunk " + chunk.id);
-            return false;
-        }
-        smpl = chunk.data;
-    }
-    
-    Log.getLog().info("SF2: checking level 1 pdta chunk");
-    for (offset = 4; offset < pdta.byteLength; offset = chunk.nextOffset) {
-        chunk = SoundFont2._readChunk(pdta, offset);
-        Log.getLog().info("SF2: ignore chunk " + chunk.id);
-    }
-    
-    // Check SoundFont 2 RIFF File Format Level 2 and 3.
-    Log.getLog().info("SF2: checking level 2 and 3");
-    this.versionTag = {
-        major: SoundFont2._readU16(ifil, 0),
-        minor: SoundFont2._readU16(ifil, 2)
-    };
-    Log.getLog().info("SF2: VersionTag " + this.versionTag.major + "." +
-            this.versionTag.minor);
-    this.soundEngine = TString.createFromUint8Array(isng).toString();
-    Log.getLog().info("SF2: SoundEngine " + this.soundEngine);
-    this.name = TString.createFromUint8Array(inam).toString();
-    Log.getLog().info("SF2: Name " + this.name);
-
-    return true;
+    return false;
 };
 
 exports.SoundFont2 = SoundFont2;
