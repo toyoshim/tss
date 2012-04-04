@@ -46,6 +46,8 @@ SoundFont2._FOURCC_IGEN = 'igen';  // The Instrument Generator list
 SoundFont2._FOURCC_SHDR = 'shdr';  // The Sample Headers
 SoundFont2._TYPE_VERSION = 1;
 SoundFont2._TYPE_STRING = 2;
+SoundFont2._TYPE_SHORT_ARRAY = 3;
+SoundFont2._TYPE_PRESET_HEADER = 4;
 SoundFont2._FORMAT = { id: SoundFont2._FOURCC_RIFF };
 
 (function () {
@@ -53,18 +55,18 @@ SoundFont2._FORMAT = { id: SoundFont2._FOURCC_RIFF };
     info[SoundFont2._FOURCC_IFIL] = SoundFont2._TYPE_VERSION;
     info[SoundFont2._FOURCC_ISNG] = SoundFont2._TYPE_STRING;
     info[SoundFont2._FOURCC_INAM] = SoundFont2._TYPE_STRING;
-    info[SoundFont2._FOURCC_IROM] = true;
-    info[SoundFont2._FOURCC_IVER] = true;
-    info[SoundFont2._FOURCC_ICRD] = true;
-    info[SoundFont2._FOURCC_IENG] = true;
-    info[SoundFont2._FOURCC_IPRD] = true;
-    info[SoundFont2._FOURCC_ICOP] = true;
-    info[SoundFont2._FOURCC_ICMT] = true;
-    info[SoundFont2._FOURCC_ISFT] = true;
+    info[SoundFont2._FOURCC_IROM] = SoundFont2._TYPE_STRING;
+    info[SoundFont2._FOURCC_IVER] = SoundFont2._TYPE_VERSION;
+    info[SoundFont2._FOURCC_ICRD] = SoundFont2._TYPE_STRING;
+    info[SoundFont2._FOURCC_IENG] = SoundFont2._TYPE_STRING;
+    info[SoundFont2._FOURCC_IPRD] = SoundFont2._TYPE_STRING;
+    info[SoundFont2._FOURCC_ICOP] = SoundFont2._TYPE_STRING;
+    info[SoundFont2._FOURCC_ICMT] = SoundFont2._TYPE_STRING;
+    info[SoundFont2._FOURCC_ISFT] = SoundFont2._TYPE_STRING;
     var sdta = {};
-    sdta[SoundFont2._FOURCC_SMPL] = true;
+    sdta[SoundFont2._FOURCC_SMPL] = SoundFont2._TYPE_SHORT_ARRAY;
     var pdta = {};
-    pdta[SoundFont2._FOURCC_PHDR] = true;
+    pdta[SoundFont2._FOURCC_PHDR] = SoundFont2._TYPE_PRESET_HEADER;
     pdta[SoundFont2._FOURCC_PBAG] = true;
     pdta[SoundFont2._FOURCC_PMOD] = true;
     pdta[SoundFont2._FOURCC_PGEN] = true;
@@ -88,6 +90,13 @@ SoundFont2.Error = function (format, message) {
 
 SoundFont2._readU16 = function (array, offset) {
     return (array[offset + 1] << 8) | array[offset];
+};
+
+SoundFont2._readS16 = function (array, offset) {
+    var u16 = SoundFont2._readU16(array, offset);
+    if (u16 > 0x8000)
+        return u16 - 0x10000;
+    return u16;
 };
 
 SoundFont2._readU32 = function (array, offset) {
@@ -154,13 +163,50 @@ SoundFont2._readChunk = function (format, data) {
                     SoundFont2._readChunk(format[fourcc], payload);
         } else if (typeof format[fourcc] == "number") {
             if (SoundFont2._TYPE_VERSION == format[fourcc]) {
-                result[fourcc] = {
-                    major: SoundFont2._readU16(payload, 0),
-                    minor: SoundFont2._readU16(payload, 2)
-                };
+                if (4 != payload.byteLength)
+                    throw new SoundFont2.Error(format, "Chunk '" + fourcc +
+                            "' has invalid payload size as a version");
+                result[fourcc] = SoundFont2._readU16(payload, 0) + "." +
+                        SoundFont2._readU16(payload, 2);
             } else if (SoundFont2._TYPE_STRING == format[fourcc]) {
                 result[fourcc] =
                         TString.createFromUint8Array(payload).toString();
+            } else if (SoundFont2._TYPE_SHORT_ARRAY == format[fourcc]) {
+                if (0 != (payload.byteLength & 1))
+                    throw new SoundFont2.Error(format, "Chunk '" + fourcc +
+                            "' has an invalid odd payload size");
+                var sampleLength = payload.byteLength >> 1;
+                result[fourcc] = new Int16Array(sampleLength);
+                for (var sampleOffset = 0; sampleOffset < sampleLength;
+                        sampleOffset++)
+                    result[fourcc][sampleOffset] =
+                            SoundFont2._readS16(payload, sampleOffset << 1);
+            } else if (SoundFont2._TYPE_PRESET_HEADER == format[fourcc]) {
+                var presetLength = payload.byteLength;
+                if (0 != (presetLength % 38))
+                    throw new SoundFont2.Error(format,
+                            "Preset header size is wrong " + presetLength);
+                result[fourcc] = [];
+                var presetIndex = 0;
+                for (var presetOffset = 0; presetOffset < presetLength;
+                        presetOffset += 38) {
+                    var presetName = TString.createFromUint8Array(
+                            payload.subarray(presetOffset, presetOffset + 20));
+                    result[fourcc][presetIndex++] = {
+                        presetName: presetName.toString(),
+                        preset: SoundFont2._readU16(payload,
+                                presetOffset + 20),
+                        bank: SoundFont2._readU16(payload, presetOffset + 22),
+                        presetBadNdx: SoundFont2._readU16(payload,
+                                presetOffset + 24),
+                        library: SoundFont2._readU32(payload,
+                                presetOffset + 26),
+                        genre: SoundFont2._readU32(payload, presetOffset + 30),
+                        morphology: SoundFont2._readU32(payload,
+                                presetOffset + 34)
+                    };                        
+                }
+                Log.getLog().info(result[fourcc]);
             } else {
                 throw new SoundFont2.Error(format, "Internal error");
             }
@@ -182,12 +228,6 @@ SoundFont2.prototype.load = function (data) {
         this.riff = SoundFont2._readChunk(SoundFont2._FORMAT, sf2);
         Log.getLog().info("SF2: loaded.");
         Log.getLog().info(this.riff);
-        var info = this.riff[SoundFont2._FOURCC_SFBK][SoundFont2._FOURCC_INFO];
-        var version = info[SoundFont2._FOURCC_IFIL];
-        Log.getLog().info("SF2: Version " + version.major + "." +
-                version.minor);
-        Log.getLog().info("SF2: SoundEngine " + info[SoundFont2._FOURCC_ISNG]);
-        Log.getLog().info("SF2: Name " + info[SoundFont2._FOURCC_INAM]);
         return true;
     } catch (e) {
         // TODO

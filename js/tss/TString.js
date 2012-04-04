@@ -521,6 +521,8 @@ TString.prototype.toString = function (offset, size) {
     for (var i = 0; (i < size) && (i < this.object.length); i++) {
         var c = this.object[offset + i];
         if (first) {
+            if (0 == c)
+                break;
             if (c < 0x80) {
                 // 1 Byte UTF-8 string
                 result += String.fromCharCode(c);
