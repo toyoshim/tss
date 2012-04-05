@@ -6,7 +6,7 @@
  * VgmPlayer prototype
  *
  * Play VGM format files.
- * @see http://www.smspower.org/uploads/Music/vgmspec150.txt
+ * @see http://www.smspower.org/uploads/Music/vgmspec161.txt
  * @author Takashi Toyoshima <toyoshim@gmail.com>
  */
 function VgmPlayer () {
@@ -70,9 +70,8 @@ VgmPlayer._WAIT_882 = 882;
  * @throws Error exception on reading
  */
 VgmPlayer.prototype.readUInt = function (input, offset) {
-    if (input.length <= (offset + VgmPlayer._UINT_SIZE)) {
+    if (input.length <= (offset + VgmPlayer._UINT_SIZE))
         throw new Error("Unexpected EOF");
-    }
     var l = (input[offset + VgmPlayer._OFFSET_0] & VgmPlayer._BYTE_MASK) <<
             VgmPlayer._LSHIFT_0_BYTE;
     var k = (input[offset + VgmPlayer._OFFSET_1] & VgmPlayer._BYTE_MASK) <<
@@ -81,7 +80,10 @@ VgmPlayer.prototype.readUInt = function (input, offset) {
             VgmPlayer._LSHIFT_2_BYTE;
     var h = (input[offset + VgmPlayer._OFFSET_3] & VgmPlayer._BYTE_MASK) <<
             VgmPlayer._LSHIFT_3_BYTE;
-    return h | j | k | l;
+    var i32 = h | j | k | l;
+    if (i32 < 0)
+        return 0x100000000 + i32;
+    return i32;
 };
 
 /**
@@ -109,10 +111,9 @@ VgmPlayer.prototype.updateDevice = function () {
     if (this.error || (this.input == null)) {
         return;
     }
-    if (this.wait > 0) {
-        this.wait -= this.interval;
+    this.wait -= this.interval;
+    if (this.wait > 0)
         return;
-    }
     try {
         while (true) {
             var command = this.input[this.offset++];
@@ -192,6 +193,8 @@ VgmPlayer.prototype.play = function (newInput) {
     try {
         this.input = null;
         this.offset = 0;
+        this.error = false;
+        this.loop = false;
 
         var input = new Uint8Array(newInput);
 
@@ -287,18 +290,18 @@ VgmPlayer.prototype.play = function (newInput) {
 
         // check offsets
         var totalSamples = this.readUInt(input, offset);
+        Log.getLog().info("VGM: Total # samples = " + totalSamples);
         offset += 4;
         var loopOffset = this.readUInt(input, offset);
-        offset += 4;
-        var loopSamples = this.readUInt(input, offset);
-        offset += 4;
-        Log.getLog().info("VGM: Total # samples = " + totalSamples);
         Log.getLog().info("VGM: Loop offset = " + loopOffset);
-        Log.getLog().info("VGM: Loop # samples = " + loopSamples);
         if (0 != loopOffset) {
             this.loop = true;
-            this.loopSkipOffset = offset + loopOffset; // TODO: Correct?
+            this.loopSkipOffset = offset + loopOffset;
         }
+        offset += 4;
+        var loopSamples = this.readUInt(input, offset);
+        Log.getLog().info("VGM: Loop # samples = " + loopSamples);
+        offset += 4;
 
         // 1.00 complete
         if (this.minorVersion == VgmPlayer._VERSION_1_00) {
@@ -317,13 +320,21 @@ VgmPlayer.prototype.play = function (newInput) {
         if (this.minorVersion <= VgmPlayer._VERSION_1_50) {
             offset += VgmPlayer._VGM_DEFAULT_DATA_OFFSET -
                     VgmPlayer._VGM_1_00_EOH;
-            this.loopSkipOffset = offset + loopOffset; // TODO: Correct?
             this.offset = offset;
             this.input = input;
             return true;
         }
 
         // 1.50 features
+        // TODO
+
+        // 1.51 features
+        // TODO
+
+        // 1.60 features
+        // TODO
+
+        // 1.61 feature
         // TODO
         return false;
     } catch (e) {

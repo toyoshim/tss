@@ -30,9 +30,8 @@ MasterChannel.DEFAULT_VOLUME = 8;
  */
 MasterChannel.prototype.reconstructBuffers = function () {
     var newBuffers = new Array(this.channels.length);
-    for (var i = 0; i < this.channels.length; i++) {
+    for (var i = 0; i < this.channels.length; i++)
         newBuffers[i] = this.channels[i].getBuffer();
-    }
     this.buffers = newBuffers;
 };
 
@@ -68,14 +67,13 @@ MasterChannel.prototype.addChannel = function (channel) {
  * @return result
  */
 MasterChannel.prototype.removeChannel = function (channel) {
-    for (var i = 0; i < this.channels.length; i++) {
+    for (var i = 0; i < this.channels.length; i++)
         if (channel == this.channels[i]) {
             this.buffers = null;
             this.channels.splice(i, 1);
             this.reconstructBuffers();
             return true;
         }
-    }
     return false;
 };
 
@@ -101,8 +99,7 @@ MasterChannel.prototype.setPlayer = function (newPlayer) {
  * @param msec time interval
  */
 MasterChannel.prototype.setPlayerInterval = function (msec) {
-    // TODO: this.intervalLength looks half of expected length.
-    this.intervalLength = (MasterChannel.SAMPLE_FREQUENCY * msec) /
+    this.intervalLength = (2 * MasterChannel.SAMPLE_FREQUENCY * msec) /
             MasterChannel.MSEC_PER_SEC;
     this.intervalLength = ~~this.intervalLength;
     this.intervalRestLength = this.intervalLength;
@@ -113,23 +110,20 @@ MasterChannel.prototype.setPlayerInterval = function (msec) {
  * @param base base offset to generate
  * @param length buffer length to generate
  */
-MasterChannel.prototype.generateInternal = function (base, length) {
-    var size = this.channels.length;
-    for (var i = 0; i < size; i++) {
-        this.channels[i].generate(length);
-    }
+MasterChannel.prototype._generate = function (base, length) {
+    var channels = this.channels.length;
+    var ch;
+    for (ch = 0; ch < channels; ch++)
+        this.channels[ch].generate(length);
     for (var offset = 0; offset < length; offset++) {
         var value = 0;
-        for (var channel = 0; channel < size; channel++) {
-            value += this.buffers[channel][offset];
-        }
+        for (ch = 0; ch < channels; ch++)
+            value += this.buffers[ch][offset];
         value *= this.volume;
-        if (value > MasterChannel.MAX_WAVE_VALUE) {
+        if (value > MasterChannel.MAX_WAVE_VALUE)
             value = MasterChannel.MAX_WAVE_VALUE;
-        }
-        if (value < MasterChannel.MIN_WAVE_VALUE) {
+        else if (value < MasterChannel.MIN_WAVE_VALUE)
             value = MasterChannel.MIN_WAVE_VALUE;
-        }
         this.buffer[base + offset] = value;
     }
 };
@@ -142,9 +136,8 @@ MasterChannel.prototype.setBufferLength = function (length) {
     this.buffers = null;
     this.buffer = new Int32Array(length);
     this.bufferLength = length;
-    for (var i = 0; i < this.channels.length; i++) {
+    for (var i = 0; i < this.channels.length; i++)
         this.channels[i].setBufferLength(length);
-    }
     this.reconstructBuffers();
 };
 
@@ -161,23 +154,22 @@ MasterChannel.prototype.getBuffer = function () {
  * @param length buffer length or size in shorts to generate audio stream
  */
 MasterChannel.prototype.generate = function (length) {
-    if (null == this.buffers) {
+    if (null == this.buffers)
         return;
-    }
     if ((null == this.player) || (0 == this.intervalLength)) {
-        this.generateInternal(0, length);
+        this._generate(0, length);
     } else {
         var restLength = length;
         var offset = 0;
         while (restLength > this.intervalRestLength) {
-            this.generateInternal(offset, this.intervalRestLength);
+            this._generate(offset, this.intervalRestLength);
             restLength -= this.intervalRestLength;
             offset += this.intervalRestLength;
             this.intervalRestLength = this.intervalLength;
             this.player.updateDevice();
         }
         if (0 != restLength) {
-            this.generateInternal(offset, restLength);
+            this._generate(offset, restLength);
             this.intervalRestLength -= restLength;
         }
     }

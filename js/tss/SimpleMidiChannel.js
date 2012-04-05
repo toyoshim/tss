@@ -29,7 +29,7 @@ SimpleMidiChannel.prototype.constructor = SimpleMidiChannel;
 SimpleMidiChannel._MAX_CHANNEL = 16;
 SimpleMidiChannel._MAX_VOICE = 64;
 SimpleMidiChannel._OFF = -1;
-SimpleMidiChannel._COUNT_CYCLE = 4096;
+SimpleMidiChannel._COUNT_CYCLE = 2048;
 
 /**
  * Generate partial sound stream internally.

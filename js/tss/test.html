@@ -34,7 +34,7 @@
         google.load("jqueryui", "1.8.16");
         function testxstop() {
             if (0 != test) {
-                Log.getLog().info("TEST " + test + " STOP");
+                Log.getLog().info("TEST" + test + " STOP");
                 filter.setChannel(null);
                 test = 0;
             }
@@ -96,20 +96,8 @@
             test = 3;
         }
         function test4start() {
-            if (xh_res4 == null) {
-                Log.getLog().warn("XHR4 not ready");
-                return;
-            }
             Log.getLog().info("TEST 4 START");
-            player4.play(xh_res4);
-            var i;
-            for (i = 0; i < 350; i++) {
-                player4.updateDevice();
-            }
-            for (i = 0; i < 1050; i++) {
-                player4.updateDevice();
-            }
-            filter.setChannel(master4);
+            xh_req4.send();
             test = 4;
         }
         function test4draw() {
@@ -277,6 +265,7 @@
 <button onclick="testxstop()">STOP</button>
 <canvas id="test4canvas" width="38" height="24"></canvas>
 <hr>
+<a name="vgm"></a>
 <p class="title">5. VGM Player</p>
 <button onclick="testxstop()">STOP</button>
 <div id="test5drop" style="width: 100%; height: 100pt; background-color: #000000; color: #ffffff;">
@@ -475,8 +464,22 @@
             Log.getLog().info("  as ArrayBuffer (mozResponseArrayBuffer).");
             xh_res4 = xh_req4.mozResponseArrayBuffer;
         }
+        if (xh_res4 == null) {
+            Log.getLog().warn("XHR4 not ready");
+            return;
+        }
+        player4.play(xh_res4);
+        var i;
+        for (i = 0; i < 350; i++) {
+            player4.updateDevice();
+        }
+        for (i = 0; i < 1050; i++) {
+            player4.updateDevice();
+        }
+        filter.setChannel(master4);
     };
     var master4 = new MasterChannel();
+    master4.setVolume(1);
     var player4 = new PsglogPlayer();
     player4.setMasterChannel(master4);
     var canvas4 = document.getElementById("test4canvas");
@@ -527,6 +530,8 @@
             Log.getLog().info("  as ArrayBuffer (mozResponseArrayBuffer).");
             xh_res7 = xh_req7.mozResponseArrayBuffer;
         }
+        player7.play(xh_res7);
+        filter.setChannel(master7);
     };
     var div7 = document.getElementById("test7drop");
     var info7 = document.getElementById("test7info");

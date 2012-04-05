@@ -20,7 +20,7 @@ PsglogPlayer._PKT_REGISTER = 0;
 PsglogPlayer._PKT_VALUE = 1;
 PsglogPlayer._PKT_SYNC = 0xff;
 PsglogPlayer._BYTE_MASK = 0xff;
-PsglogPlayer._PLAYER_INTERVAL = 33;
+PsglogPlayer._PLAYER_INTERVAL = 17;
 
 /**
  * Set master channel to write output stream.
@@ -40,9 +40,9 @@ PsglogPlayer.prototype.setMasterChannel = function(channel) {
  * Channel reach to periodical call back point.
  */
 PsglogPlayer.prototype.updateDevice = function () {
-    if (this.input == null) {
+    if (this.input == null)
         return;
-    }
+
     // Logged at the first callback.
     if (this.firstUpdateDevice == undefined) {
         this.firstUpdateDevice = true;
@@ -54,9 +54,8 @@ PsglogPlayer.prototype.updateDevice = function () {
         return;
     }
     do {
-        if (this.input.byteLength < this.offset + 2) {
+        if (this.input.byteLength < this.offset + 2)
             return;
-        }
         this.pkt[0] = this.input[this.offset++];
         this.pkt[1] = this.input[this.offset++];
         if (this.pkt[PsglogPlayer._PKT_REGISTER] != PsglogPlayer._PKT_SYNC) {

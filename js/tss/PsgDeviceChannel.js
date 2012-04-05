@@ -266,11 +266,10 @@ PsgDeviceChannel.prototype.setDevice = function (target) {
         this.active[i] = true;
         this.countTone[i] = 0;
     }
-    if (this.device == PsgDeviceChannel.DEVICE_SN76489) {
+    if (this.device == PsgDeviceChannel.DEVICE_SN76489)
         this.initRegisterSN();
-    } else {
+    else
         this.initRegisterAY();
-    }
 };
 
 /**
@@ -297,11 +296,10 @@ PsgDeviceChannel.prototype.getBuffer = function () {
  */
 PsgDeviceChannel.prototype.generateSN = function (length) {
     var step;
-    if (0 == this.stepNoise) {
+    if (0 == this.stepNoise)
         step = this.stepTone[PsgDeviceChannel._CH_C];
-    } else {
+    else
         step = this.stepNoise;
-    }
     for (var offset = 0; offset < length; offset += 2) {
         var value = 0;
         for (var channel = 0; channel < PsgDeviceChannel._CHANNELS;
@@ -311,11 +309,10 @@ PsgDeviceChannel.prototype.generateSN = function (length) {
                 this.countTone[channel] -= this.stepTone[channel];
                 this.active[channel] = !this.active[channel];
             }
-            if (this.active[channel]) {
+            if (this.active[channel])
                 value += this.volume[channel];
-            } else if (this.mode == PsgDeviceChannel.MODE_SIGNED) {
+            else if (this.mode == PsgDeviceChannel.MODE_SIGNED)
                 value -= this.volume[channel];
-            }
         }
         this.countNoise += this.baseStep;
         if (this.countNoise > step) {
@@ -332,11 +329,10 @@ PsgDeviceChannel.prototype.generateSN = function (length) {
                         PsgDeviceChannel._SHORT_MASK;
             }
         }
-        if (0 != (this.seed & 1)) {
+        if (0 != (this.seed & 1))
             value += this.volumeNoise;
-        } else if (this.mode == PsgDeviceChannel.MODE_SIGNED) {
+        else if (this.mode == PsgDeviceChannel.MODE_SIGNED)
             value -= this.volumeNoise;
-        }
         this.buffer[offset + 0] = value;
         this.buffer[offset + 1] = value;
     }
@@ -369,12 +365,11 @@ PsgDeviceChannel.prototype.generateAY = function (length) {
                 this.active[channel] = !this.active[channel];
             }
             if ((this.mixerTone[channel] && this.active[channel])
-                    || (this.mixerNoise[channel] && noise)) {
+                    || (this.mixerNoise[channel] && noise))
                 value += this.volume[channel];
-            } else if (this.mixerTone[channel] && this.mixerNoise[channel] &&
-                    this.mode == PsgDeviceChannel.MODE_SIGNED) {
+            else if (this.mixerTone[channel] && this.mixerNoise[channel] &&
+                    this.mode == PsgDeviceChannel.MODE_SIGNED)
                 value -= this.volume[channel];
-            }
         }
         this.buffer[offset + 0] = value;
         this.buffer[offset + 1] = value;
@@ -387,11 +382,10 @@ PsgDeviceChannel.prototype.generateAY = function (length) {
  * @param length sound length in short to generate
  */
 PsgDeviceChannel.prototype.generate = function (length) {
-    if (this.device == PsgDeviceChannel.DEVICE_SN76489) {
+    if (this.device == PsgDeviceChannel.DEVICE_SN76489)
         this.generateSN(length);
-    } else {
+    else
         this.generateAY(length);
-    }
 };
 
 /**
@@ -583,11 +577,10 @@ PsgDeviceChannel.prototype.writeRegisterAY = function (address, value) {
  * @param value register value to write
  */
 PsgDeviceChannel.prototype.writeRegister = function (address, value) {
-    if (this.device == PsgDeviceChannel.DEVICE_SN76489) {
+    if (this.device == PsgDeviceChannel.DEVICE_SN76489)
         this.writeRegisterSN(address, value);
-    } else {
+    else
         this.writeRegisterAY(address, value);
-    }
 };
 
 /**
@@ -596,8 +589,7 @@ PsgDeviceChannel.prototype.writeRegister = function (address, value) {
  * @return read register value
  */
 PsgDeviceChannel.prototype.readRegister = function (address) {
-    if (address > PsgDeviceChannel._REGISTERS) {
+    if (address > PsgDeviceChannel._REGISTERS)
         throw new RangeError("Undefined register: " + address);
-    }
     return this.register[address];
 };

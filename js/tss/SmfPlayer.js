@@ -150,9 +150,7 @@ SmfPlayer.prototype._readChunkHeader = function (offset) {
 SmfPlayer.prototype._updateTimer = function () {
     var interval = (this.usecTempo / 1000) / this.timeUnit;
     Log.getLog().info("SMF: set timer interval as " + interval);
-    // TODO: setPlayerInterval has a bug on interval value handling.
-    // We must set doubled value to work around.
-    this.masterChannel.setPlayerInterval(interval * 2);
+    this.masterChannel.setPlayerInterval(interval);
 };
 
 /**
