@@ -101,6 +101,7 @@ public final class MasterChannel implements Channel {
      * @param msec time interval
      */
     public void setPlayerInterval(final int msec) {
+        // TODO: intervalLength must be doubled value. See, 80551a7b51fa
         intervalLength = (int) ((long) SAMPLE_FREQUENCY * (long) msec
                 / (long) MSEC_PER_SEC);
         intervalRestLength = intervalLength;
