@@ -775,6 +775,7 @@ TssCompiler.prototype._parseChannels = function () {
         throw new TssCompiler.CompileError(work.lineObject, work.offset,
                 "command '" + command + "' not implemented");
     };
+    // TODO: Check again if each argument is mandatory.
     var syntax = {
         '$': {  // loop
             args: [],
@@ -991,32 +992,32 @@ TssCompiler.prototype._parseChannels = function () {
                 { def: undefined, min: 0, max: 255 }  // delta
             ],
             callback: function (self, work, command, args) {
-                if (args[0]) {
+                if (typeof args[0] != "undefined") {
                     work.data.push(TsdPlayer.CMD_PITCH_MODULATION_DELAY);
                     work.data.push(args[0] >> 8);
                     work.data.push(args[0]& 0xff);
                 }
                 if (args.length < 2)
                     return;
-                if (args[1]) {
+                if (typeof args[1] != "undefined") {
                     work.data.push(TsdPlayer.CMD_PITCH_MODULATION_DEPTH);
                     work.data.push(args[1]);
                 }
                 if (args.length < 3)
                     return;
-                if (args[2]) {
+                if (typeof args[2] != "undefined") {
                     work.data.push(TsdPlayer.CMD_PITCH_MODULATION_WIDTH);
                     work.data.push(args[2]);
                 }
                 if (args.length < 4)
                     return;
-                if (args[3]) {
+                if (typeof args[3] != "undefined") {
                     work.data.push(TsdPlayer.CMD_PITCH_MODULATION_HEIGHT);
                     work.data.push(TssCompiler._toUint8(args[3]));
                 }
                 if (args.length < 5)
                     return;
-                if (args[4]) {
+                if (typeof args[4] != "undefined") {
                     work.data.push(TsdPlayer.CMD_PITCH_MODULATION_DELTA);
                     work.data.push(args[4]);
                 }
@@ -1181,13 +1182,15 @@ TssCompiler.prototype._parseChannels = function () {
         },
         s: {  // sustain
             args: [
-                { def: 0, min: 0, max: 255 },
-                { def: 0, min: -128, max: 127 }
+                { def: undefined, min: 0, max: 255 },
+                { def: undefined, min: -128, max: 127 }
             ],
             callback: function (self, work, command, args) {
-                work.data.push(TsdPlayer.CMD_SUSTAIN_MODE);
-                work.data.push(args[0]);
-                if (2 == args.length) {
+                if (typeof args[0] != "undefined") {
+                    work.data.push(TsdPlayer.CMD_SUSTAIN_MODE);
+                    work.data.push(args[0]);
+                }
+                if ((2 == args.length) && (typeof args[1] != "undefined")) {
                     work.data.push(TsdPlayer.CMD_PORTAMENT);
                     work.data.push(TssCompiler._toUint8(args[1]));
                 }
@@ -1246,7 +1249,7 @@ TssCompiler.prototype._parseChannels = function () {
                 { def: undefined, min: 0, max: 3 }
             ],
             callback: function (self, work, command, args) {
-                if (args[0] == undefined) {
+                if (args[0] != undefined) {
                     if ((args[0] & 0x0f) > 1)
                         throw new TssCompiler.CompileError(work.lineObject,
                                 work.offset, "invalid volume mode " +
@@ -1257,11 +1260,11 @@ TssCompiler.prototype._parseChannels = function () {
                     else
                         work.volumeRangeMode =
                                 TssCompiler.VOLUME_RANGE_MODE_UPPER;
-                    work.data.push(TssCompiler.CMD_VOLUME_MODE_CHANGE);
+                    work.data.push(TsdPlayer.CMD_VOLUME_MODE_CHANGE);
                     work.data.push(args[0] & 0x0f);
                 }
-                if (args[1] == undefined) {
-                    work.data.push(TssCompiler.CMD_FREQUENCY_MODE_CHANGE);
+                if (args[1] != undefined) {
+                    work.data.push(TsdPlayer.CMD_FREQUENCY_MODE_CHANGE);
                     work.data.push(args[1]);
                 }
             }
@@ -1365,7 +1368,8 @@ TssCompiler.prototype._parseChannels = function () {
                     var result = TssCompiler._getNumberParameter(
                             work.lineObject, work.offset);
                     if (typeof result.parameter == "undefined") {
-                        if (typeof syntax[c].args[i].def == "undefined")
+                        if ((typeof syntax[c].args[i].def == "undefined") &&
+                                (syntax[c].args[i].mandatory))
                             throw new TssCompiler.CompileError(work.lineObject,
                                     work.offset,
                                     "missing argument for '" + c + "'");

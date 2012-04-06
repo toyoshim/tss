@@ -195,7 +195,7 @@
             var src = document.getElementById("test8tss");
             var tsc = new TssCompiler();
             var bb = new WebKitBlobBuilder();
-            bb.append(tsc.compile(src.value).buffer);
+            bb.append(tsc.compile(src.value));
             var blob = bb.getBlob();
             var url = webkitURL.createObjectURL(blob);
             open(url, false);
