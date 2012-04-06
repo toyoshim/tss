@@ -12,6 +12,7 @@
     <script language="JavaScript" src="http://www.google.com/jsapi"></script>
     <script language="JavaScript" src="http://yuri.twintail.org/lib/flotr2.min.js"></script>
     <script language="JavaScript" src="../Log.js"></script>
+    <script language="JavaScript" src="Format.js"></script>
     <script language="JavaScript" src="TString.js"></script>
     <script language="JavaScript" src="AudioLooper.js"></script>
     <script language="JavaScript" src="BiquadFilterChannel.js"></script>
@@ -28,6 +29,7 @@
     <script language="JavaScript" src="SimpleMidiChannel.js"></script>
     <script language="JavaScript" src="SmfPlayer.js"></script>
     <script language="JavaScript" src="SoundFont2.js"></script>
+    <script language="JavaScript" src="S98Player.js"></script>
     <!-- control callback scripts -->
     <script language="JavaScript">
         google.load("jquery", "1.7.1");
@@ -225,6 +227,18 @@
             sf2.load(reader.result);
             test = 11;
         }
+        function test12flash() {
+            flash = testxflash(flash, div12, test12flash);
+        }
+        function test12prog(e) {
+            testxprog(e, prog12);
+        }
+        function test12start(e) {
+            test12prog(e);
+            player12.play(reader.result);
+            filter.setChannel(master12);
+            test = 12;
+        }
     </script>
 </head>
 <body>
@@ -417,6 +431,15 @@
     <pre>DRAG SF2 FILE TO HERE</pre>
     <pre id="test11info"></pre>
     <pre id="test11prog"></pre>
+</div>
+<hr>
+<a name="s98"></a>
+<p class="title">12. S98 Player [work in progress]</p>
+<button onclick="testxstop()">STOP</button>
+<div id="test12drop" tabindex="0" style="width: 100%; height: 100pt; background-color: #000000; color: #ffffff;">
+    <pre>DRAG S98 FILE TO HERE</pre>
+    <pre id="test12info"></pre>
+    <pre id="test12prog"></pre>
 </div>
 <hr>
 <hr>
@@ -653,7 +676,16 @@
     var info11 = document.getElementById("test11info");
     var prog11 = document.getElementById("test11prog");
 
-    // TEST 5, 6, 7, 9, and 11
+    // TEST 12
+    var div12 = document.getElementById("test12drop");
+    var info12 = document.getElementById("test12info");
+    var prog12 = document.getElementById("test12prog");
+    var master12 = new MasterChannel();
+    master12.setVolume(1);
+    var player12 = new S98Player();
+    player12.setMasterChannel(master12);
+
+    // TEST 5, 6, 7, 9, 11, and 12
     function isParent(id, node) {
         while (node) {
             if (node.id == id)
@@ -663,8 +695,10 @@
         return false;
     }
     var parents = [
-            "test5drop", "test6drop", "test7drop", "test9drop", "test11drop" ];
-    var divs = [ div5, div6, div7, div9, div11 ];
+            "test5drop", "test6drop", "test7drop", "test9drop", "test11drop",
+            "test12drop"
+    ];
+    var divs = [ div5, div6, div7, div9, div11, div12 ];
     window.addEventListener("dragover", function (e) {
         e.preventDefault();
         for (var i = 0; parents[i]; i++) {
@@ -676,10 +710,19 @@
     }, false);
     var flash = 0;
     var reader = null;
-    var infos = [ info5, info6, info7, info9, info11 ];
-    var tests = [test5flash, test6flash, test7flash, test9flash, test11flash ];
-    var progs = [ test5prog, test6prog, test7prog, test9prog, test11prog ];
-    var kicks = [ test5start, test6start, test7start, test9start, test11start ];
+    var infos = [ info5, info6, info7, info9, info11, info12 ];
+    var tests = [
+            test5flash, test6flash, test7flash, test9flash, test11flash,
+            test12flash
+    ];
+    var progs = [
+            test5prog, test6prog, test7prog, test9prog, test11prog,
+            test12prog
+    ];
+    var kicks = [
+            test5start, test6start, test7start, test9start, test11start,
+            test12start
+    ];
     window.addEventListener("drop", function (e) {
         for (var i = 0; parents[i]; i++) {
             if (!isParent(parents[i], e.target))
