@@ -33,10 +33,9 @@ S98Player._COMMAND_1_SYNC = 0xff;
  */
 S98Player.prototype.setMasterChannel = function(channel) {
     if (null != channel) {
-        // TODO: FmDeviceChannel, DEVICE_YM2203/YM2608
-        this.fm = new PsgDeviceChannel();
-        this.fm.setMode(PsgDeviceChannel.MODE_SIGNED);
-        this.fm.setDevice(PsgDeviceChannel.DEVICE_AY_3_8910);
+        this.fm = new OpnDeviceChannel();
+        this.fm.setClock(OpnDeviceChannel.CLOCK_PC88);
+        this.fm.setDevice(OpnDeviceChannel.DEVICE_YM2203);
         channel.clearChannel();
         channel.addChannel(this.fm);
         channel.setPlayer(this);
@@ -53,9 +52,7 @@ S98Player.prototype.setMasterChannel = function(channel) {
 S98Player.prototype._write = function (device, address, value) {
     if (0 != device)
         return;
-    // TODO
-    if (address <= 0x0f)
-        this.fm.writeRegister(address, value);
+    this.fm.writeRegister(address, value);
 };
 
 /**

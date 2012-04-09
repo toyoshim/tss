@@ -33,7 +33,7 @@ TssChannel._SIN_TABLE = new Int8Array(256);
 // Calculate tables.
 (function () {
     var i;
-    for (i = 0; i <4096; i++) {
+    for (i = 0; i < 4096; i++) {
         var u8 = ((~~(Math.random() * 0x7fffffff)) >> 8) & 0xff;
         if (u8 >= 0x80)
             u8 = u8 - 0x100;
