@@ -126,5 +126,6 @@ WebMidiLinkMidiChannel.prototype.sendToWebMidiLink = function () {
     var commands = [ "midi" ];
     for (var i = 0; i < arguments.length; ++i)
         commands.push(arguments[i].toString(16));
-    this.port.postMessage(commands.join(","), "*");
+    if (this.port)
+        this.port.postMessage(commands.join(","), "*");
 };
