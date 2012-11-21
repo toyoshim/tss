@@ -410,3 +410,10 @@ SmfPlayer.prototype.play = function (newInput) {
     this.error = !headerProcessed;
     return headerProcessed;
 };
+
+/**
+ * Stop playback.
+ */
+SmfPlayer.prototype.stop = function () {
+    this.error = true;
+};
