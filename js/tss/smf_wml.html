@@ -105,7 +105,8 @@
             wml = document.getElementById("wml").contentWindow;
             midi = new DisplayMidiChannel(new WebMidiLinkMidiChannel(wml));
             smf.setDevice(SmfPlayer.TRACK_DEFAULT, midi);
-            smf.setMasterChannel(new TimerMasterChannel());
+            smf.setMasterChannel(
+                    new TimerMasterChannel(TimerMasterChannel.MODE_DEFAULT));
             setInterval(function () {
                 for (var i = 0; i < 16; i++) {
                     if (0 == midi.volume[i])

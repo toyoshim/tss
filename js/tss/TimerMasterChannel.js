@@ -8,13 +8,13 @@
  * This prototype provide timer-based loop.
  * @author Takashi Toyoshima <toyoshim@gmail.com>
  */
-function TimerMasterChannel () {
+function TimerMasterChannel (mode) {
     this.player = null;
     this.timer = undefined;
     this.interval = 0;
-    this.useInterval = false;
-    this.useAnimationFrame = false;
-    this.useTimerWorker = true;
+    this.useInterval = mode == TimerMasterChannel.MODE_INTERVAL;
+    this.useAnimationFrame = mode == TimerMasterChannel.MODE_ANIMATION_FRAME;
+    this.useTimerWorker = mode == TimerMasterChannel.MODE_TIMER_WORKER;
 
     if (this.useAnimationFrame) {
         this.now = Date.now();
@@ -26,6 +26,11 @@ function TimerMasterChannel () {
         this.timer.onmessage = this.callback.bind(this);
     }
 }
+
+TimerMasterChannel.MODE_INTERVAL = 0;
+TimerMasterChannel.MODE_ANIMATION_FRAME = 1;
+TimerMasterChannel.MODE_TIMER_WORKER = 2;
+TimerMasterChannel.MODE_DEFAULT = TimerMasterChannel.MODE_TIMER_WORKER;
 
 /**
  * Add channel to audio play back loop.
