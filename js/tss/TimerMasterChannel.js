@@ -12,16 +12,15 @@ function TimerMasterChannel (mode) {
     this.player = null;
     this.timer = undefined;
     this.interval = 0;
+    this.now = Date.now();
     this.useInterval = mode == TimerMasterChannel.MODE_INTERVAL;
     this.useAnimationFrame = mode == TimerMasterChannel.MODE_ANIMATION_FRAME;
     this.useTimerWorker = mode == TimerMasterChannel.MODE_TIMER_WORKER;
 
     if (this.useAnimationFrame) {
-        this.now = Date.now();
         window.webkitRequestAnimationFrame(this.animationCallback.bind(this));
     }
     if (this.useTimerWorker) {
-        this.now = Date.now();
         this.timer = new Worker("TimerWorker.js");
         this.timer.onmessage = this.callback.bind(this);
     }
