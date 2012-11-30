@@ -70,7 +70,7 @@ TimerMasterChannel.prototype.setPlayerInterval = function (msec) {
     if (this.useInterval) {
         if (this.timer)
             clearInterval(this.timer);
-        this.timer = setInterval(this.player.updateDevice.bind(this.player),
+        this.timer = setInterval(this.player.callback.bind(this.player),
                 msec);
     }
     if (this.useTimerWorker)
