@@ -69,8 +69,7 @@ TimerMasterChannel.prototype.setPlayerInterval = function (msec) {
     if (this.useInterval) {
         if (this.timer)
             clearInterval(this.timer);
-        this.timer = setInterval(this.callback.bind(this.player),
-                msec);
+        this.timer = setInterval(this.callback.bind(this), msec);
     }
     if (this.useTimerWorker)
         this.timer.postMessage(msec);
