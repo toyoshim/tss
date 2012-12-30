@@ -37,6 +37,10 @@
     <script language="JavaScript">
         google.load("jquery", "1.7.1");
         google.load("jqueryui", "1.8.16");
+        function activate() {
+            if (looper && !looper.isActive())
+                looper.activate();
+        }
         function testxstop() {
             if (0 != test) {
                 Log.getLog().info("TEST" + test + " STOP");
@@ -69,12 +73,14 @@
         }
  
         function test1start() {
+            activate();
             Log.getLog().info("TEST 1 START");
             // TODO: assign descriptor
             filter.setChannel(master1);
             test = 1;
         }
         function test2change(value) {
+            activate();
             if (2 != test) {
                 Log.getLog().info("TEST 2 START");
                 filter.setChannel(master2);
@@ -85,6 +91,7 @@
             hz.firstChild.nodeValue = value + " Hz";
         }
         function test3start() {
+            activate();
             Log.getLog().info("TEST 3 START");
             psgdev3.writeRegister( 7, 0x38);
             psgdev3.writeRegister( 8, 0x0f);
@@ -101,6 +108,7 @@
             test = 3;
         }
         function test4start() {
+            activate();
             Log.getLog().info("TEST 4 START");
             xh_req4.send();
             test = 4;
@@ -144,6 +152,7 @@
             testxprog(e, prog5);
         }
         function test5start(e) {
+            activate();
             test5prog(e);
             player5.play(reader.result);
             filter.setChannel(master5);
@@ -156,6 +165,7 @@
             testxprog(e, prog6);
         }
         function test6start(e) {
+            activate();
             test6prog(e);
             player6.play(reader.result);
             filter.setChannel(master6);
@@ -168,6 +178,7 @@
             testxprog(e, prog7);
         }
         function test7start(e) {
+            activate();
             if (e) {
                 test7prog(e);
                 player7.play(reader.result);
@@ -188,6 +199,7 @@
             xh_req7.send();
         }
         function test8start() {
+            activate();
             var src = document.getElementById("test8tss");
             var tsc = new TssCompiler();
             player8.play(tsc.compile(src.value));
@@ -210,6 +222,7 @@
             testxprog(e, prog9);
         }
         function test9start(e) {
+            activate();
             test9prog(e);
             display9.processSystemReset();
             for (var i = 0; i < 16; i++)
@@ -235,6 +248,7 @@
             testxprog(e, prog11);
         }
         function test11start(e) {
+            activate();
             test11prog(e);
             var sf2 = new SoundFont2();
             sf2.load(reader.result);
@@ -247,6 +261,7 @@
             testxprog(e, prog12);
         }
         function test12start(e) {
+            activate();
             test12prog(e);
             player12.play(reader.result);
             filter.setChannel(master12);

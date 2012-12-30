@@ -12,14 +12,15 @@
  */
 function AudioLooper (bufferSize) {
     this.bufferSize = 4096;  // 92msec
-    if (arguments.length > 0)
+    if (bufferSize !== undefined)
         this.bufferSize = bufferSize;
     // Initialize variables.
     this.channel = null;
     this.initialized = true;
+    this.firstAudioEvent = null;
 
     // Web Audio API on Chrome and Safari.
-    if (window.webkitAudioContext != undefined) {
+    if (window.webkitAudioContext !== undefined) {
         Log.getLog().info("use Web Audio API");
         this.audioContext = new webkitAudioContext();
         if (this.audioContext == null) {
@@ -29,16 +30,20 @@ function AudioLooper (bufferSize) {
         }
 
         // Allocate JavaScript synthesis node.
-        this.jsNode = this.audioContext.createJavaScriptNode(this.bufferSize);
-
-        // Connect to output audio device.
-        this.jsNode.connect(this.audioContext.destination);
+        this.bufferSource = this.audioContext.createBufferSource();
+        this.jsNode =
+                this.audioContext.createJavaScriptNode(this.bufferSize, 2, 2);
 
         // Register callback
         this.jsNode.owner = this;
         this.jsNode.onaudioprocess = function (event) {
             this.owner.onAudioProcess(event);
         };
+
+        // Connect to output audio device.
+        this.bufferSource.noteOn(0);
+        this.bufferSource.connect(this.jsNode);
+        this.jsNode.connect(this.audioContext.destination);
 
         return;
     }
@@ -88,9 +93,8 @@ function AudioLooper (bufferSize) {
  * @param newChannel sound generator
  */
 AudioLooper.prototype.setChannel = function (newChannel) {
-    if (null != newChannel) {
+    if (null != newChannel)
         newChannel.setBufferLength(this.bufferSize * 2);
-    }
     this.channel = newChannel;
 };
 
@@ -177,3 +181,24 @@ AudioLooper.prototype.onAudioInterval = function () {
     // Play next buffer.
     this.bufferWritten += this.audio.mozWriteAudio(lrOut);
 };
+
+/**
+ * Check if this audio playback loop runs actively.
+ * @return true if this audio playback loop runs actively
+ */
+AudioLooper.prototype.isActive = function () {
+    // iOS requires to kick noteOn(0) from a UI action handler.
+    if (this.audioContext && this.audioContext.currentTime == 0)
+        return false;
+    return true;
+};
+
+/**
+ * Activate audio playback loop.
+ */
+AudioLooper.prototype.activate = function () {
+    if (this.isActive())
+        return;
+    this.bufferSource.noteOn(0);
+};
+
