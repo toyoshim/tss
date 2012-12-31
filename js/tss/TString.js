@@ -8,6 +8,8 @@
  * Contain string in UTF-8 and performs various functions around string
  * processing.
  * @author Takashi Toyoshima <toyoshim@gmail.com>
+ *
+ * @constructor
  */
 function TString () {
     this.object = null;
@@ -67,7 +69,7 @@ TString._isLowSurrogates = function (code) {
  * @param first the first code of a pair
  * @param second the second code of a pair
  * @return UCS-2 code
- * @raise RangeError when the specified code pair is an invalid sarrogate pair
+ * @throws RangeError when the specified code pair is an invalid sarrogate pair
  */
 TString._decodeSurrogatePair = function (first, second) {
     if (!TString._isHighSurrogates(first) ||
@@ -119,7 +121,7 @@ TString._countString = function (string) {
                 throw new RangeError("TString: invalid surrogate pair");
             code = TString._decodeSurrogatePair(code, string.charCodeAt(i));
         }
-        length += this._bytesInUTF8(code);
+        length += TString._bytesInUTF8(code);
     }
     return length;
 };
@@ -237,7 +239,7 @@ TString.prototype._fromUint8Array = function (array) {
  * Get a byte code from the internal UTF-8 byte array.
  * @param offset offset
  * @return code
- * @raise RangeError when offset is out of range
+ * @throws RangeError when offset is out of range
  */
 TString.prototype.at = function (offset) {
     if (offset >= this.object.byteLength)
@@ -249,7 +251,7 @@ TString.prototype.at = function (offset) {
  * Get string from the internal UTF-8 byte array.
  * @param offset offset
  * @return character
- * @raise RangeError when offset is out of range
+ * @throws RangeError when offset is out of range
  */
 TString.prototype.charAt = function (offset) {
     return String.fromCharCode(this.at(offset));
@@ -259,7 +261,7 @@ TString.prototype.charAt = function (offset) {
  * Get lower string from the internal UTF-8 byte array.
  * @param offset offset
  * @return character
- * @raise RangeError when offset is out of range
+ * @throws RangeError when offset is out of range
  */
 TString.prototype.lowerCharAt = function (offset) {
     var code = this.at(offset);
@@ -283,7 +285,7 @@ TString.prototype.numberAt = function (offset) {
  * Set a bytes code to the internal UTF-8 byte array.
  * @param offset offset
  * @param code code
- * @raise RangeError when offset is out of range
+ * @throws RangeError when offset is out of range
  */
 TString.prototype.setAt = function (offset, code) {
     if (offset >= this.object.byteLength)
@@ -295,7 +297,7 @@ TString.prototype.setAt = function (offset, code) {
  * Set a character to the internal UTF-8 byte array.
  * @param offset offset
  * @param ch character
- * @raise RangeError when offset is out of range
+ * @throws RangeError when offset is out of range
  */
 TString.prototype.setCharAt = function (offset, ch) {
     this.setAt(offset, ch.charCodeAt(0));
@@ -305,7 +307,7 @@ TString.prototype.setCharAt = function (offset, ch) {
  * Set a ASCII string to the internal UTF-8 byte array.
  * @param offset offset
  * @param string ASCII string
- * @raise RangeError when offset is out of range
+ * @throws RangeError when offset is out of range
  */
 TString.prototype.setASCII = function (offset, string) {
     for (var i = 0; i < string.length; i++)
@@ -318,7 +320,7 @@ TString.prototype.setASCII = function (offset, string) {
  * Set a TString to the internal UTF-8 byte array.
  * @param offset offset
  * @param string TString
- * @raise RangeError when offset is out of range
+ * @throws RangeError when offset is out of range
  */
 TString.prototype.setTString = function (offset, string) {
     for (var i = 0; i < string.byteLength(); i++)
@@ -331,7 +333,7 @@ TString.prototype.setTString = function (offset, string) {
  * Set a number to the internal UTF-8 byte array as Uint16.
  * @param offset offset
  * @param n Uint16 number
- * @raise RangeError when offset is out of range
+ * @throws RangeError when offset is out of range
  */
 TString.prototype.setUint16 = function (offset, n) {
     this.setAt(offset, n >> 8);
@@ -343,7 +345,7 @@ TString.prototype.setUint16 = function (offset, n) {
  * Set a number to the internal UTF-8 byte array as Uint32.
  * @param offset offset
  * @param n Uint32 number
- * @raise RangeError when offset is out of range
+ * @throws RangeError when offset is out of range
  */
 TString.prototype.setUint32 = function (offset, n) {
     this.setAt(offset, n >> 24);
@@ -507,7 +509,7 @@ TString.prototype.find = function (offset, code) {
  * @param offset start offset (default: 0)
  * @param size size in byte (default: byteLength() - offset)
  * @return UTF-16 string object
- * @raise TypeError when internal UTF-8 byte array contains invalid code
+ * @throws TypeError when internal UTF-8 byte array contains invalid code
  */
 TString.prototype.toString = function (offset, size) {
     if (arguments.length < 1)

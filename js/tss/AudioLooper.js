@@ -9,6 +9,7 @@
  * rendering.
  * @author Takashi Toyoshima <toyoshim@gmail.com>
  *
+ * @constructor
  */
 function AudioLooper (bufferSize) {
     this.bufferSize = 4096;  // 92msec
@@ -20,7 +21,7 @@ function AudioLooper (bufferSize) {
     this.firstAudioEvent = null;
 
     // Web Audio API on Chrome and Safari.
-    if (window.webkitAudioContext !== undefined) {
+    if (window['webkitAudioContext']) {
         Log.getLog().info("use Web Audio API");
         this.audioContext = new webkitAudioContext();
         if (this.audioContext == null) {
@@ -30,29 +31,29 @@ function AudioLooper (bufferSize) {
         }
 
         // Allocate JavaScript synthesis node.
-        this.bufferSource = this.audioContext.createBufferSource();
-        this.jsNode =
-                this.audioContext.createJavaScriptNode(this.bufferSize, 2, 2);
+        this.bufferSource = this.audioContext['createBufferSource']();
+        this.jsNode = this.audioContext['createJavaScriptNode'](
+                this.bufferSize, 2, 2);
 
         // Register callback
         this.jsNode.owner = this;
-        this.jsNode.onaudioprocess = function (event) {
+        this.jsNode['onaudioprocess'] = function (event) {
             this.owner.onAudioProcess(event);
         };
 
         // Connect to output audio device.
-        this.bufferSource.noteOn(0);
-        this.bufferSource.connect(this.jsNode);
-        this.jsNode.connect(this.audioContext.destination);
+        this.bufferSource['noteOn'](0);
+        this.bufferSource['connect'](this.jsNode);
+        this.jsNode['connect'](this.audioContext['destination']);
 
         return;
     }
 
     // Audio Data API on Firefox.
-    if (window.Audio != undefined) {
+    if (window['Audio']) {
         Log.getLog().info("use Audio Data API");
         this.audio = new Audio();
-        if ((this.audio == null) || (this.audio.mozSetup == undefined)) {
+        if ((this.audio == null) || (this.audio['mozSetup'] == undefined)) {
             Log.getLog().fatal("could not use Audio Data API");
             this.initialized = false;
             return;
@@ -61,7 +62,7 @@ function AudioLooper (bufferSize) {
         // Set up playback configuration.
         this.audioChannel = 2;
         this.audioFrequency = 44100;
-        this.audio.mozSetup(this.audioChannel, this.audioFrequency);
+        this.audio['mozSetup'](this.audioChannel, this.audioFrequency);
 
         // Set up output buffer.
         this.bufferId = 0;
@@ -71,7 +72,7 @@ function AudioLooper (bufferSize) {
         var arraySize = this.bufferSize * this.audioChannel;
         for (var i = 0; i < this.bufferPage; i++) {
             this.buffer[i] = new Float32Array(arraySize);
-            this.bufferWritten += this.audio.mozWriteAudio(this.buffer[i]);
+            this.bufferWritten += this.audio['mozWriteAudio'](this.buffer[i]);
         }
 
         // Register callback with 50msec interval.
@@ -110,8 +111,8 @@ AudioLooper.prototype.onAudioProcess = function (event) {
     }
 
     // Get Float32Array output buffer.
-    var lOut = event.outputBuffer.getChannelData(0);
-    var rOut = event.outputBuffer.getChannelData(1);
+    var lOut = event['outputBuffer']['getChannelData'](0);
+    var rOut = event['outputBuffer']['getChannelData'](1);
 
     // Process no input channel.
     var i;
@@ -146,7 +147,7 @@ AudioLooper.prototype.onAudioInterval = function () {
     }
 
     // Check buffer status.
-    var audioRead = this.audio.mozCurrentSampleOffset();
+    var audioRead = this.audio['mozCurrentSampleOffset']();
     var pageSize = this.bufferSize * this.audioChannel;
     var pageOffset = audioRead % (pageSize * this.bufferPage);
     var playingPage = ~~(pageOffset / pageSize);
@@ -179,7 +180,7 @@ AudioLooper.prototype.onAudioInterval = function () {
     }
 
     // Play next buffer.
-    this.bufferWritten += this.audio.mozWriteAudio(lrOut);
+    this.bufferWritten += this.audio['mozWriteAudio'](lrOut);
 };
 
 /**
@@ -188,7 +189,7 @@ AudioLooper.prototype.onAudioInterval = function () {
  */
 AudioLooper.prototype.isActive = function () {
     // iOS requires to kick noteOn(0) from a UI action handler.
-    if (this.audioContext && this.audioContext.currentTime == 0)
+    if (this.audioContext && this.audioContext['currentTime'] == 0)
         return false;
     return true;
 };
@@ -199,6 +200,6 @@ AudioLooper.prototype.isActive = function () {
 AudioLooper.prototype.activate = function () {
     if (this.isActive())
         return;
-    this.bufferSource.noteOn(0);
+    this.bufferSource['noteOn'](0);
 };
 

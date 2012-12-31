@@ -8,6 +8,8 @@
  * This prototype implements virtual sound devices which are used in
  * original T'SS v1 series.
  * @author Takashi Toyoshima <toyoshim@gmail.com>
+ *
+ * @constructor
  */
 function TssChannel () {
     this.buffer = null;
@@ -104,7 +106,7 @@ TssChannel.prototype.generate = function (length) {
 /**
  * Check if the module channele id is in range of maxChannel.
  * @param id module channel id
- * @raise RangeError module channel id is out of range of maxChannel
+ * @throws RangeError module channel id is out of range of maxChannel
  */
 TssChannel.prototype._CheckId = function (id) {
     if ((typeof id == "undefined") || (id > this.maxChannel))
@@ -156,7 +158,7 @@ TssChannel.prototype.setTimerCallback = function (id, count, self, callback) {
  * Set module frequency.
  * @param id module id
  * @param frequency frequency
- * @raise RangeError module channel id is out of range of maxChannel
+ * @throws RangeError module channel id is out of range of maxChannel
  */
 TssChannel.prototype.setModuleFrequency = function (id, frequency) {
     this._CheckId(id);
@@ -168,7 +170,7 @@ TssChannel.prototype.setModuleFrequency = function (id, frequency) {
  * @param id module id
  * @param ch channel
  * @param volume volume
- * @raise RangeError module channel id is out of range of maxChannel
+ * @throws RangeError module channel id is out of range of maxChannel
  */
 TssChannel.prototype.setModuleVolume = function (id, ch, volume) {
     this._CheckId(id);
@@ -184,7 +186,7 @@ TssChannel.prototype.setModuleVolume = function (id, ch, volume) {
  * Get module volume.
  * @param id module id
  * @param ch channel
- * @raise RangeError module channel id or channel id is out of range
+ * @throws RangeError module channel id or channel id is out of range
  */
 TssChannel.prototype.getModuleVolume = function (id, ch) {
     this._CheckId(id);
@@ -199,7 +201,7 @@ TssChannel.prototype.getModuleVolume = function (id, ch) {
  * Set module device type
  * @param id module id
  * @param type device type id
- * @raise RangeError module channel id is out of range of maxChannel
+ * @throws RangeError module channel id is out of range of maxChannel
  */
 TssChannel.prototype.setModuleType = function (id, type) {
     this._CheckId(id);
@@ -214,7 +216,7 @@ TssChannel.prototype.setModuleType = function (id, type) {
  * Get module device type
  * @param id module id
  * @return device type id
- * @raise RangeError module channel id is out of range of maxChannel
+ * @throws RangeError module channel id is out of range of maxChannel
  */
 TssChannel.prototype.getModuleType = function (id) {
     this._CheckId(id);
@@ -225,7 +227,7 @@ TssChannel.prototype.getModuleType = function (id) {
  * Set module voice.
  * @param id module id
  * @param voice voice id
- * @raise RangeError module channel id is out of range of maxChannel
+ * @throws RangeError module channel id is out of range of maxChannel
  */
 TssChannel.prototype.setModuleVoice = function (id, voice) {
     this._CheckId(id);
@@ -243,7 +245,7 @@ TssChannel.prototype.setModuleVoice = function (id, voice) {
  * @param id module id
  * @param rate modulation rate
  * @param pipe pipe id
- * @raise RangeError module channel id is out of range of maxChannel
+ * @throws RangeError module channel id is out of range of maxChannel
  */
 TssChannel.prototype.setModuleFmInPipe = function (id, rate, pipe) {
     this._CheckId(id);
@@ -256,7 +258,7 @@ TssChannel.prototype.setModuleFmInPipe = function (id, rate, pipe) {
  * @param id module id
  * @param mode connection mode
  * @param pipe pipe id
- * @raise RangeError module channel id is out of range of maxChannel
+ * @throws RangeError module channel id is out of range of maxChannel
  */
 TssChannel.prototype.setModuleFmOutPipe = function (id, mode, pipe) {
     this._CheckId(id);
@@ -267,7 +269,7 @@ TssChannel.prototype.setModuleFmOutPipe = function (id, mode, pipe) {
  * Set module phase.
  * @param id module id
  * @param phase phase to set
- * @raise RangeError module channel id is out of range of maxChannel
+ * @throws RangeError module channel id is out of range of maxChannel
  */
 TssChannel.prototype.setModulePhase = function (id, phase) {
     this._CheckId(id);
@@ -297,6 +299,7 @@ TssChannel.prototype._generateInternal = function (offset, count) {
  * Module prototype
  *
  * This prototype implements inner class to emulate sound devices.
+ * @constructor
  * @param channel parent channel object
  * @param ch module id
  */

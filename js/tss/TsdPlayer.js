@@ -7,6 +7,8 @@
  *
  * Play TSD format files.
  * @author Takashi Toyoshima <toyoshim@gmail.com>
+ *
+ * @constructor
  */
 function TsdPlayer () {
     this.device = null;

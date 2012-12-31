@@ -8,6 +8,8 @@
  * This prototype implements TSS compiler which compile TSS source file and
  * generate TSD data file. TsdPlayer prototype can play the TSD data file.
  * @author Takashi Toyoshima <toyoshim@gmail.com>
+ *
+ * @constructor
  */
 function TssCompiler () {
     this.logMmlCompile = false;
@@ -66,6 +68,7 @@ TssCompiler._TRIANGLE_TABLE = [
  * CompileError prototype
  *
  * This prototype contains compile error information.
+ * @constructor
  * @param line line object
  *      line: line number
  *      data: source of TString
@@ -160,7 +163,7 @@ TssCompiler._getBracedParameter = function (line, offset) {
  * Get a number parameter.
  * @param line source data of line object
  * @param offset start offset
- * @throw TssCompiler.CompileError
+ * @throws TssCompiler.CompileError
  * @return result object
  *      begin: start offset
  *      end: end offset
@@ -407,7 +410,7 @@ TssCompiler._getCharacter = function (line, offset, character) {
  *      offset offset in the line
  * @param message error message
  * @return the next character
- * @raise TssCompiler.CompileError if search reach to the end of lines
+ * @throws TssCompiler.CompileError if search reach to the end of lines
  */
 TssCompiler._findNextCharacter = function (work, message) {
     var length = work.lines.length;
@@ -431,7 +434,7 @@ TssCompiler._findNextCharacter = function (work, message) {
  *      offset offset in the line
  * @param ch character to check
  * @param message error message
- * @raise TssCompiler.CompileError if the specified character is not found
+ * @throws TssCompiler.CompileError if the specified character is not found
  */
 TssCompiler._checkCharacter = function (work, ch, message) {
     TssCompiler._findNextCharacter(work, message);
@@ -600,7 +603,7 @@ TssCompiler.prototype._preprocessLine = function (context, offset, count) {
 
 /**
  * Parse TSS source lines and classify into directive or channels.
- * @raise TssCompiler.CompileError
+ * @throws TssCompiler.CompileError
  */
 TssCompiler.prototype._parseLines = function () {
     var context = {
@@ -649,7 +652,7 @@ TssCompiler.prototype._parseLines = function () {
 
 /**
  * Parse directives.
- * @raose TssCompiler.CompileError
+ * @throws TssCompiler.CompileError
  */
 TssCompiler.prototype._parseDirectives = function () {
     // TODO: Check mandatory directives.
@@ -956,14 +959,14 @@ TssCompiler.prototype._parseChannels = function () {
             args: [],  // TODO
             callback: notImplemented
         },
-        k: {  // detune
+        'k': {  // detune
             args: [ { def: 0, min: -128, max: 127 } ],
             callback: function (self, work, command, args) {
                 work.data.push(TsdPlayer.CMD_DETUNE);
                 work.data.push(TssCompiler._toUint8(args[0]));
             }
         },
-        l: {  // default note length
+        'l': {  // default note length
             args: [ { def: 4, min: 1, max: 1024 } ],
             callback: function (self, work, command, args) {
                 work.defaultLength = args[0];
@@ -978,12 +981,12 @@ TssCompiler.prototype._parseChannels = function () {
                 }
             }
         },
-        m: {  // multiple
+        'm': {  // multiple
             sequence: "p",
             args: [],  // TODO
             callback: notImplemented
         },
-        mp: {  // pitch modulation
+        'mp': {  // pitch modulation
             args: [
                 { def: undefined, min: 0, max: 65535 },  // delay
                 { def: undefined, min: 0, max: 255 },  // depth
@@ -1023,10 +1026,10 @@ TssCompiler.prototype._parseChannels = function () {
                 }
             }
         },
-        n: {  // n/a
+        'n': {  // n/a
             sequence: "ast"
         },
-        na: {  // amp envelope
+        'na': {  // amp envelope
             args: [
                 { def: 0, min: 0, max: 255 },
                 { def: 0, min: 0, max: 255 }
@@ -1037,21 +1040,21 @@ TssCompiler.prototype._parseChannels = function () {
                 work.data.push(args[1]);
             }
         },
-        ns: {  // note emvelope
+        'ns': {  // note emvelope
             args: [],  // TODO
             callback: notImplemented
         },
-        nt: {  // note shift
+        'nt': {  // note shift
             args: [],  // TODO
             callback: notImplemented
         },
-        o: {  // octave
+        'o': {  // octave
             args: [ { def: 4, min: 1, max: 8 } ],
             callback: function (self, work, command, args) {
                 work.currentOctave = args[0];
             }
         },
-        p: {  // panpot
+        'p': {  // panpot
             sequence: "h",
             args: [ { def: 0, min: 0, max: 3 } ],
             callback: function (self, work, command, args) {
@@ -1059,17 +1062,17 @@ TssCompiler.prototype._parseChannels = function () {
                 work.data.push(args[0]);
             }
         },
-        ph: {  // key-on phase
+        'ph': {  // key-on phase
             args: [],  // TODO
             callback: notImplemented
         },
-        q: {  // gate time
+        'q': {  // gate time
             args: [ { def: maxGate, min: 0, max: maxGate } ],
             callback: function (self, work, command, args) {
                 work.currentGate = args[0];
             }
         },
-        r: {  // note on/off
+        'r': {  // note on/off
             args:[],
             callback: function (self, work, command, args) {
                 if ('r' != command) {
@@ -1180,7 +1183,7 @@ TssCompiler.prototype._parseChannels = function () {
                 }
             }
         },
-        s: {  // sustain
+        's': {  // sustain
             args: [
                 { def: undefined, min: 0, max: 255 },
                 { def: undefined, min: -128, max: 127 }
@@ -1196,7 +1199,7 @@ TssCompiler.prototype._parseChannels = function () {
                 }
             }
         },
-        t: {  // tempo
+        't': {  // tempo
             args: [ { def: 120, min: 1, max: 512 } ],
             callback: function (self, work, command, args) {
                 var n = ~~(22050 * 4 * 60 / 192 / args[0]);
@@ -1205,7 +1208,7 @@ TssCompiler.prototype._parseChannels = function () {
                 work.data.push(n & 0xff);
             }
         },
-        v: {  // volume
+        'v': {  // volume
             args: [
                 { def: 10, min: 0, max: 15 },
                 { def: 0, min: 0, max: 15 }
@@ -1243,7 +1246,7 @@ TssCompiler.prototype._parseChannels = function () {
                 }
             }
         },
-        x: {  // volume and pitch mode
+        'x': {  // volume and pitch mode
             args: [
                 { def: undefined, min: 0, max: 17 },
                 { def: undefined, min: 0, max: 3 }
@@ -1327,8 +1330,7 @@ TssCompiler.prototype._parseChannels = function () {
                 work.line++) {
             work.lineObject = this.channels[ch][work.line];
             for (work.offset = 0;
-                    work.offset < work.lineObject.data.byteLength();
-                    work.offset) {
+                    work.offset < work.lineObject.data.byteLength(); ) {
                 work.offset += work.lineObject.data.countSpaces(work.offset);
                 if (work.offset >= work.lineObject.data.byteLength())
                     break;
@@ -1455,8 +1457,8 @@ TssCompiler.prototype._generateTsd = function () {
     // Magic: "T'SoundSystem", 0x00
     var offset = tsdWriter.setASCII(0, "T'SoundSystem");
     // Version.Release
-    tsdWriter.setAt(offset++, ~~TssCompiler.VERSION);
-    tsdWriter.setAt(offset++, (~~(TssCompiler.VERSION * 100)) % 100);
+    tsdWriter.setAt(offset++, Math.floor(TssCompiler.VERSION));
+    tsdWriter.setAt(offset++, Math.floor(TssCompiler.VERSION * 100) % 100);
     // Title length, UTF-8 string, and padding.
     offset = tsdWriter.setUint16(offset, this.tags.title.byteLength());
     offset = tsdWriter.setTString(offset, this.tags.title);

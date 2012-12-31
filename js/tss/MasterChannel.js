@@ -7,6 +7,8 @@
  *
  * This prototype provide main audio generation loop.
  * @author Takashi Toyoshima <toyoshim@gmail.com>
+ *
+ * @constructor
  */
 function MasterChannel () {
     this.channels = new Array();
