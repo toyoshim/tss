@@ -28,6 +28,7 @@
     <script language="JavaScript" src="MidiChannel.js"></script>
     <script language="JavaScript" src="SimpleMidiChannel.js"></script>
     <script language="JavaScript" src="WebMidiLinkMidiChannel.js"></script>
+    <script language="JavaScript" src="WebMidiChannel.js"></script>
     <script language="JavaScript" src="SmfPlayer.js"></script>
     <script language="JavaScript" src="SoundFont2.js"></script>
     <script language="JavaScript" src="FmChannel.js"></script>
@@ -241,6 +242,12 @@
             player9.setDevice(SmfPlayer.TRACK_DEFAULT, display9);
             player9.setMasterChannel(master9);
         }
+        function test9midi() {
+            display9 = new DisplayMidiChannel(
+                    new WebMidiChannel(WebMidiChannel.outputs[0]));
+            player9.setDevice(SmfPlayer.TRACK_DEFAULT, display9);
+            player9.setMasterChannel(master9);
+        }
         function test11flash() {
             flash = testxflash(flash, div11, test11flash);
         }
@@ -270,6 +277,12 @@
     </script>
 </head>
 <body>
+
+<!-- Web MIDI API Polyfill by Chris Wilson -->
+<div id="MIDIPlugin" style="position:absolute; visibility:hidden"></div>
+<script language="JavaScript" src="https://raw.github.com/cwilso/WebMIDIAPIShim/master/lib/WebMIDIAPI.js"></script>
+<script>WebMidiChannel.initialize();</script>
+
 <p>Source code is available on <a href="http://code.google.com/p/tss/">Google Code</a></p>
 <p>Enable Web Audio API on Chrome at chrome://flags or just use FileFox 4 or later</p>
 <hr>
@@ -440,6 +453,8 @@
 <span id="test9ch15">*</span>
 </span>
 <button onclick="test9wml()">WebMidiLink</button>
+<button onclick="test9midi()">Web MIDI API</button>
+<button onclick="document.getElementById('MIDIPlugin').removeChild(document.getElementById('MIDIPlugin').childNodes[0]); WebMidiChannel.initialized = false; WebMidiChannel.initialize(); test9midi();">Reset WebMIDIAPIShim</button>
 <div id="test9drop" style="width: 100%; height: 100pt; background-color: #000000; color: #ffffff;">
     <pre>DRAG SMF FILE TO HERE</pre>
     <pre id="test9info"></pre>
