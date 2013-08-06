@@ -1,6 +1,8 @@
 build
 data
+log
 tmp
+.c9revisions
 .class
 .checkstyle
 .idea
