@@ -1,5 +1,5 @@
 /**
- * T'SoundSystem for JavaScript (Web Audio API)
+ * T'SoundSystem for JavaScript (Web Audio API / Audio Data API)
  */
 
 /**
@@ -19,16 +19,19 @@ function AudioLooper (bufferSize) {
     this.channel = null;
     this.initialized = true;
     this.firstAudioEvent = null;
+    this.sampleRate = 44100;
 
-    // Web Audio API on Chrome and Safari.
-    if (window['webkitAudioContext']) {
-        Log.getLog().info("use Web Audio API");
-        this.audioContext = new webkitAudioContext();
+    // Web Audio API on Chrome, Safari, and Firefox.
+    if (window['webkitAudioContext'] || window['AudioContext']) {
+        Log.getLog().info("AudioLooper: detect Web Audio API");
+        this.audioContext = new webkitAudioContext() || new AudioContext();
         if (this.audioContext == null) {
-            Log.getLog().fatal("could not use webkitAudioContext");
+            Log.getLog().fatal('AudioLooper: could not create AudioContext');
             this.initialized = false;
             return;
         }
+        this.sampleRate = this.audioContext.sampleRate;
+        Log.getLog().info('AudioLooper: sample rate is ' + this.sampleRate);
 
         // Allocate JavaScript synthesis node.
         this.bufferSource = this.audioContext['createBufferSource']();
@@ -49,12 +52,12 @@ function AudioLooper (bufferSize) {
         return;
     }
 
-    // Audio Data API on Firefox.
+    // Audio Data API on Firefox (deprecated).
     if (window['Audio']) {
-        Log.getLog().info("use Audio Data API");
+        Log.getLog().info("AudioLooper: detect Audio Data API");
         this.audio = new Audio();
         if ((this.audio == null) || (this.audio['mozSetup'] == undefined)) {
-            Log.getLog().fatal("could not use Audio Data API");
+            Log.getLog().fatal("AudioLooper: could not use Audio Data API");
             this.initialized = false;
             return;
         }
@@ -85,13 +88,21 @@ function AudioLooper (bufferSize) {
 
         return;
     }
-    Log.getLog().error("Audio API unavailable");
+    Log.getLog().error("AudioLooper: no known Audio API are available");
     this.initialized = false;
 }
 
 /**
+ * Get sample rate.
+ * @return {number} sample rate
+ */
+AudioLooper.prototype.getSampleRate = function () {
+    return this.sampleRate;
+};
+
+/**
  * Register sound generator.
- * @param newChannel sound generator
+ * @param {Object} newChannel sound generator
  */
 AudioLooper.prototype.setChannel = function (newChannel) {
     if (null != newChannel)
@@ -101,7 +112,7 @@ AudioLooper.prototype.setChannel = function (newChannel) {
 
 /**
  * Audio processing event handler for Web Audio API.
- * @param event AudioProcessingEvent
+ * @param {Object} event AudioProcessingEvent
  */
 AudioLooper.prototype.onAudioProcess = function (event) {
     // Logged event contents at the first event.
@@ -185,7 +196,7 @@ AudioLooper.prototype.onAudioInterval = function () {
 
 /**
  * Check if this audio playback loop runs actively.
- * @return true if this audio playback loop runs actively
+ * @return {boolean} true if this audio playback loop runs actively
  */
 AudioLooper.prototype.isActive = function () {
     // iOS requires to kick noteOn(0) from a UI action handler.
