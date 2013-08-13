@@ -21,7 +21,7 @@ function FrequencyConversionChannel () {
 }
 
 FrequencyConversionChannel.TYPE_NO_CONVERSION = 0;
-FrequencyConversionChannel.TYPE_UPPER_SAMPLING = 1;
+FrequencyConversionChannel.TYPE_UP_SAMPLING = 1;
 FrequencyConversionChannel.TYPE_DOWN_SAMPLING = 2;
 
 /**
@@ -84,15 +84,14 @@ FrequencyConversionChannel.prototype.generate = function (length) {
         return;
     }
     
-    if (this.type == FrequencyConversionChannel.TYPE_NO_CONVERSION) {
+    if (this.type == FrequencyConversionChannel.TYPE_NO_CONVERSION)
         this.channel.generate(length);
-        for (i = 0; i < length; ++i)
-            this.outBuffer[i] = this.inBuffer[i];
-    } else if (this.type == FrequencyConversionChannel.TYPE_UPPER_SAMPLING) {
+    else if (this.type == FrequencyConversionChannel.TYPE_UP_SAMPLING)
         this.filter.generate(length);
-        for (i = 0; i < length; ++i)
-            this.outBuffer[i] = this.inBuffer[i];
-    }
+    else
+        this.converter.generate(length);
+    for (i = 0; i < length; ++i)
+        this.outBuffer[i] = this.inBuffer[i];
 };
 
 /**
@@ -112,10 +111,10 @@ FrequencyConversionChannel.prototype._reconstruct = function () {
         }
     } else if (this.inFrequency < this.outFrequency) {
         // output <= interpolation filter <= convertion <= input channel
-        this.type = FrequencyConversionChannel.TYPE_UPPER_SAMPLING;
+        this.type = FrequencyConversionChannel.TYPE_UP_SAMPLING;
         this.filter = new BiquadFilterChannel();
         this.filter.setParameter(BiquadFilterChannel.TYPE_LPF,
-                                 this.inFrequency / 2 * 0.95, 0.95, 20);
+                                 this.inFrequency / 2 * 0.9, 0.9, 20);
         this.converter = new FrequencyConversionChannel.ConversionChannel();
         this.converter.setInputFrequency(this.inFrequency);
         this.converter.setOutputFrequency(this.outFrequency);
@@ -131,18 +130,26 @@ FrequencyConversionChannel.prototype._reconstruct = function () {
     } else {
         // output <= convertion <= dicimation filter <= input channel
         this.type = FrequencyConversionChannel.TYPE_DOWN_SAMPLING;
-        this.converter = null;
+        this.converter = new FrequencyConversionChannel.ConversionChannel();
+        this.converter.setInputFrequency(this.inFrequency);
+        this.converter.setOutputFrequency(this.outFrequency);
+        if (this.bufferLength != 0) {
+            this.converter.setBufferLength(this.bufferLength);
+            this.inBuffer = this.converter.getBuffer();
+        } else {
+            this.inBuffer = null;
+        }
+        if (this.channel != null)
+          this.converter.setChannel(this.channel);
+        // TODO: add dicimation filter.
         this.filter = null;
-        this.inBuffer = null;
-        Log.getLog().warn('FrequencyConversionChannel: ' +
-                'down sampling is not supported yet.');
     }
 }
 
 /**
  * ConversionChannel prototype
  *
- * This prototype implements upper conversion channel.
+ * This prototype implements frequency conversion channel.
  * @author Takashi Toyoshima <toyoshim@gmail.com>
  */
 FrequencyConversionChannel.ConversionChannel = function () {
@@ -229,7 +236,7 @@ FrequencyConversionChannel.ConversionChannel.prototype.generate =
         for (i = 0; i < length; ++i)
             this.outBuffer[i] = this.inBuffer[i];
     } else if (this.inFrequency < this.outFrequency) {
-        // Upper sampling.
+        // Up sampling.
         for (i = 0; i < length; i += 2) {
             if (this.count >= 0) {
                 if (this.inOffset === 0)
@@ -248,8 +255,21 @@ FrequencyConversionChannel.ConversionChannel.prototype.generate =
         }
     } else {
         // Down sampling.
-        // TODO(toyoshim): Implement.
-        for (i = 0; i < length; ++i)
-            this.outBuffer[i] = 0;
+        for (i = 0; i < length; i += 2) {
+            while (this.count < 0) {
+                this.inOffset += 2;
+                this.count += this.outFrequency;
+            }
+            while (this.inOffset >= this.bufferLength) {
+                this.channel.generate(length);
+                this.inOffset -= this.bufferLength;
+            }
+            this.outBuffer[i + 0] = this.inBuffer[this.inOffset + 0];
+            this.outBuffer[i + 1] = this.inBuffer[this.inOffset + 1];
+            this.inOffset += 2;
+            if (this.inOffset == this.bufferLength)
+                this.inOffset = 0;
+            this.count -= this.inFrequency - this.outFrequency;
+        }
     }
 };
