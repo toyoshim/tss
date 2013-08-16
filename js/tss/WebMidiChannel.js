@@ -14,7 +14,7 @@
  * @param port MIDIOutput interface
  */
 function WebMidiChannel (port) {
-    this.port = WebMidiChannel._access.getOutput(port);
+    this.port = port;
 }
 
 WebMidiChannel.prototype = new MidiChannel();
@@ -38,16 +38,16 @@ WebMidiChannel.initialize = function (callback) {
         return false;
     }
     var cb = callback;
-    navigator.requestMIDIAccess(function(access) {
+    navigator.requestMIDIAccess({'sysex': true}).then(function(access) {
         // Success.
         WebMidiChannel._access = access;
         Log.getLog().info("Web MIDI API is available.");
         WebMidiChannel.initialized = true;
         if (cb)
             cb(true);
-        WebMidiChannel.inputs = access.getInputs();
+        WebMidiChannel.inputs = access.inputs();
         Log.getLog().info("MIDI inputs: " + WebMidiChannel.inputs.length);
-        WebMidiChannel.outputs = access.getOutputs();
+        WebMidiChannel.outputs = access.outputs();
         Log.getLog().info("MIDI outputs: " + WebMidiChannel.outputs.length);
         for (var i = 0; i < WebMidiChannel.outputs.length; ++i) {
             Log.getLog().info("<" + (i + 1) + ">");
