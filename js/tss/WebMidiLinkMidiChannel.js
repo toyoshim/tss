@@ -40,7 +40,7 @@ WebMidiLinkMidiChannel.prototype.processNoteOn =
  */
 WebMidiLinkMidiChannel.prototype.processKeyPressure =
         function (ch, note, pressure) {
-    this.sendToWebMidiLink(0xa0 + ch, note);
+    this.sendToWebMidiLink(0xa0 + ch, note, pressure);
 };
 
 /**
@@ -74,7 +74,7 @@ WebMidiLinkMidiChannel.prototype.processChannelPressure =
  * @see MidiChannel
  */
 WebMidiLinkMidiChannel.prototype.processPitchBend = function (ch, bend) {
-    this.sendToWebMidiLink(0xe0 + ch, bend);
+    this.sendToWebMidiLink(0xe0 + ch, (bend >> 7) & 0x7f, bend & 0x7f);
 };
 
 /**
