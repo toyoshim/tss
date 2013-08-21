@@ -26,9 +26,9 @@ SmfPlayer._SMF_CHUNK_HEADER = ('M'.charCodeAt(0) << 24) |
         ('h'.charCodeAt(0) << 8) |
         'd'.charCodeAt(0);
 SmfPlayer._SMF_CHUNK_TRACK = ('M'.charCodeAt(0) << 24) |
-    ('T'.charCodeAt(0) << 16) |
-    ('r'.charCodeAt(0) << 8) |
-    'k'.charCodeAt(0);
+        ('T'.charCodeAt(0) << 16) |
+        ('r'.charCodeAt(0) << 8) |
+        'k'.charCodeAt(0);
 SmfPlayer._SMF_FORMAT_0 = 0;
 SmfPlayer._SMF_FORMAT_1 = 1;
 SmfPlayer._SMF_EVENT_SYSEX = 0xf0;
@@ -239,7 +239,8 @@ SmfPlayer.prototype.updateDevice = function () {
                 break;
             }
             if (SmfPlayer._SMF_EVENT_SYSEX == event) {
-                dataLength = 2 + work.data[work.offset + 1];
+                work.offset++;
+                dataLength = 1 + work.data[work.offset];
                 if (work.offset + dataLength > length) {
                     Log.getLog().error("SMF: invalid sysex data");
                     this.error = true;
