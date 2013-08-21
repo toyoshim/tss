@@ -50,7 +50,7 @@ WebMidiChannel.initialize = function (callback) {
         WebMidiChannel.outputs = access.outputs();
         Log.getLog().info("MIDI outputs: " + WebMidiChannel.outputs.length);
         for (var i = 0; i < WebMidiChannel.outputs.length; ++i) {
-            Log.getLog().info("<" + (i + 1) + ">");
+            Log.getLog().info("<" + i + ">");
             Log.getLog().info("  id          : " +
                     WebMidiChannel.outputs[i].id)
             Log.getLog().info("  manufacturer: " +
@@ -92,7 +92,7 @@ WebMidiChannel.prototype.processNoteOn = function (ch, note, velocity) {
  * @see MidiChannel
  */
 WebMidiChannel.prototype.processKeyPressure = function (ch, note, pressure) {
-    this.sendToMIDI(0xa0 + ch, note);
+    this.sendToMIDI(0xa0 + ch, note, pressure);
 };
 
 /**
@@ -124,7 +124,7 @@ WebMidiChannel.prototype.processChannelPressure = function (ch, pressure) {
  * @see MidiChannel
  */
 WebMidiChannel.prototype.processPitchBend = function (ch, bend) {
-    this.sendToMIDI(0xe0 + ch, bend);
+    this.sendToMIDI(0xe0 + ch, (bend >> 7) & 0x7f, bend & 0x7f);
 };
 
 /**
@@ -172,5 +172,5 @@ WebMidiChannel.prototype.processMetaData = function (meta) {
  */
 WebMidiChannel.prototype.sendToMIDI = function () {
     if (this.port)
-        this.port.send(arguments);
+        this.port.send(Array.prototype.slice.call(arguments));
 };
