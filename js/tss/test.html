@@ -232,6 +232,14 @@
             filter.setChannel(master9);
             test = 9;
         }
+        function test9stop() {
+            display9.processSystemReset();
+            for (var i = 0; i < 16; i++) {
+                var event = MidiChannel.createEvent([0xb0 + i, 0x78, 0x00]);
+                display9.processEvents(event);
+            }
+            testxstop();
+        }
         function test9wml() {
             var device = window.open(
                     "http://www.g200kg.com/en/docs/gmplayer/",
@@ -435,7 +443,7 @@
 <hr>
 <a name="smf"></a>
 <p class="title">9. SMF Player / Virtual Instrument Interface Test</p>
-<button onclick="testxstop()">STOP</button>
+<button onclick="test9stop()">STOP</button>
 <span style="background-color: #000000;">
 <span id="test9ch0">*</span>
 <span id="test9ch1">*</span>
