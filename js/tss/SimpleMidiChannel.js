@@ -70,7 +70,7 @@ SimpleMidiChannel.prototype._findVoice = function () {
             if (voice >= SimpleMidiChannel._MAX_VOICE)
                 voice -= SimpleMidiChannel._MAX_VOICE;
             if (!this.voices[voice].isActive()) {
-                this.searchingVoice = voice + i;
+                this.searchingVoice = voice + 1;
                 break;
             }
         }
