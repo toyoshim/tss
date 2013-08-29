@@ -9,7 +9,7 @@
  * This virtual instrument implements only key-on/off handling.
  * @author Takashi Toyoshima <toyoshim@gmail.com>
  */
-function SimpleMidiChannel (frequency) {
+function SimpleMidiChannel () {
     this.buffer = null;
     this.count = SimpleMidiChannel._COUNT_CYCLE;
     this.voices = [];
