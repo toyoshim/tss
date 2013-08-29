@@ -34,6 +34,10 @@
     <script language="JavaScript" src="FmChannel.js"></script>
     <script language="JavaScript" src="OpnDeviceChannel.js"></script>
     <script language="JavaScript" src="S98Player.js"></script>
+    <script language="JavaScript" src="OtisDeviceChannel.js"></script>
+    <script language="JavaScript" src="OtisMidiChannel.js"></script>
+    <script language="JavaScript" src="FrequencyConversionChannel.js"></script>
+    <script language="JavaScript" src="F3SampleFormat.js"></script>
     <!-- control callback scripts -->
     <script language="JavaScript">
         google.load("jquery", "1.7.1");
@@ -73,6 +77,12 @@
             prog.innerText = msg;
         }
  
+        function test0start() {
+            activate();
+            Log.getLog().info("TEST 0 START");
+            filter.setChannel(master0);
+            test = 0;
+        }
         function test1start() {
             activate();
             Log.getLog().info("TEST 1 START");
@@ -252,7 +262,7 @@
         }
         function test9midi() {
             display9 = new DisplayMidiChannel(
-                    new WebMidiChannel(WebMidiChannel.outputs[0]));
+                    new WebMidiChannel(WebMidiChannel.outputs[3]));
             player9.setDevice(SmfPlayer.TRACK_DEFAULT, display9);
             player9.setMasterChannel(master9);
         }
@@ -312,6 +322,10 @@
 <p class="title">Preview</p>
 <div id="container" style="margin-left: 50px;"></div>
 <br>
+<hr>
+<p class="title">0. Play 440Hz</p>
+<button onclick="test0start()">START</button>
+<button onclick="testxstop()">STOP</button>
 <hr>
 <p class="title">1. Play 440Hz/550Hz/660Hz</p>
 <button onclick="test1start()">START</button>
@@ -505,6 +519,11 @@
     var looper = new AudioLooper(512);
     var filter = new BiquadFilterChannel();
     looper.setChannel(filter);
+
+    // TEST 0
+    var master0 = new MasterChannel();
+    var simple0 = new SimpleSlaveChannel(440);
+    master0.addChannel(simple0);
 
     // TEST 1
     var master1 = new MasterChannel();
@@ -725,7 +744,28 @@
 
     // TEST 10
     var master10 = new MasterChannel();
-    var device10 = new SimpleMidiChannel();
+    //var device10 = new SimpleMidiChannel();
+    var device10 = new OtisMidiChannel();
+    var xh_req10 = new XMLHttpRequest();
+    xh_req10.open("get", "../../log/d87-01.bin", true);
+    xh_req10.responseType = "arraybuffer";
+    xh_req10.onload = function () {
+        device10.setROM(0, new Int8Array(xh_req10.response));
+    };
+    xh_req10.send();
+    var xh_req10b = new XMLHttpRequest();
+    xh_req10b.open("get", "../../log/d87-02.bin", true);
+    xh_req10b.responseType = "arraybuffer";
+    xh_req10b.onload = function () {
+        device10.setROM(1, new Int8Array(xh_req10b.response));
+    };
+    xh_req10b.send();
+    var xh_req10c = new XMLHttpRequest();
+    xh_req10c.open("get", "../../log/voice_dg.json", true);
+    xh_req10c.onload = function () {
+        device10.setVoice(JSON.parse(xh_req10c.response));
+    };
+    xh_req10c.send();
     master10.setVolume(1);
     master10.addChannel(device10);
 
@@ -744,7 +784,17 @@
         77: 83   // B
     };
     var noteOn = [];
+    var progNum = 0;
     $('#test10midi').keydown(function(e) {
+        if (188 == e.keyCode) {
+            progNum++;
+            device10.processProgramChange(0, progNum);
+            return;
+        } else if (190 == e.keyCode) {
+            progNum--;
+            device10.processProgramChange(0, progNum);
+            return;
+        }
         var note = codeToNote[e.keyCode];
         if (!note)
             return;
@@ -776,6 +826,18 @@
             device10.processNoteOff(0, note, 0);
         }
     });
+    navigator.requestMIDIAccess({'sysex': true}).then(function (access) {
+        inputs10 = access.inputs();
+        for (var i = 0; i < inputs10.length; ++i) {
+            inputs10[i].onmidimessage = function (e) {
+                if (10 != test) {
+                    filter.setChannel(master10);
+                    test = 10;
+                }
+                device10.processEvents(MidiChannel.createEvent(e.data));
+            };
+        }
+    }, function (error) { console.log(error); });
 
     // TEST 11
     var div11 = document.getElementById("test11drop");
