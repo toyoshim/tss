@@ -330,6 +330,7 @@ TssChannel.Module.TYPE_SCC = 4;
 TssChannel.Module.TYPE_OSC = 5;  // TODO
 TssChannel.Module.TYPE_GB_SQUARE = 13;  // TODO
 TssChannel.Module.TYPE_GB_WAVE = 14;  // TODO
+TssChannel.Module.TYPE_MIDI = 15;
 
 /**
  * Set module device type.
@@ -356,6 +357,9 @@ TssChannel.Module.prototype.setType = function (type) {
             break;
         case TssChannel.Module.TYPE_SIN:
             this.generate = this.generateSin;
+            break;
+        case TssChannel.Module.TYPE_MIDI:
+            this.generate = this.generateNothing;
             break;
         default:
             // TODO: Implement other types.
@@ -483,6 +487,11 @@ TssChannel.Module.prototype.generateNoise = function (buffer, fmBuffer) {
     this.phase = phase;
 };
 
+/**
+ * Generate a SCC like wave table sound.
+ * @param buffer Int32Array to which generate sound
+ * @param fmBuffer Int32Array to which output fm data, or from which input one
+ */
 TssChannel.Module.prototype.generateScc = function (buffer, fmBuffer) {
     var wave = this.channel.wave[this.voice];
     if (!wave)
@@ -633,4 +642,12 @@ TssChannel.Module.prototype.generateSin = function (buffer, fmBuffer) {
     }
     this.count = count;
     this.phase = phase;
+};
+
+/**
+ * Generate nothing. Dummy function to mimic generateXXX functions.
+ * @param buffer Int32Array to which generate sound
+ * @param fmBuffer Int32Array to which output fm data, or from which input one
+ */
+TssChannel.Module.prototype.generateNothing = function (buffer, fmBuffer) {
 };

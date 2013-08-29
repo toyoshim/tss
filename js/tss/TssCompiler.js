@@ -789,10 +789,11 @@ TssCompiler.prototype._parseChannels = function () {
         '%': {  // module
             args: [ { def: 0, min: 0, max: 255 } ],
             callback: function (self, work, command, args) {
-                if (TssCompiler.HARDWARE_MODE_FAMICOM == work.mode)
+                if (TssCompiler.HARDWARE_MODE_FAMICOM == work.mode ||
+                        TssCompiler.HARDWARE_MODE_GAMEBOY == work.mode)
                     throw new TssCompiler.CompileError(work.lineObject,
                             work.offset,
-                            "'%' is not supported in famicom mode");
+                            "'%' is not supported in NES/GameBoy mode");
                 work.data.push(TsdPlayer.CMD_MODULE_CHANGE);
                 work.data.push(args[0]);
             }

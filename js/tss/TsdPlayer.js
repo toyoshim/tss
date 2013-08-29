@@ -928,7 +928,7 @@ TsdPlayer.prototype._setVoice = function (ch, voice) {
  * @param module module type with frequency mode
  */
 TsdPlayer.prototype._setModule = function (ch, module) {
-    this.device.setModuleType(ch.id, module &0x0f);
+    this.device.setModuleType(ch.id, module & 0x0f);
     if (0 != (module & 0x80))
         ch.frequency.type = module >> 7;
     else
