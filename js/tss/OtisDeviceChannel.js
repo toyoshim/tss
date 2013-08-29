@@ -123,14 +123,14 @@ OtisDeviceChannel.prototype._writeVoiceSpecificRegister =
             //Log.getLog().info("ch " + this.page + "; cr: " + value);
             this.voice[this.page].cr = value & 0x0fff;
             this.voice[this.page].stp = value & 0x0003;
-            this.voice[this.page].bs = 0 !== (value & (1 << 2));
-            this.voice[this.page].lpe = 0 !== (value & (1 << 3));
-            this.voice[this.page].ble = 0 !== (value & (1 << 4));
-            this.voice[this.page].irqe = 0 !== (value & (1 << 5));
-            this.voice[this.page].dir = 0 !== (value & (1 << 6));
-            this.voice[this.page].irq = 0 !== (value & (1 << 7));
-            this.voice[this.page].ca = (value >> 8) & 0x0003;
-            this.voice[this.page].lp = (value >> 10) & 0x0003;
+            this.voice[this.page].bs = 0 !== (value & (1 << 2));  // Bank (N/A)
+            this.voice[this.page].lpe = 0 !== (value & (1 << 3));  // Loop
+            this.voice[this.page].ble = 0 !== (value & (1 << 4));  // Bidi Loop
+            this.voice[this.page].irqe = 0 !== (value & (1 << 5));  // (N/A)
+            this.voice[this.page].dir = 0 !== (value & (1 << 6));  // Direction
+            this.voice[this.page].irq = 0 !== (value & (1 << 7));  // (N/A)
+            this.voice[this.page].ca = (value >> 8) & 0x0003;  // (N/A)
+            this.voice[this.page].lp = (value >> 10) & 0x0003;  // LP4, LP3
             break;
         case OtisDeviceChannel.REGISTER_VOICE_FC:
             //Log.getLog().info("ch " + this.page + "; fc: " + value);
@@ -331,10 +331,12 @@ OtisDeviceChannel.Voice.prototype.generate = function (buffer, length) {
     var lvol = OtisDeviceChannel.Voice._VOLUME_TABLE[this.lvol];
     var rvol = OtisDeviceChannel.Voice._VOLUME_TABLE[this.rvol];
     var lpe = this.lpe;
+    var ble = this.ble;
+    var dir = this.dir;
     var loop = this.end - this.strt;
-    var end = this.end;
+    var end = (dir == 0) ? this.end : this.strt;
     var acc = this.acc;
-    var fc = this.fc;
+    var fc = (dir == 0) ? this.fc : -this.fc;
     var lp = this.lp;
     var k1 = this.k1 / 0x1000;
     var k2 = this.k2 / 0x1000;
@@ -346,11 +348,31 @@ OtisDeviceChannel.Voice.prototype.generate = function (buffer, length) {
     var p4nm1 = this.p4nm1;
 
     for (var i = 0; i < length; i += 2) {
-        // TODO: Handle dir, ble, lpe, and stp correctly.
-        if (end < acc) {
-            if (!lpe)
-                break;
-            acc -= loop;
+        // TODO: Check if dir, ble, lpe, and stp are handled correctly.
+        if (dir == 0) {
+            if (end < acc) {
+                if (!lpe)
+                    break;
+                if (ble) {
+                    fc = -fc;
+                    dir = 1;
+                    end = this.strt;
+                } else {
+                    acc -= loop;
+                }
+            }
+        } else {
+            if (acc < end) {
+                if (!lpe)
+                    break;
+                if (ble) {
+                    fc = -fc;
+                    dir = 0;
+                    end = this.end;
+                } else {
+                    acc -= loop;
+                }
+            }
         }
         var pos = acc >> 9;
         var data = rom[pos] +
@@ -379,6 +401,7 @@ OtisDeviceChannel.Voice.prototype.generate = function (buffer, length) {
         acc = (acc + fc) & 0x1fffffff;
     }
     
+    this.dir = dir;
     this.acc = acc;
     this.p1nm1 = p1nm1;
     this.p2nm1 = p2nm1;
