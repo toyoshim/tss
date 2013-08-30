@@ -33,7 +33,7 @@ function TssCompiler () {
     this.channelData = [];
 }
 
-TssCompiler.VERSION = 0.93;
+TssCompiler.VERSION = 0.94;
 TssCompiler.HARDWARE_MODE_NORMAL = 0;
 TssCompiler.HARDWARE_MODE_FAMICOM = 1;
 TssCompiler.HARDWARE_MODE_GAMEBOY = 2;
@@ -860,7 +860,7 @@ TssCompiler.prototype._parseChannels = function () {
             }
         },
         '@': {  // voice
-            sequence: "iov",
+            sequence: "ciopv",
             args: [ { def: 0, min: 0, max: 255 } ],
             callback: function (self, work, command, args) {
                 if (TssCompiler.HARDWARE_MODE_FAMICOM == work.mode) {
@@ -878,6 +878,17 @@ TssCompiler.prototype._parseChannels = function () {
                 }
                 work.data.push(TsdPlayer.CMD_VOICE_CHANGE);
                 work.data.push(args[0]);
+            }
+        },
+        '@c': {  // control change
+            args: [
+                { def: 0, min: 0, max: 127 },
+                { def: 0, min: 0, max: 127 }
+            ],
+            callback: function (self, work, command, args) {
+                work.data.push(TsdPlayer.CMD_CONTROL_CHANGE);
+                work.data.push(args[0]);
+                work.data.push(args[1]);
             }
         },
         '@i': {  // input pipe
@@ -898,6 +909,17 @@ TssCompiler.prototype._parseChannels = function () {
             callback: function (self, work, command, args) {
                 work.data.push(TsdPlayer.CMD_FM_OUT);
                 work.data.push((args[0] << 4) | args[1]);
+            }
+        },
+        '@p': {  // id and channel change
+            args: [
+                { def: 0, min: 0, max: 3 },
+                { def: 0, min: 0, max: 127 }
+            ],
+            callback: function (self, work, command, args) {
+                work.data.push(TsdPlayer.CMD_PORT_CHANGE);
+                work.data.push(args[0]);
+                work.data.push(args[1]);
             }
         },
         '@v': {  // fine volume
@@ -1050,7 +1072,7 @@ TssCompiler.prototype._parseChannels = function () {
             callback: notImplemented
         },
         'o': {  // octave
-            args: [ { def: 4, min: 1, max: 8 } ],
+            args: [ { def: 4, min: 0, max: 10 } ],
             callback: function (self, work, command, args) {
                 work.currentOctave = args[0];
             }
@@ -1077,7 +1099,7 @@ TssCompiler.prototype._parseChannels = function () {
             args:[],
             callback: function (self, work, command, args) {
                 if ('r' != command) {
-                    if ((work.currentOctave < 1) || (8 < work.currentOctave))
+                    if ((work.currentOctave < 0) || (10 < work.currentOctave))
                         throw new TssCompiler.CompileError(work.lineObject,
                                 work.offset, "current octave is out of range");
                 }
