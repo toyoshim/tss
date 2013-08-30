@@ -16,6 +16,9 @@ function TssChannel () {
     this.fmBuffer = [ null, null, null, null ];
     this.player = null;
     this.module = [];
+    this.midi = new Array(TssChannel.MAX_MIDI_PORT);
+    for (var i = 0; i < TssChannel.MAX_MIDI_PORT; ++i)
+        this.midi[i] = new TssChannel.MIDI();
     this.timer = [
         { enable: false, timer: 0, count: 0, self: null, callback: null },
         { enable: false, timer: 0, count: 0, self: null, callback: null }
@@ -24,6 +27,7 @@ function TssChannel () {
     this.wave = [];
 }
 
+TssChannel.MAX_MIDI_PORT = 4;
 TssChannel.MODULE_CHANNEL_L = 0;
 TssChannel.MODULE_CHANNEL_R = 1;
 TssChannel.FM_OUT_MODE_OFF = 0;
@@ -54,6 +58,10 @@ TssChannel.prototype.setBufferLength = function (length) {
     this.buffer = new Int32Array(length);
     for (var i = 0; i < 4; i++) {
         this.fmBuffer[i] = new Int32Array(length);
+    }
+    for (var port = 0; port < TssChannel.MAX_MIDI_PORT; ++port) {
+        if (this.midi[port])
+            this.midi[port].setBufferLength(length);
     }
 };
 
@@ -104,13 +112,22 @@ TssChannel.prototype.generate = function (length) {
 };
 
 /**
+ * Set virtual MIDI devices in Array.
+ * @param devices Array of devices which implement MidiChannel and MasterChannel
+ */
+TssChannel.prototype.setVirtualDevices = function (devices) {
+    for (var i = 0; i < TssChannel.MAX_MIDI_PORT; ++i)
+        this.midi[i].setDevice(devices[i]);
+}
+
+/**
  * Check if the module channele id is in range of maxChannel.
  * @param id module channel id
  * @throws RangeError module channel id is out of range of maxChannel
  */
 TssChannel.prototype._CheckId = function (id) {
-    if ((typeof id == "undefined") || (id > this.maxChannel))
-        throw new RangeError("TSC: Invalid module channel: " + id);
+    if ((typeof id == 'undefined') || (id > this.maxChannel))
+        throw new RangeError('TSC: Invalid module channel: ' + id);
 };
 
 /**
@@ -129,7 +146,7 @@ TssChannel.prototype.setMaxChannel = function (maxChannel) {
  * @param wave wave data of Int8Array
  */
 TssChannel.prototype.setWave = function (id, wave) {
-    Log.getLog().info("TSC: Set wave table " + id);
+    Log.getLog().info('TSC: Set wave table ' + id);
     Log.getLog().info(wave);
     this.wave[id] = wave;
 };
@@ -179,7 +196,7 @@ TssChannel.prototype.setModuleVolume = function (id, ch, volume) {
     else if (ch == TssChannel.MODULE_CHANNEL_R)
         this.module[id].volume.r = volume;
     else
-        Log.getLog().error("TSC: Invalid volume channel: " + ch);
+        Log.getLog().error('TSC: Invalid volume channel: ' + ch);
 };
 
 /**
@@ -194,7 +211,7 @@ TssChannel.prototype.getModuleVolume = function (id, ch) {
         return this.module[id].volume.l;
     else if (ch == TssChannel.MODULE_CHANNEL_R)
         return this.module[id].volume.r;
-    throw new RangeError("TSC: Invalid volume channel:" + id)
+    throw new RangeError('TSC: Invalid volume channel: ' + id)
 };
 
 /**
@@ -208,7 +225,7 @@ TssChannel.prototype.setModuleType = function (id, type) {
     this.module[id].setType(type);
     if (TssChannel.Module.TYPE_SCC == type) {
         if (!this.wave[0])
-            Log.getLog().warn("TSC: wave table 0 not found");
+            Log.getLog().warn('TSC: wave table 0 not found');
     }
 };
 
@@ -224,6 +241,23 @@ TssChannel.prototype.getModuleType = function (id) {
 };
 
 /**
+ * Set module MIDI device ID and channel.
+ * @param id module id
+ * @param port MIDI device id
+ * @param channel MIDI channel
+ */
+TssChannel.prototype.setModulePort = function (id, port, channel) {
+    this._CheckId(id);
+    var type = this.getModuleType(id);
+    if (TssChannel.Module.TYPE_MIDI != type)
+        return;
+    this.derefMidi(this.module[id].mid);
+    this.addrefMidi(port);
+    this.module[id].mid = port;
+    this.module[id].mch = channel;
+};
+
+/**
  * Set module voice.
  * @param id module id
  * @param voice voice id
@@ -231,12 +265,16 @@ TssChannel.prototype.getModuleType = function (id) {
  */
 TssChannel.prototype.setModuleVoice = function (id, voice) {
     this._CheckId(id);
-    this.module[id].voice = voice;
     var type = this.getModuleType(id);
     if (TssChannel.Module.TYPE_SCC == type) {
         if (!this.wave[voice])
-            Log.getLog().warn("TSC: wave table " + voice + " not found");
+            Log.getLog().warn('TSC: wave table ' + voice + ' not found');
+    } else if (TssChannel.Module.TYPE_MIDI == type) {
+        var device = this.midi[this.module[id].mid].device;
+        if (device)
+            device.processProgramChange(this.module[id].mch, voice);
     }
+    this.module[id].voice = voice;
 };
 
 /**
@@ -276,6 +314,29 @@ TssChannel.prototype.setModulePhase = function (id, phase) {
     this.module[id].phase = phase;
 };
 
+TssChannel.prototype.keyOn = function (id, note) {
+    this._CheckId(id);
+    var type = this.getModuleType(id);
+    if (TssChannel.Module.TYPE_MIDI != type)
+        return;
+    this.module[id].note = note;
+    var device = this.midi[this.module[id].mid].device;
+    if (device) {
+        device.processNoteOn(this.module[id].mch, note,
+                this.module[id].volume.l >> 1);
+    }
+};
+
+TssChannel.prototype.keyOff = function (id) {
+    this._CheckId(id);
+    var type = this.getModuleType(id);
+    if (TssChannel.Module.TYPE_MIDI != type)
+        return;
+    var device = this.midi[this.module[id].mid].device;
+    if (device)
+        device.processNoteOff(this.module[id].mch, this.module[id].note, 0);
+};
+
 /**
  * Generate sounds into a partial buffer.
  * @param offset offset in buffer to start
@@ -293,6 +354,34 @@ TssChannel.prototype._generateInternal = function (offset, count) {
         buffer[i] = 0;
     for (var ch = 0; ch < this.maxChannel; ch++)
         this.module[ch].generate(buffer, fmBuffer);
+    for (var port = 0; port < TssChannel.MAX_MIDI_PORT; ++port) {
+        if (!this.midi[port].device || this.midi[port].reference == 0)
+            continue;
+        this.midi[port].device.generate(count);
+        var inBuffer = this.midi[port].inBuffer;
+        for (var n = 0; n < count; ++n)
+            buffer[n] += inBuffer[n];
+    }
+};
+
+/**
+ * Increment MIDI device reference.
+ * @param port MIDI device index
+ */
+TssChannel.prototype.addrefMidi = function (port) {
+    if (TssChannel.MAX_MIDI_PORT <= port)
+        return;
+    this.midi[port].reference++;
+};
+
+/**
+ * Decrement MIDI device reference.
+ * @param port MIDI device index
+ */
+TssChannel.prototype.derefMidi = function (port) {
+    if (TssChannel.MAX_MIDI_PORT <= port)
+        return;
+    this.midi[port].reference--;
 };
 
 /**
@@ -318,6 +407,7 @@ TssChannel.Module = function (channel, ch) {
         outPipe: 0
     };
     this.multiple = 1;
+    this.note = 0;
     this.setType(TssChannel.Module.TYPE_PSG);
 };
 
@@ -337,10 +427,14 @@ TssChannel.Module.TYPE_MIDI = 15;
  * @param type device type id
  */
 TssChannel.Module.prototype.setType = function (type) {
+    if (this.type == TssChannel.Module.TYPE_MIDI)
+        this.channel.derefMidi(this.mid);
     this.type = type;
     this.count = 0;
     this.phase = 0;
     this.voice = 0;
+    this.mid = 0;
+    this.mch = 0;
     switch (type) {
         case TssChannel.Module.TYPE_PSG:
             this.generate = this.generatePsg;
@@ -360,11 +454,12 @@ TssChannel.Module.prototype.setType = function (type) {
             break;
         case TssChannel.Module.TYPE_MIDI:
             this.generate = this.generateNothing;
+            this.channel.addrefMidi(this.mid);
             break;
         default:
             // TODO: Implement other types.
-            Log.getLog().warn("TSC: unknown device type " + type);
-            this.generate = this.generatePsg;
+            Log.getLog().warn('TSC: unknown device type ' + type);
+            this.generate = this.generateNothing;
             break;
     }
 };
@@ -645,9 +740,38 @@ TssChannel.Module.prototype.generateSin = function (buffer, fmBuffer) {
 };
 
 /**
- * Generate nothing. Dummy function to mimic generateXXX functions.
+ * Generate nothing. This is dummy function to mimic generate* methods.
  * @param buffer Int32Array to which generate sound
  * @param fmBuffer Int32Array to which output fm data, or from which input one
  */
 TssChannel.Module.prototype.generateNothing = function (buffer, fmBuffer) {
+};
+
+/**
+ * MIDI prototype
+ *
+ * This prototype implements inner class to manage a virtual MIDI device.
+ * @constructor
+ */
+TssChannel.MIDI = function () {
+    this.device = null;
+    this.bufferLength = 0;
+    this.inBuffer = null;
+    this.reference = 0;
+};
+
+TssChannel.MIDI.prototype.setDevice = function (device) {
+    if (device && this.bufferLength != 0) {
+        device.setBufferLength(length);
+        this.inBuffer = this.device.getBuffer();
+    }
+    this.device = device;
+};
+
+TssChannel.MIDI.prototype.setBufferLength = function (length) {
+    this.bufferLength = length;
+    if (this.device) {
+        this.device.setBufferLength(length);
+        this.inBuffer = this.device.getBuffer();
+    }
 };
