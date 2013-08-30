@@ -760,6 +760,10 @@ TssChannel.MIDI = function () {
     this.reference = 0;
 };
 
+/**
+ * Set virtual MIDI device.
+ * @param device virtual MIDI device
+ */
 TssChannel.MIDI.prototype.setDevice = function (device) {
     if (device && this.bufferLength != 0) {
         device.setBufferLength(length);
@@ -768,6 +772,10 @@ TssChannel.MIDI.prototype.setDevice = function (device) {
     this.device = device;
 };
 
+/**
+ * @see MasterChannel
+ * @param length buffer length or size in shorts
+ */
 TssChannel.MIDI.prototype.setBufferLength = function (length) {
     this.bufferLength = length;
     if (this.device) {
