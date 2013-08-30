@@ -768,7 +768,9 @@
     xh_req10c.send();
     master10.setVolume(1);
     master10.addChannel(device10);
-
+    
+    player8.setMIDI(0, device10);
+    
     var codeToNote = {
         90: 72,  // C
         83: 73,  // C#
