@@ -16,12 +16,14 @@ function TsdPlayer () {
     this.header = null;
     this.channel = null;
     this.activeChannel = 0;
+    this.midi = new Array(TsdPlayer.MAX_MIDI_PORT);
     this.table = [];
     for (var i = 0; i < 256; i++)
         this.table[i] = new Uint8Array(0);
 }
 
-TsdPlayer.VERSION = 0.93;
+TsdPlayer.VERSION = 0.94;
+TsdPlayer.MAX_MIDI_PORT = TssChannel.MAX_MIDI_PORT;
 TsdPlayer.CMD_LAST_NOTE = 0x7f;
 TsdPlayer.CMD_NOTE_OFF = 0x80;
 TsdPlayer.CMD_VOLUME_MONO = 0x81;
@@ -52,6 +54,8 @@ TsdPlayer.CMD_FREQUENCY_MODE_CHANGE = 0xf0;
 TsdPlayer.CMD_VOLUME_MODE_CHANGE = 0xf1;
 TsdPlayer.CMD_FM_IN = 0xf8;
 TsdPlayer.CMD_FM_OUT = 0xf9;
+TsdPlayer.CMD_CONTROL_CHANGE = 0xfb;
+TsdPlayer.CMD_PORT_CHANGE = 0xfc;
 TsdPlayer.CMD_VOICE_CHANGE = 0xfd;
 TsdPlayer.CMD_MODULE_CHANGE = 0xfe;
 TsdPlayer.CMD_END = 0xff;
@@ -153,8 +157,24 @@ TsdPlayer._MSX_PARAMETER_TABLE = [
 TsdPlayer.prototype.setMasterChannel = function (channel) {
     this.device = new TssChannel();
     this.device.setPlayer(this);
+    this.device.setVirtualDevices(this.midi);
     channel.clearChannel();
     channel.addChannel(this.device);
+};
+
+/**
+ * Set virtual MIDI channel at port number |port|.
+ * @param port MIDI port index
+ * @param midi MIDI device which implement MidiChannel and MasterChannel
+ * @return true if success
+ */ 
+TsdPlayer.prototype.setMIDI = function (port, midi) {
+    if (port >= TsdPlayer.MAX_MIDI_PORT)
+        return false;
+    this.midi[port] = midi;
+    if (this.device)
+        this.device.setVirtualDevices(this.midi);
+    return true;
 };
 
 /**
@@ -212,7 +232,7 @@ TsdPlayer.prototype._clamp = function (value, min, max) {
  * @param table table data of Int8Array
  */
 TsdPlayer.prototype._setTable = function (id, table) {
-    Log.getLog().info("TSD: Set envelope table " + id);
+    Log.getLog().info('TSD: Set envelope table ' + id);
     Log.getLog().info(table);
     this.table[id] = table;
 };
@@ -226,8 +246,8 @@ TsdPlayer.prototype.play = function (newInput) {
     try {
         this.input = new Uint8Array(newInput);
         var tstring = TString.createFromUint8Array(this.input);
-        if (!tstring.containASCII(0, "T'SoundSystem")) {
-            Log.getLog().warn("TSD: magic T'SoundSystem not found.");
+        if (!tstring.containASCII(0, 'T\'SoundSystem')) {
+            Log.getLog().warn('TSD: magic T\'SoundSystem not found.');
             return false;
         }
         var header = {};
@@ -235,10 +255,10 @@ TsdPlayer.prototype.play = function (newInput) {
         header.majorVersion = this.input[14];
         header.minorVersion = this.input[15];
         header.fullVersion = header.majorVersion + header.minorVersion / 100;
-        Log.getLog().info("TSD: version = " + header.fullVersion);
+        Log.getLog().info('TSD: version = ' + header.fullVersion);
         if ((header.fullVersion <= 0.60) ||
                 (TsdPlayer.VERSION < header.fullVersion)) {
-            Log.getLog().warn("TSD: unsupported format");
+            Log.getLog().warn('TSD: unsupported format');
             return false;
         }
 
@@ -246,12 +266,12 @@ TsdPlayer.prototype.play = function (newInput) {
         header.titleSize = this._readU16(16);
         header.title = TString.createFromUint8Array(
                 this.input.subarray(18, 18 + header.titleSize)).toString();
-        Log.getLog().info("TSD: title = " + header.title);
+        Log.getLog().info('TSD: title = ' + header.title);
 
         var offset = 18 + ((header.titleSize + 1) & ~1);
         header.numOfChannel = this._readU16(offset);
         offset += 2;
-        Log.getLog().info("TSD: channel = " + header.numOfChannel);
+        Log.getLog().info('TSD: channel = ' + header.numOfChannel);
         this.device.setMaxChannel(header.numOfChannel);
         this.header = header;
         this.activeChannel = header.numOfChannel;
@@ -334,23 +354,23 @@ TsdPlayer.prototype.play = function (newInput) {
             offset += 4;
             channel[i].size = this._readU32(offset);
             offset += 4;
-            Log.getLog().info("TSD: ch." + (i + 1) + " offset = " +
-                    channel[i].baseOffset + ", size = " + channel[i].size);
+            Log.getLog().info('TSD: ch.' + (i + 1) + ' offset = ' +
+                    channel[i].baseOffset + ', size = ' + channel[i].size);
         }
         Log.getLog().info(channel);
         this.channel = channel;
 
         // Parse table information.
         var tableOffset = this._readU32(offset);
-        Log.getLog().info("TSD: table offset = " + tableOffset);
+        Log.getLog().info('TSD: table offset = ' + tableOffset);
         offset = tableOffset;
         var numOfWave = this._readU16(offset);
-        Log.getLog().info("TSD: found " + numOfWave + " wave table(s)");
+        Log.getLog().info('TSD: found ' + numOfWave + ' wave table(s)');
         offset += 2;
         for (i = 0; i < numOfWave; i++) {
             // Wave table data for a SCC-like sound.
             if (32 != this.input[offset + 1]) {
-                Log.getLog().error("TSD: invalid WAVE size");
+                Log.getLog().error('TSD: invalid WAVE size');
                 return false;
             }
             this.device.setWave(this.input[offset],
@@ -358,7 +378,7 @@ TsdPlayer.prototype.play = function (newInput) {
             offset += 2 + 32;
         }
         var numOfTable = this._readU16(offset);
-        Log.getLog().info("TSD: found " + numOfTable + " envelope table(s)");
+        Log.getLog().info('TSD: found ' + numOfTable + ' envelope table(s)');
         offset += 2;
         for (i = 0; i < numOfTable; i++) {
             // Table data for envelope.
@@ -374,7 +394,7 @@ TsdPlayer.prototype.play = function (newInput) {
         this.device.setTimerCallback(TsdPlayer._TIMER_SEQUENCER,
                 TsdPlayer._DEFAULT_TIMER_COUNT, this, this._performSequencer);
     } catch (e) {
-        Log.getLog().error("TSD: " + e);
+        Log.getLog().error('TSD: ' + e);
         return false;
     }
     return true;
@@ -602,6 +622,7 @@ TsdPlayer.prototype._performSequencer = function () {
         for (;;) {
             var cmd = this.input[ch.baseOffset + ch.offset++];
             var dt;
+            var dt2;
             if (cmd <= TsdPlayer.CMD_LAST_NOTE) {
                 // Note on.
                 this._noteOn(ch, cmd);
@@ -644,21 +665,21 @@ TsdPlayer.prototype._performSequencer = function () {
                 ch.pitchModulation.enable = false;
             } else if (cmd == TsdPlayer.CMD_VOLUME_LEFT) {
                 ch.offset++;
-                Log.getLog().info("TSD: volume left");
+                Log.getLog().info('TSD: volume left');
                 // TODO
             } else if (cmd == TsdPlayer.CMD_VOLUME_RIGHT) {
                 ch.offset++;
-                Log.getLog().info("TSD: volume right");
+                Log.getLog().info('TSD: volume right');
                 // TODO
             } else if (cmd == TsdPlayer.CMD_PANPOT) {
                 ch.pan = this.input[ch.baseOffset + ch.offset++];
             } else if (cmd == TsdPlayer.CMD_RELATIVE_VOLUME_UP) {
                 ch.offset++;
-                Log.getLog().info("TSD: volume up");
+                Log.getLog().info('TSD: volume up');
                 // TODO
             } else if (cmd == TsdPlayer.CMD_RELATIVE_VOLUME_DOWN) {
                 ch.offset++;
-                Log.getLog().info("TSD: volume down");
+                Log.getLog().info('TSD: volume down');
                 // TODO
             } else if (cmd == TsdPlayer.CMD_TEMPO) {
                 // Set musical tempo.
@@ -672,11 +693,11 @@ TsdPlayer.prototype._performSequencer = function () {
                 this._setAutomationFineness(dt);
             } else if (cmd == TsdPlayer.CMD_KEY_ON_PHASE) {
                 ch.offset++;
-                Log.getLog().info("TSD: key on phase");
+                Log.getLog().info('TSD: key on phase');
                 // TODO
             } else if (cmd == TsdPlayer.CMD_MULTIPLE) {
                 ch.offset++;
-                Log.getLog().info("TSD: multiple");
+                Log.getLog().info('TSD: multiple');
                 // TODO
             } else if (cmd == TsdPlayer.CMD_PITCH_MODULATION_DELAY) {
                 dt = this._readU16(ch.baseOffset + ch.offset);
@@ -739,6 +760,12 @@ TsdPlayer.prototype._performSequencer = function () {
                 // Set fm output pipe.
                 dt = this.input[ch.baseOffset + ch.offset++];
                 this._setFmOutPipe(ch, dt >> 4, dt & 0x0f);
+            } else if (cmd == TsdPlayer.CMD_CONTROL_CHANGE) {
+                Log.getLog().error('TSD: control change is not implemented.');
+            } else if (cmd == TsdPlayer.CMD_PORT_CHANGE) {
+                dt = this.input[ch.baseOffset + ch.offset++];
+                dt2 = this.input[ch.baseOffset + ch.offset++];
+                this._setPort(ch, dt, dt2);
             } else if (cmd == TsdPlayer.CMD_VOICE_CHANGE) {
                 // Set voice number with fm mode.
                 dt = this.input[ch.baseOffset + ch.offset++];
@@ -759,7 +786,7 @@ TsdPlayer.prototype._performSequencer = function () {
                     break;
                 }
             } else {
-                Log.getLog().error("TSD: unsupported cmd " + cmd.toString(16));
+                Log.getLog().error('TSD: unsupported cmd ' + cmd.toString(16));
                 Log.getLog().info(this);
                 break;
             }
@@ -805,8 +832,11 @@ TsdPlayer.prototype._noteOn = function (ch, note) {
     this._setVolume(ch, TsdPlayer._CH_R, ch.volume.r);
 
     // Key on
+    if (ch.keyOn)
+        this.device.keyOff(ch.id);
     ch.keyOn = true;
     this.device.setModulePhase(ch.id, ch.phase);
+    this.device.keyOn(ch.id, note);
 
     // Reset sustain, pitch modulation, and amplifier envelope parameters.
     ch.ampEnvelope.volume.l = ch.volume.l;
@@ -836,6 +866,7 @@ TsdPlayer.prototype._noteOff = function (ch) {
         }
     }
     ch.keyOn = false;
+    this.device.keyOff(ch.id);
 };
 
 /**
@@ -898,6 +929,16 @@ TsdPlayer.prototype._setFmInPipe = function (ch, rate, pipe) {
  */
 TsdPlayer.prototype._setFmOutPipe = function (ch, mode, pipe) {
     this.device.setModuleFmOutPipe(ch.id, mode, pipe);
+};
+
+/**
+ * Set MIDI device ID and channel.
+ * @param ch channel object to control
+ * @param id MIDI device ID
+ * @param mch MIDI channel
+ */
+TsdPlayer.prototype._setPort = function (ch, id, mch) {
+    this.device.setModulePort(ch.id, id, mch);
 };
 
 /**
