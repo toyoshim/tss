@@ -161,6 +161,8 @@ FrequencyConversionChannel.ConversionChannel = function () {
     this.bufferLength = 0;
     this.channel = null;
     this.inOffset = 0;
+    this.lastL = 0;
+    this.lastR = 0;
 };
 
 /**
@@ -237,15 +239,24 @@ FrequencyConversionChannel.ConversionChannel.prototype.generate =
             this.outBuffer[i] = this.inBuffer[i];
     } else if (this.inFrequency < this.outFrequency) {
         // Up sampling.
+        var num = length >> 1;
+        if (this.lastL === undefined)
+            num++;
+        var lastStep = this.count + this.inFrequency * num;
+        var inNum = lastStep / this.outFrequency;
+        var inLength = inNum << 1;
+        var inOffset = (this.lastL !== undefined) ? -2 : 0;
+        this.channel.generate(inLength);
         for (i = 0; i < length; i += 2) {
             if (this.count >= 0) {
-                if (this.inOffset === 0)
-                    this.channel.generate(length);
-                this.outBuffer[i + 0] = this.inBuffer[this.inOffset + 0];
-                this.outBuffer[i + 1] = this.inBuffer[this.inOffset + 1];
-                this.inOffset += 2;
-                if (this.inOffset == this.bufferLength)
-                    this.inOffset = 0;
+                if (inOffset < 0) {
+                    this.outBuffer[i + 0] = this.lastL;
+                    this.outBuffer[i + 1] = this.lastR;
+                } else {
+                    this.outBuffer[i + 0] = this.inBuffer[inOffset + 0];
+                    this.outBuffer[i + 1] = this.inBuffer[inOffset + 1];
+                }
+                inOffset += 2;
                 this.count -= this.outFrequency;
             } else {
                 this.outBuffer[i + 0] = 0;
@@ -253,8 +264,16 @@ FrequencyConversionChannel.ConversionChannel.prototype.generate =
             }
             this.count += this.inFrequency;
         }
+        if (inOffset < inLength) {
+            this.lastL = this.inBuffer[inOffset + 0];
+            this.lastR = this.inBuffer[inOffset + 1];
+        } else {
+            this.lastL = undefined;
+            this.lastR = undefined;
+        }
     } else {
         // Down sampling.
+        // TODO: make conversion from k-rate to a-rate.
         for (i = 0; i < length; i += 2) {
             while (this.count < 0) {
                 this.inOffset += 2;
