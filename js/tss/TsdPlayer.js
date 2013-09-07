@@ -64,6 +64,7 @@ TsdPlayer._TIMER_AUTOMATION = 0;
 TsdPlayer._TIMER_SEQUENCER = 1;
 TsdPlayer._CH_L = TssChannel.MODULE_CHANNEL_L;
 TsdPlayer._CH_R = TssChannel.MODULE_CHANNEL_R;
+TsdPlayer._CH_C = TssChannel.MODULE_CHANNEL_C;
 TsdPlayer._PAN_L = 1;
 TsdPlayer._PAN_R = 2;
 TsdPlayer._PAN_C = TsdPlayer._PAN_L | TsdPlayer._PAN_R;
@@ -272,6 +273,7 @@ TsdPlayer.prototype.play = function (newInput) {
         header.numOfChannel = this._readU16(offset);
         offset += 2;
         Log.getLog().info('TSD: channel = ' + header.numOfChannel);
+        this.device.reset();
         this.device.setMaxChannel(header.numOfChannel);
         this.header = header;
         this.activeChannel = header.numOfChannel;
@@ -297,7 +299,8 @@ TsdPlayer.prototype.play = function (newInput) {
                 keyOn: false,  // key on state
                 volume: {  // base volume information
                     type: 0,  // volume type
-                    l: 0, // left volume
+                    l: 0,  // left volume
+                    c: 0,  // mono volume
                     r:0  // right volume
                 },
                 pan: TsdPlayer._PAN_C,  // panpot
@@ -646,6 +649,7 @@ TsdPlayer.prototype._performSequencer = function () {
             } else if (cmd == TsdPlayer.CMD_VOLUME_MONO) {
                 // Set volume by monaural with the panpot setting.
                 dt = this.input[ch.baseOffset + ch.offset++];
+                ch.volume.c = dt;
                 if (ch.pan & TsdPlayer._PAN_L)
                     ch.volume.l = dt;
                 if (ch.pan & TsdPlayer._PAN_R)
@@ -657,6 +661,7 @@ TsdPlayer.prototype._performSequencer = function () {
                 // Set detune setting.
                 ch.detune = this._readI8(ch.baseOffset + ch.offset);
                 ch.offset++;
+                this.device.pitchBend(ch.id, ch.detune * 128);
             } else if (cmd == TsdPlayer.CMD_PORTAMENT) {
                 // Set portament setting.
                 ch.portament = this._readI8(ch.baseOffset + ch.offset);
@@ -673,6 +678,10 @@ TsdPlayer.prototype._performSequencer = function () {
                 // TODO
             } else if (cmd == TsdPlayer.CMD_PANPOT) {
                 ch.pan = this.input[ch.baseOffset + ch.offset++];
+                if (ch.pan != 0) {
+                    var pan = (ch.pan == 1) ? 0 : (ch.pan == 2) ? 127 : 64;
+                    this.device.panpot(ch.id, pan);
+                }
             } else if (cmd == TsdPlayer.CMD_RELATIVE_VOLUME_UP) {
                 ch.offset++;
                 Log.getLog().info('TSD: volume up');
@@ -830,6 +839,7 @@ TsdPlayer.prototype._noteOn = function (ch, note) {
     // Set volume
     this._setVolume(ch, TsdPlayer._CH_L, ch.volume.l);
     this._setVolume(ch, TsdPlayer._CH_R, ch.volume.r);
+    this._setVolume(ch, TsdPlayer._CH_C, ch.volume.c);
 
     // Key on
     if (ch.keyOn)
@@ -872,18 +882,18 @@ TsdPlayer.prototype._noteOff = function (ch) {
 /**
  * Set channel base volume in current volume mode with panpot setting.
  * @param ch channel object to control
- * @param lr L/R channel to set
+ * @param lrc L/R/C channel to set
  * @param volume volume to set
  */
-TsdPlayer.prototype._setVolume = function (ch, lr, volume) {
+TsdPlayer.prototype._setVolume = function (ch, lrc, volume) {
     var data = volume;
-    if ((TsdPlayer._CH_L == lr) && (0 == (ch.pan & TsdPlayer._PAN_L)))
+    if ((TsdPlayer._CH_L == lrc) && (0 == (ch.pan & TsdPlayer._PAN_L)))
         data = 0;
-    else if ((TsdPlayer._CH_R == lr) && (0 == (ch.pan & TsdPlayer._PAN_R)))
+    else if ((TsdPlayer._CH_R == lrc) && (0 == (ch.pan & TsdPlayer._PAN_R)))
         data = 0;
     else if (TsdPlayer._VOLUME_TYPE_FM == ch.volume.type)
         data = TsdPlayer._FM_VOLUME_TABLE[data];
-    this.device.setModuleVolume(ch.id, lr, data);
+    this.device.setModuleVolume(ch.id, lrc, data);
 };
 
 /**
