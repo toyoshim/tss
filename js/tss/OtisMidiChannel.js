@@ -145,10 +145,12 @@ OtisMidiChannel.prototype.processNoteOn = function (ch, note, velocity) {
     if (program.type == 'drum') {
         program = this.programs.drum[program.name][note];
         if (!program)
-        return;
+            return;
         fc = program.fc;
     } else {
-        fc = program.fc * MidiChannel.getFrequencyForNote(note) / 440;
+        var bend = this.channel[ch].bend;
+        var frequency = MidiChannel.getFrequencyForNoteWithBend(note, bend)
+        fc = (program.fc *  frequency / 440) | 0;
     }
 
     var voice = this._findVoice();
@@ -177,11 +179,23 @@ OtisMidiChannel.prototype.processNoteOn = function (ch, note, velocity) {
             program.end & 0xffff);
     this.otis.writeRegister(OtisDeviceChannel.REGISTER_VOICE_K2, program.k2);
     this.otis.writeRegister(OtisDeviceChannel.REGISTER_VOICE_K1, program.k1);
+    var panpot = this.channel[ch].panpot;
+    // TODO: Support other parameters.
     this.otis.writeRegister(OtisDeviceChannel.REGISTER_VOICE_LVOL,
-            velocity << 9);
+            (panpot == 127) ? 0 : (velocity << 9));
     this.otis.writeRegister(OtisDeviceChannel.REGISTER_VOICE_RVOL,
-            velocity << 9);
+            (panpot == 0) ? 0 : (velocity << 9));
     this.otis.writeRegister(OtisDeviceChannel.REGISTER_VOICE_CR, program.cr);
+};
+
+/**
+ * Process control change event. This function can be overwritten.
+ * @see MidiChannel
+ */
+OtisMidiChannel.prototype.processControlChange = function (ch, number, value) {
+    if (number == 10) {
+        this.channel[ch].panpot = value;
+    }
 };
 
 /**
@@ -193,6 +207,15 @@ OtisMidiChannel.prototype.processProgramChange = function (ch, number) {
 };
 
 /**
+ * Process pitch bend event. This function can be overwritten.
+ * @see MidiChannel
+ */
+OtisMidiChannel.prototype.processPitchBend = function (ch, bend) {
+    this.channel[ch].bend = bend;
+    // TODO: Affects immediately.
+};
+
+/**
  * Process system reset message event.
  * @see MidiChannel
  */
@@ -201,13 +224,23 @@ OtisMidiChannel.prototype.processSystemReset = function () {
         var notes = this.channel[ch].onNotes();
         for (var i = 0; i < notes.length; ++i)
             this.processNoteOff(ch, notes[i], 0);
+        this.channel[ch].reset();
     }
     this.searchingVoice = 0;
 };
 
 OtisMidiChannel.Channel = function() {
     this.program = 0;
+    this.bend = 0;
+    this.panpot = 64;
     this.onNote = {};
+};
+
+
+OtisMidiChannel.Channel.prototype.reset = function () {
+    this.program = 0;
+    this.bend = 0;
+    this.panpot = 64;
 };
 
 OtisMidiChannel.Channel.prototype.voiceForNote = function (note) {
