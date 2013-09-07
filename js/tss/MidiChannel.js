@@ -14,6 +14,7 @@ function MidiChannel () {
 
 MidiChannel.EVENT_TYPE_MIDI = 0;
 MidiChannel._NOTE_FREQUENCY_TABLE = [];
+MidiChannel._PANPOT_TABLE = [];
 MidiChannel._MIDI_EVENT_SYSEX = 0xf0;
 MidiChannel._MIDI_EVENT_MTC_QUOTER_FRAME_MESSAGE = 0xf1;
 MidiChannel._MIDI_EVENT_SONG_POSITION_POINTER = 0xf2;
@@ -30,10 +31,19 @@ MidiChannel._MIDI_EVENT_SYSTEM_LENGTH = [ -1, 2, 3, 2, -1, -1, 1, 1 ];
 
 // Calculate tables.
 (function () {
+    var i;
     // MIDI note 69 = A4 = 440Hz
-    for (var i = 0; i < 0x80; i++)
+    for (i = 0; i < 0x80; ++i)
         MidiChannel._NOTE_FREQUENCY_TABLE[i] =
                 440 * Math.pow(2, (i - 69) / 12);
+    
+    // 0=1(L) < 64(C) < 127(R)
+    MidiChannel._PANPOT_TABLE[0] = 1;
+    for (i = 1; i < 128; ++i) {
+        var rad = (i - 1) * Math.PI / 2 / 126;
+        MidiChannel._PANPOT_TABLE[i] = Math.cos(rad);
+    }
+    MidiChannel._PANPOT_TABLE[128] = 0;
 })();
 
 /**
@@ -58,6 +68,31 @@ MidiChannel.createEvent = function (data) {
  */
 MidiChannel.getFrequencyForNote = function (note) {
     return MidiChannel._NOTE_FREQUENCY_TABLE[note];
+};
+
+/**
+ * Get frequency from note and a pitch bend parameter.
+ * @param note note
+ * @param bend pitch bend
+ * @return frequency
+ */
+MidiChannel.getFrequencyForNoteWithBend = function (note, bend) {
+    return MidiChannel._NOTE_FREQUENCY_TABLE[note] *
+            Math.pow(2, bend / 8192 / 6);
+};
+
+/**
+ * Get L and R volume values for a panpot value.
+ * @param panpot panpot control value (center: 64)
+ * @return object
+ *      l: L volume
+ *      r: R volume
+ */
+MidiChannel.getVolumeForPanpot = function (panpot) {
+    return {
+        l: MidiChannel._PANPOT_TABLE[panpot],
+        r: MidiChannel._PANPOT_TABLE[128 - panpot]
+    };
 };
 
 /**
