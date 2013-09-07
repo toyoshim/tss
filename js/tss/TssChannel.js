@@ -30,6 +30,7 @@ function TssChannel () {
 TssChannel.MAX_MIDI_PORT = 4;
 TssChannel.MODULE_CHANNEL_L = 0;
 TssChannel.MODULE_CHANNEL_R = 1;
+TssChannel.MODULE_CHANNEL_C = 2;
 TssChannel.FM_OUT_MODE_OFF = 0;
 TssChannel.FM_OUT_MODE_NEW = 1;
 TssChannel.FM_OUT_MODE_ADD = 2;
@@ -110,6 +111,16 @@ TssChannel.prototype.generate = function (length) {
         }
     }
 };
+
+/**
+ * Reset internal states.
+ * @param devices Array of devices which implement MidiChannel and MasterChannel
+ */
+TssChannel.prototype.reset = function () {
+    for (var i = 0; i < TssChannel.MAX_MIDI_PORT; ++i)
+        if (this.midi[i].device)
+            this.midi[i].device.processSystemReset();
+}
 
 /**
  * Set virtual MIDI devices in Array.
@@ -195,6 +206,8 @@ TssChannel.prototype.setModuleVolume = function (id, ch, volume) {
         this.module[id].volume.l = volume;
     else if (ch == TssChannel.MODULE_CHANNEL_R)
         this.module[id].volume.r = volume;
+    else if (ch == TssChannel.MODULE_CHANNEL_C)
+        this.module[id].volume.c = volume;
     else
         Log.getLog().error('TSC: Invalid volume channel: ' + ch);
 };
@@ -323,7 +336,7 @@ TssChannel.prototype.keyOn = function (id, note) {
     var device = this.midi[this.module[id].mid].device;
     if (device) {
         device.processNoteOn(this.module[id].mch, note,
-                this.module[id].volume.l >> 1);
+                this.module[id].volume.c >> 1);
     }
 };
 
@@ -335,6 +348,26 @@ TssChannel.prototype.keyOff = function (id) {
     var device = this.midi[this.module[id].mid].device;
     if (device)
         device.processNoteOff(this.module[id].mch, this.module[id].note, 0);
+};
+
+TssChannel.prototype.pitchBend = function (id, bend) {
+    this._CheckId(id);
+    var type = this.getModuleType(id);
+    if (TssChannel.Module.TYPE_MIDI != type)
+        return;
+    var device = this.midi[this.module[id].mid].device;
+    if (device)
+        device.processPitchBend(this.module[id].mch, bend);
+};
+
+TssChannel.prototype.panpot = function (id, panpot) {
+    this._CheckId(id);
+    var type = this.getModuleType(id);
+    if (TssChannel.Module.TYPE_MIDI != type)
+        return;
+    var device = this.midi[this.module[id].mid].device;
+    if (device)
+        device.processControlChange(this.module[id].mch, 10, panpot);
 };
 
 /**
@@ -397,7 +430,8 @@ TssChannel.Module = function (channel, ch) {
     this.channel = channel;
     this.volume = {
         l: 0,
-        r: 0
+        r: 0,
+        c: 0
     };
     this.frequency = 0;
     this.fm = {
