@@ -35,7 +35,7 @@ function AudioLooper (bufferSize) {
 
         // Allocate JavaScript synthesis node.
         this.bufferSource = this.audioContext['createBufferSource']();
-        this.jsNode = this.audioContext['createJavaScriptNode'](
+        this.jsNode = this.audioContext['createScriptProcessor'](
                 this.bufferSize, 2, 2);
 
         // Register callback
@@ -45,7 +45,8 @@ function AudioLooper (bufferSize) {
         };
 
         // Connect to output audio device.
-        this.bufferSource['noteOn'](0);
+        if (this.bufferSource['noteOn'])
+            this.bufferSource['noteOn'](0);
         this.bufferSource['connect'](this.jsNode);
         this.jsNode['connect'](this.audioContext['destination']);
 
