@@ -1,5 +1,5 @@
-Chiptune Sound Library - T'SoundSystem (T'SS)
-=============================================
+Chiptune Sound Library - T'SoundSystem
+======================================
 
 What is this?
 -------------
@@ -28,41 +28,41 @@ Status
 
 | Device                  | Java | JavaScript | ActionScript | C++ |
 |-------------------------|------|------------|--------------|-----|
-| AY-3-8910 (PSG)         |  OK  |     OK     |       -      |	-  |
-| YM2149 (PSG)            |  OK	 |     OK     |       -      |	-  |
-| SN76489 (PSG)           |  OK	 |     OK     |       -      |	-  |
-| pAPU                    |   -	 |      -     |       -      |	-  |
-| SCC                     |	  -	 |      -     |       -      |	-  |
-| YM2413 (OPLL)           |	  -	 |      -     |       -      |	-  |
-| YM2203 (OPN)            |	  -	 |      -     |       -      |	-  |
-| YM2608 (OPNA)           |	  -	 |      -     |       -      |	-  |
-| YM2151 (OPM)            |	  -	 |      -     |       -      |	-  |
-| ES5505 (PCM - Taito F3) |	  -	 |     OK     |       -      |	-  |
-| TSS	                    |   -	 |     OK     |       -      |	-  |
-| SoundFont 2             |	  -	 |      -     |       -      |	-  |
+| AY-3-8910 (PSG)         |  OK  |     OK     |       -      |  -  |
+| YM2149 (PSG)            |  OK  |     OK     |       -      |  -  |
+| SN76489 (PSG)           |  OK  |     OK     |       -      |  -  |
+| pAPU                    |   -  |      -     |       -      |  -  |
+| SCC                     |   -  |      -     |       -      |  -  |
+| YM2413 (OPLL)           |   -  |      -     |       -      |  -  |
+| YM2203 (OPN)            |   -  |      -     |       -      |  -  |
+| YM2608 (OPNA)           |   -  |      -     |       -      |  -  |
+| YM2151 (OPM)            |   -  |      -     |       -      |  -  |
+| ES5505 (PCM - Taito F3) |   -  |     OK     |       -      |  -  |
+| TSS                     |   -  |     OK     |       -      |  -  |
+| SoundFont 2             |   -  |      -     |       -      |  -  |
 
 ### playable format
 
 | Format | Java | JavaScript | ActionScript | C++ |
 |--------|------|------------|--------------|-----|
-| VGM    |	OK	|     OK     |	     -	    |  -  |
-| AY     | 	 -  |	     -     |	     -      |	 -  |
-| SND    | 	 -  |	     -     |	     -      |	 -  |
-| GBS	   | 	 -  |	     -     |	     -      |	 -  |
-| KSS	   | 	 -  |	     -     |	     -      |	 -  |
-| S98	   |   -	|     OK	   |       -      |	 -  |
-| TSD	   |   -	|     OK	   |       -      |	 -  |
-| TSS	   |   -	|     OK	   |       -      |	 -  |
-| SMF 	 |   -	|     OK	   |       -      |	 -  |
+| VGM    |  OK  |     OK     |       -      |  -  |
+| AY     |   -  |      -     |       -      |  -  |
+| SND    |   -  |      -     |       -      |  -  |
+| GBS    |   -  |      -     |       -      |  -  |
+| KSS    |   -  |      -     |       -      |  -  |
+| S98    |   -  |     OK     |       -      |  -  |
+| TSD    |   -  |     OK     |       -      |  -  |
+| TSS    |   -  |     OK     |       -      |  -  |
+| SMF    |   -  |     OK     |       -      |  -  |
 
 ### misc features
 
-| Features                        | Java |	JavaScript | ActionScript | C++ |
-|---------------------------------|------|-------------|--------------|-----|
-| LSFR seudo noise generator      | 	-  |	    OK     |	     -     	|  -  |
-| Biquad digital filter/equalizer |	  -  |	    OK     |	     -     	|  -  |
-| Upsampling	                    |   -  |	    OK     |	     -     	|  -  |
-| WebMidiLink	                    |   -  |	    OK     |	     -     	|  -  |
+| Features                        | Java | JavaScript | ActionScript | C++ |
+|---------------------------------|------|------------|--------------|-----|
+| LSFR seudo noise generator      |   -  |     OK     |       -      |  -  |
+| Biquad digital filter/equalizer |   -  |     OK     |       -      |  -  |
+| Upsampling                      |   -  |     OK     |       -      |  -  |
+| WebMidiLink                     |   -  |     OK     |       -      |  -  |
 
 Manual
 ------
