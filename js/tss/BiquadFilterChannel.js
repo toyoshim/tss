@@ -23,6 +23,7 @@ function BiquadFilterChannel () {
     this.outBuffer = null;
     this.bufferLength = 0;
     this.channel = null;
+    this.sampleRate = MasterChannel.DEFAULT_SAMPLE_FREQUENCY;
 }
 
 BiquadFilterChannel.TYPE_LPF = 'LPF';
@@ -56,6 +57,16 @@ BiquadFilterChannel.prototype.setBufferLength = function (length) {
 
 /**
  * @see MasterChannel
+ * @param rate sample rate
+ */
+BiquadFilterChannel.prototype.setSampleRate = function (rate) {
+  this.sampleRate = rate;
+  if (this.channel)
+      this.channel.setSampleRate(this.sampleRate);
+};
+
+/**
+ * @see MasterChannel
  * @return audio stream buffer
  */
 BiquadFilterChannel.prototype.getBuffer = function () {
@@ -69,6 +80,7 @@ BiquadFilterChannel.prototype.getBuffer = function () {
 BiquadFilterChannel.prototype.setChannel = function (channel) {
     if ((0 != this.bufferLength) && (null != channel)) {
         channel.setBufferLength(this.bufferLength);
+        channel.setSampleRate(this.sampleRate);
         this.inBuffer = channel.getBuffer();
     }
     this.channel = channel;
@@ -105,7 +117,7 @@ BiquadFilterChannel.prototype.setDirectParameter =
  * @param gain gain for Peaking EQ and Shelf
  */
 BiquadFilterChannel.prototype.setParameter = function (type, f, q, gain) {
-    var w = 2 * Math.PI * f / MasterChannel.SAMPLE_FREQUENCY;
+    var w = 2 * Math.PI * f / this.sampleRate;
     var cosw = Math.cos(w);
     var sinw = Math.sin(w);
     var alpha = sinw / 2 / q;
@@ -172,7 +184,7 @@ BiquadFilterChannel.prototype.setParameter = function (type, f, q, gain) {
  * @return magnitude for the target frequency
  */
 BiquadFilterChannel.prototype.magnitudeResponse = function (f) {
-    var w = 2 * Math.PI * f / MasterChannel.SAMPLE_FREQUENCY;
+    var w = 2 * Math.PI * f / this.sampleRate;
     var cosw = Math.cos(w);
     var cos2w = Math.cos(2 * w);
     var sinw = Math.sin(w);

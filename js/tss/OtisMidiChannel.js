@@ -10,7 +10,7 @@
  */
 function OtisMidiChannel () {
     this.fconv = new FrequencyConversionChannel();
-    this.fconv.setOutputFrequency(MasterChannel.SAMPLE_FREQUENCY);
+    this.fconv.setOutputFrequency(MasterChannel.DEFAULT_SAMPLE_FREQUENCY);
     this.fconv.setInputFrequency(29714.1975);
     this.otis = new OtisDeviceChannel();
     this.fconv.setChannel(this.otis);
@@ -86,6 +86,14 @@ OtisMidiChannel.prototype._findVoice = function () {
  */
 OtisMidiChannel.prototype.setBufferLength = function (length) {
     this.fconv.setBufferLength(length);
+};
+
+/**
+ * @see MasterChannel
+ * @param rate sample rate
+ */
+OtisMidiChannel.prototype.setSampleRate = function (rate) {
+    this.fconv.setOutputFrequency(rate);
 };
 
 /**

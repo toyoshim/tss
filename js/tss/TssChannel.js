@@ -12,6 +12,7 @@
  * @constructor
  */
 function TssChannel () {
+    this.sampleRate = MasterChannel.DEFAULT_SAMPLE_FREQUENCY;
     this.buffer = null;
     this.fmBuffer = [ null, null, null, null ];
     this.player = null;
@@ -20,8 +21,10 @@ function TssChannel () {
     for (var i = 0; i < TssChannel.MAX_MIDI_PORT; ++i)
         this.midi[i] = new TssChannel.MIDI();
     this.timer = [
-        { enable: false, timer: 0, count: 0, self: null, callback: null },
-        { enable: false, timer: 0, count: 0, self: null, callback: null }
+        { enable: false, timer: 0, count: 0, base: 0, self: null,
+          callback: null },
+        { enable: false, timer: 0, count: 0, base: 0, self: null,
+          callback: null }
     ];
     this.maxChannel = 0;
     this.wave = [];
@@ -63,6 +66,19 @@ TssChannel.prototype.setBufferLength = function (length) {
     for (var port = 0; port < TssChannel.MAX_MIDI_PORT; ++port) {
         if (this.midi[port])
             this.midi[port].setBufferLength(length);
+    }
+};
+
+/**
+ * @see MasterChannel
+ * @param rate sample rate
+ */
+TssChannel.prototype.setSampleRate = function (rate) {
+    this.sampleRate = rate;
+    for (var id = 0; id < 2; ++id) {
+        var biasedCount = (this.timer[id].base * rate / 44100) | 0;
+        this.timer[id].timer = biasedCount;
+        this.timer[id].count = biasedCount;
     }
 };
 
@@ -173,10 +189,12 @@ TssChannel.prototype.setTimerCallback = function (id, count, self, callback) {
         return;
     if ((null != callback) && (count <= 0))
         return;
+    var biasedCount = (count * this.sampleRate / 44100) | 0;
     this.timer[id] = {
         enable: null != callback,
-        timer: count,
-        count: count,
+        timer: biasedCount,
+        count: biasedCount,
+        base: count,
         self: self,
         callback: callback
     };
@@ -542,10 +560,10 @@ TssChannel.Module.prototype.generatePsg = function (buffer, fmBuffer) {
         buffer[i + 0] += volumeL;
         buffer[i + 1] += volumeR;
         count += plus;
-        while (count > MasterChannel.SAMPLE_FREQUENCY) {
+        while (count > this.channel.sampleRate) {
             volumeL = -volumeL;
             volumeR = -volumeR;
-            count -= MasterChannel.SAMPLE_FREQUENCY;
+            count -= this.channel.sampleRate;
             phase++;
             phase &= 1;
         }
@@ -575,8 +593,8 @@ TssChannel.Module.prototype.generateFc = function (buffer, fmBuffer) {
         buffer[i + 0] += volumeL;
         buffer[i + 1] += volumeR;
         count += plus;
-        while (count > MasterChannel.SAMPLE_FREQUENCY) {
-            count -= MasterChannel.SAMPLE_FREQUENCY;
+        while (count > this.channel.sampleRate) {
+            count -= this.channel.sampleRate;
             phase++;
             phase &= 7;
             if ((phase == 0) || (phase == voice)) {
@@ -641,8 +659,8 @@ TssChannel.Module.prototype.generateScc = function (buffer, fmBuffer) {
                 out[i + 0] = wave[phase] * volumeL;
                 out[i + 1] = wave[phase] * volumeR;
                 count += plus;
-                while (count > MasterChannel.SAMPLE_FREQUENCY) {
-                    count -= MasterChannel.SAMPLE_FREQUENCY;
+                while (count > this.channel.sampleRate) {
+                    count -= this.channel.sampleRate;
                     phase++;
                     phase &= 31;
                 }
@@ -652,8 +670,8 @@ TssChannel.Module.prototype.generateScc = function (buffer, fmBuffer) {
                 out[i + 0] += wave[phase] * volumeL;
                 out[i + 1] += wave[phase] * volumeR;
                 count += plus;
-                while (count > MasterChannel.SAMPLE_FREQUENCY) {
-                    count -= MasterChannel.SAMPLE_FREQUENCY;
+                while (count > this.channel.sampleRate) {
+                    count -= this.channel.sampleRate;
                     phase++;
                     phase &= 31;
                 }
@@ -671,8 +689,8 @@ TssChannel.Module.prototype.generateScc = function (buffer, fmBuffer) {
                 out[i + 0] = wave[fmPhaseL] * volumeL;
                 out[i + 1] = wave[fmPhaseR] * volumeR;
                 count += plus;
-                while (count > MasterChannel.SAMPLE_FREQUENCY) {
-                    count -= MasterChannel.SAMPLE_FREQUENCY;
+                while (count > this.channel.sampleRate) {
+                    count -= this.channel.sampleRate;
                     phase++;
                     phase &= 31;
                 }
@@ -684,8 +702,8 @@ TssChannel.Module.prototype.generateScc = function (buffer, fmBuffer) {
                 out[i + 0] += wave[fmPhaseL] * volumeL;
                 out[i + 1] += wave[fmPhaseR] * volumeR;
                 count += plus;
-                while (count > MasterChannel.SAMPLE_FREQUENCY) {
-                    count -= MasterChannel.SAMPLE_FREQUENCY;
+                while (count > this.channel.sampleRate) {
+                    count -= this.channel.sampleRate;
                     phase++;
                     phase &= 31;
                 }
@@ -718,8 +736,8 @@ TssChannel.Module.prototype.generateSin = function (buffer, fmBuffer) {
                 out[i + 0] = TssChannel._SIN_TABLE[phase] * volumeL;
                 out[i + 1] = TssChannel._SIN_TABLE[phase] * volumeR;
                 count += plus;
-                while (count > MasterChannel.SAMPLE_FREQUENCY) {
-                    count -= MasterChannel.SAMPLE_FREQUENCY;
+                while (count > this.channel.sampleRate) {
+                    count -= this.channel.sampleRate;
                     phase++;
                     phase &= 0xff;
                 }
@@ -729,8 +747,8 @@ TssChannel.Module.prototype.generateSin = function (buffer, fmBuffer) {
                 out[i + 0] += TssChannel._SIN_TABLE[phase] * volumeL;
                 out[i + 1] += TssChannel._SIN_TABLE[phase] * volumeR;
                 count += plus;
-                while (count > MasterChannel.SAMPLE_FREQUENCY) {
-                    count -= MasterChannel.SAMPLE_FREQUENCY;
+                while (count > this.channel.sampleRate) {
+                    count -= this.channel.sampleRate;
                     phase++;
                     phase &= 0xff;
                 }
@@ -748,8 +766,8 @@ TssChannel.Module.prototype.generateSin = function (buffer, fmBuffer) {
                 out[i + 0] = TssChannel._SIN_TABLE[fmPhaseL] * volumeL;
                 out[i + 1] = TssChannel._SIN_TABLE[fmPhaseR] * volumeR;
                 count += plus;
-                while (count > MasterChannel.SAMPLE_FREQUENCY) {
-                    count -= MasterChannel.SAMPLE_FREQUENCY;
+                while (count > this.channel.sampleRate) {
+                    count -= this.channel.sampleRate;
                     phase++;
                     phase &= 0xff;
                 }
@@ -761,8 +779,8 @@ TssChannel.Module.prototype.generateSin = function (buffer, fmBuffer) {
                 out[i + 0] += TssChannel._SIN_TABLE[fmPhaseL] * volumeL;
                 out[i + 1] += TssChannel._SIN_TABLE[fmPhaseR] * volumeR;
                 count += plus;
-                while (count > MasterChannel.SAMPLE_FREQUENCY) {
-                    count -= MasterChannel.SAMPLE_FREQUENCY;
+                while (count > this.channel.sampleRate) {
+                    count -= this.channel.sampleRate;
                     phase++;
                     phase &= 0xff;
                 }

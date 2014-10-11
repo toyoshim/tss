@@ -16,12 +16,14 @@ function MasterChannel () {
     this.buffer = null;
     this.bufferLength = 0;
     this.player = null;
+    this.intervalMsec = 0;
     this.intervalLength = 0;
     this.intervalRestLength = 0;
     this.volume = MasterChannel.DEFAULT_VOLUME;
+    this.sampleRate = MasterChannel.DEFAULT_SAMPLE_FREQUENCY;
 }
 
-MasterChannel.SAMPLE_FREQUENCY = 44100;
+MasterChannel.DEFAULT_SAMPLE_FREQUENCY = 44100;
 MasterChannel.MAX_WAVE_VALUE = 32767;
 MasterChannel.MIN_WAVE_VALUE = -32767;
 MasterChannel.MSEC_PER_SEC = 1000;
@@ -56,6 +58,7 @@ MasterChannel.prototype.setVolume = function (newVolume) {
  */
 MasterChannel.prototype.addChannel = function (channel) {
     var result = this.channels.push(channel);
+    channel.setSampleRate(this.sampleRate);
     if (0 != this.bufferLength) {
         channel.setBufferLength(this.bufferLength);
         this.reconstructBuffers();
@@ -101,7 +104,8 @@ MasterChannel.prototype.setPlayer = function (newPlayer) {
  * @param msec time interval
  */
 MasterChannel.prototype.setPlayerInterval = function (msec) {
-    this.intervalLength = (2 * MasterChannel.SAMPLE_FREQUENCY * msec) /
+    this.intervalMsec = msec;
+    this.intervalLength = (2 * this.sampleRate * msec) /
             MasterChannel.MSEC_PER_SEC;
     this.intervalLength &= ~1;
     this.intervalRestLength = this.intervalLength;
@@ -141,6 +145,17 @@ MasterChannel.prototype.setBufferLength = function (length) {
     for (var i = 0; i < this.channels.length; i++)
         this.channels[i].setBufferLength(length);
     this.reconstructBuffers();
+};
+
+/**
+ * Set sample rate.
+ * @param rate sample rate
+ */
+MasterChannel.prototype.setSampleRate = function (rate) {
+    this.sampleRate = rate;
+    for (var i = 0; i < this.channels.length; i++)
+        this.channels[i].setSampleRate(rate);
+    this.setPlayerInterval(this.intervalMsec);
 };
 
 /**

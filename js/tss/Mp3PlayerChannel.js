@@ -15,6 +15,7 @@ function Mp3PlayerChannel () {
     this.buffer = null;
     this.header = null;
     this.audio = null;
+    this.sampleRate = MasterChannel.DEFAULT_SAMPLE_FREQUENCY;
 }
 
 Mp3PlayerChannel.SYNCWORD = 0xfff;
@@ -57,6 +58,14 @@ Mp3PlayerChannel.EMPHASIS = [
  */
 Mp3PlayerChannel.prototype.setBufferLength = function (length) {
     this.buffer = new Int32Array(length);
+};
+
+/**
+ * @see MasterChannel
+ * @param rate sample rate
+ */
+Mp3PlayerChannel.prototype.setSampleRate = function (rate) {
+    this.sampleRate = rate;
 };
 
 /**

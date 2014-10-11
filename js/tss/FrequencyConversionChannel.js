@@ -36,6 +36,14 @@ FrequencyConversionChannel.prototype.setBufferLength = function (length) {
 
 /**
  * @see MasterChannel
+ * @param rate sample rate
+ */
+FrequencyConversionChannel.prototype.setSampleRate = function (rate) {
+};
+
+
+/**
+ * @see MasterChannel
  * @return audio stream buffer
  */
 FrequencyConversionChannel.prototype.getBuffer = function () {

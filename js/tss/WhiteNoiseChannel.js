@@ -27,6 +27,13 @@ WhiteNoiseChannel.prototype.setBufferLength = function (length) {
 
 /**
  * @see MasterChannel
+ * @param rate sample rate
+ */
+WhiteNoiseChannel.prototype.setSampleRate = function (rate) {
+};
+
+/**
+ * @see MasterChannel
  * @return audio stream buffer
  */
 WhiteNoiseChannel.prototype.getBuffer = function () {

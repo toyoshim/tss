@@ -15,6 +15,7 @@ function SimpleSlaveChannel (frequency) {
     this.freq = frequency;
     this.phase = 0;
     this.data = SimpleSlaveChannel.DEFAULT_VOLUME;
+    this.sampleRate = MasterChannel.DEFAULT_SAMPLE_FREQUENCY;
 }
 
 SimpleSlaveChannel.DEFAULT_VOLUME = 1024;
@@ -25,6 +26,14 @@ SimpleSlaveChannel.DEFAULT_VOLUME = 1024;
  */
 SimpleSlaveChannel.prototype.setBufferLength = function (length) {
     this.buffer = new Int32Array(length);
+};
+
+/**
+ * @see MasterChannel
+ * @param rate sample rate
+ */
+SimpleSlaveChannel.prototype.setSampleRate = function (rate) {
+    this.sampleRate = rate;
 };
 
 /**
@@ -43,8 +52,8 @@ SimpleSlaveChannel.prototype.getBuffer = function () {
 SimpleSlaveChannel.prototype.generate = function (length) {
     for (var i = 0; i < length; i += 2) {
         this.phase += this.freq * 2;
-        if (this.phase > MasterChannel.SAMPLE_FREQUENCY) {
-            this.phase -= MasterChannel.SAMPLE_FREQUENCY;
+        if (this.phase > this.sampleRate) {
+            this.phase -= this.sampleRate;
             this.data = -this.data;
         }
         this.buffer[i + 0] = this.data;

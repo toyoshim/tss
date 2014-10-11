@@ -20,6 +20,7 @@ function SimpleMidiChannel () {
         this.voices[i] = new SimpleMidiChannel.Voice();
     for (var ch = 0; ch < SimpleMidiChannel._MAX_CHANNEL; ch++)
         this.noteMaps[ch] = new Array(0x80);
+    this.sampleRate = MasterChannel.DEFAULT_SAMPLE_FREQUENCY;
     this.processSystemReset();
 }
 
@@ -86,6 +87,14 @@ SimpleMidiChannel.prototype._findVoice = function () {
  */
 SimpleMidiChannel.prototype.setBufferLength = function (length) {
     this.buffer = new Int32Array(length);
+};
+
+/**
+ * @see MasterChannel
+ * @param rate sample rate
+ */
+SimpleMidiChannel.prototype.setSampleRate = function (rate) {
+    this.sampleRate = rate;
 };
 
 /**
@@ -220,8 +229,8 @@ SimpleMidiChannel.Voice.prototype.generate = function (buffer, begin, end) {
 
     for (var i = begin; i <= end; i += 2) {
         this.phase += this.frequency * 2;
-        if (this.phase > MasterChannel.SAMPLE_FREQUENCY) {
-            this.phase -= MasterChannel.SAMPLE_FREQUENCY;
+        if (this.phase > this.sampleRate) {
+            this.phase -= this.sampleRate;
             this.velocity = -this.velocity;
         }
         buffer[i + 0] += this.velocity;

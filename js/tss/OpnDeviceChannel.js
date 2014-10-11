@@ -9,6 +9,7 @@
  * @author Takashi Toyoshima <toyoshim@gmail.com>
  */
 function OpnDeviceChannel () {
+    this.sampleRate = MasterChannel.DEFAULT_SAMPLE_FREQUENCY;
     this.clock = OpnDeviceChannel.CLOCK_4MHZ;
     this.type = OpnDeviceChannel.DEVICE_YM2203;
     this.ssg = new PsgDeviceChannel();
@@ -68,6 +69,14 @@ OpnDeviceChannel.prototype.setDevice = function (target) {
 OpnDeviceChannel.prototype.setBufferLength = function (length) {
     this.ssg.setBufferLength(length);
     this.buffer = this.ssg.getBuffer();
+};
+
+/**
+ * @see MasterChannel
+ * @param rate sample rate
+ */
+OpnDeviceChannel.prototype.setSampleRate = function (rate) {
+    this.sampleRate = rate;
 };
 
 /**

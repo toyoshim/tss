@@ -106,8 +106,10 @@ AudioLooper.prototype.getSampleRate = function () {
  * @param {Object} newChannel sound generator
  */
 AudioLooper.prototype.setChannel = function (newChannel) {
-    if (null != newChannel)
+    if (null != newChannel) {
         newChannel.setBufferLength(this.bufferSize * 2);
+        newChannel.setSampleRate(this.sampleRate);
+    }
     this.channel = newChannel;
 };
 

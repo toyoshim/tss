@@ -10,7 +10,7 @@
     <link href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8/themes/cupertino/jquery-ui.css" rel="stylesheet" type="text/css"/>
     <script language="JavaScript">var exports = {};</script>
     <script language="JavaScript" src="https://www.google.com/jsapi"></script>
-    <script language="JavaScript" src="https://yuri.twintail.org/lib/flotr2.min.js"></script>
+    <script language="JavaScript" src="/lib/flotr2.min.js"></script>
     <script language="JavaScript" src="../Log.js"></script>
     <script language="JavaScript" src="Format.js"></script>
     <script language="JavaScript" src="TString.js"></script>
@@ -47,10 +47,10 @@
                 looper.activate();
         }
         function testxstop() {
-            if (0 != test) {
+            if (test != undefined) {
                 Log.getLog().info("TEST" + test + " STOP");
                 filter.setChannel(null);
-                test = 0;
+                test = undefined;
             }
         }
         function testxflash(flash, div, callback) {
@@ -763,7 +763,8 @@
     var xh_req10c = new XMLHttpRequest();
     xh_req10c.open("get", "../../log/voice_dg.json", true);
     xh_req10c.onload = function () {
-        device10.setVoice(JSON.parse(xh_req10c.response));
+        if (xh_req10c.status == 200)
+            device10.setVoice(JSON.parse(xh_req10c.response));
     };
     xh_req10c.send();
     master10.setVolume(1);
@@ -828,18 +829,20 @@
             device10.processNoteOff(0, note, 0);
         }
     });
-    navigator.requestMIDIAccess({'sysex': true}).then(function (access) {
-        inputs10 = access.inputs();
-        for (var i = 0; i < inputs10.length; ++i) {
-            inputs10[i].onmidimessage = function (e) {
-                if (10 != test) {
-                    filter.setChannel(master10);
-                    test = 10;
-                }
-                device10.processEvents(MidiChannel.createEvent(e.data));
-            };
-        }
-    }, function (error) { console.log(error); });
+    if (navigator.requestMIDIAccess) {
+        navigator.requestMIDIAccess({'sysex': true}).then(function (access) {
+            inputs10 = access.inputs();
+            for (var i = 0; i < inputs10.length; ++i) {
+                inputs10[i].onmidimessage = function (e) {
+                    if (10 != test) {
+                        filter.setChannel(master10);
+                        test = 10;
+                    }
+                    device10.processEvents(MidiChannel.createEvent(e.data));
+                };
+            }
+        }, function (error) { console.log(error); });
+    }
 
     // TEST 11
     var div11 = document.getElementById("test11drop");

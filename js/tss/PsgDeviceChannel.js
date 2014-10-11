@@ -31,6 +31,7 @@ function PsgDeviceChannel () {
     this.mixerNoise = new Array(PsgDeviceChannel._CHANNELS);
     this.feedback = false;
     this.volumeNoise = 0;
+    this.sampleRate = MasterChannel.DEFAULT_SAMPLE_FREQUENCY;
 
     this.setClock(PsgDeviceChannel.CLOCK_3_58MHZ);
     this.setMode(PsgDeviceChannel.MODE_UNSIGNED);
@@ -159,8 +160,7 @@ PsgDeviceChannel._NOISE_TP_TABLE = new Int32Array([128, 256, 512, 0]);
  */
 PsgDeviceChannel.prototype.setClock = function (hz) {
     this.clock = hz; // tone frequency = clock / 32TP
-    this.baseStep = PsgDeviceChannel._CLOCK_BIAS * this.clock /
-            MasterChannel.SAMPLE_FREQUENCY;
+    this.baseStep = PsgDeviceChannel._CLOCK_BIAS * this.clock / this.sampleRate;
     this.baseStep = ~~this.baseStep;
 };
 
@@ -273,7 +273,7 @@ PsgDeviceChannel.prototype.setDevice = function (target) {
 };
 
 /**
- * @see Channel
+ * @see MasterChannel
  * @param length buffer length or size in shorts
  */
 PsgDeviceChannel.prototype.setBufferLength = function (length) {
@@ -281,7 +281,16 @@ PsgDeviceChannel.prototype.setBufferLength = function (length) {
 };
 
 /**
- * @see Channel
+ * @see MasterChannel
+ * @param rate sample rate
+ */
+PsgDeviceChannel.prototype.setSampleRate = function (rate) {
+    this.sampleRate = rate;
+    this.setClock(this.clock);
+};
+
+/**
+ * @see MasterChannel
  * @return audio stream buffer
  */
 PsgDeviceChannel.prototype.getBuffer = function () {
@@ -378,7 +387,7 @@ PsgDeviceChannel.prototype.generateAY = function (length) {
 
 /**
  * Generate specified length sound stream into internal buffer.
- * @see Channel
+ * @see MasterChannel
  * @param length sound length in short to generate
  */
 PsgDeviceChannel.prototype.generate = function (length) {
