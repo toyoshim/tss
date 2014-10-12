@@ -67,4 +67,5 @@ Status
 Manual
 ------
 
-[Here](http://www.toyoshima-house.net/tss/) is very old document written in Japanese for ealier C++ version.
+[MML Manul](https://github.com/toyoshim/tss/wiki/MML-Manual) is available in English, but it is not completed.
+[Here](http://www.toyoshima-house.net/tss/) is very old document written in Japanese for ealier C++ version that may help.
