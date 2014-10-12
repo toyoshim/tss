@@ -96,6 +96,20 @@ MidiChannel.getVolumeForPanpot = function (panpot) {
 };
 
 /**
+ * @see MasterChannel
+ * @param length buffer length or size in shorts
+ */
+MidiChannel.prototype.setBufferLength = function (length) {
+};
+
+/**
+ * @see MasterChannel
+ * @param rate sample rate
+ */
+MidiChannel.prototype.setSampleRate = function (rate) {
+};
+
+/**
  * Process MIDI event object containing MIDI events. User can use this function
  * to send MIDI events to virtual MIDI devices which inherit this prototype.
  * Each prototype which inherits this prototype can overwrite this function.
