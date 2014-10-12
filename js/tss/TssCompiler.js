@@ -683,9 +683,9 @@ TssCompiler.prototype._parseDirectives = function () {
                         result.begin, "syntax error in #PRAGMA");
             var octave = result.parameter.toString();
             if (octave == "NORMAL")
-                this.tags.octaveMode = TssCompiler.OCTAVE_MODE_NORMAL;
+                this.modes.octave = TssCompiler.OCTAVE_MODE_NORMAL;
             else if (octave == "REVERSE")
-                this.tags.octaveMode = TssCompiler.OCTAVE_MODE_REVERSE;
+                this.modes.octave = TssCompiler.OCTAVE_MODE_REVERSE;
             else
                 throw new TssCompiler.CompileError(this.directive[i],
                         result.begin, "invalid argument in #OCTAVE");
@@ -734,9 +734,9 @@ TssCompiler.prototype._parseDirectives = function () {
                     result.begin, "syntax error in #VOLUME");
             var volume = result.parameter.toString();
             if (volume == "NORMAL")
-                this.tags.octaveMode = TssCompiler.VOLUME_RELATIVE_MODE_NORMAL;
+                this.modes.volumeRelative = TssCompiler.VOLUME_RELATIVE_MODE_NORMAL;
             else if (volume == "REVERSE")
-                this.tags.octaveMode =
+                this.modes.volumeRelative =
                         TssCompiler.VOLUME_RELATIVE_MODE_REVERSE;
             else
                 throw new TssCompiler.CompileError(this.directive[i],
@@ -778,6 +778,38 @@ TssCompiler.prototype._parseChannels = function () {
         throw new TssCompiler.CompileError(work.lineObject, work.offset,
                 "command '" + command + "' not implemented");
     };
+    var processRelativeVolume = function (self, work, command, args) {
+        var max = 255;
+        if (work.mode == TssCompiler.HARDWARE_MODE_GAMEBOY)
+            max = 16;
+        var upcommand = '(';
+        if (work.volumeRelativeMode != TssCompiler.VOLUME_RELATIVE_MODE_NORMAL)
+            upcommand = ')';
+        var stereo = work.currentVolume.r >= 0;
+        if (command == upcommand) {
+            work.currentVolume.l += (1 << work.volumeShift);
+            if (stereo)
+              work.currentVolume.r += (1 << work.volumeShift);
+        } else {
+            work.currentVolume.l -= (1 << work.volumeShift);
+            if (stereo)
+              work.currentVolume.r -= (1 << work.volumeShift);
+        }
+        if (work.currentVolume.l < 0 || work.currentVolume.l > max ||
+                (stereo && work.currentVolume.r < 0) ||
+                (stereo && work.currentVolume.r > max))
+            throw new TssCompiler.CompileError(work.lineObject, work.offset,
+                    "commmand '" + command + "' causes volume range error");
+        if (stereo) {
+          work.data.push(TsdPlayer.CMD_VOLUME_LEFT);
+          work.data.push(work.currentVolume.l);
+          work.data.push(TsdPlayer.CMD_VOLUME_RIGHT);
+          work.data.push(work.currentVolume.r);
+        } else {
+          work.data.push(TsdPlayer.CMD_VOLUME_MONO);
+          work.data.push(work.currentVolume.l);
+        }
+    };
     // TODO: Check again if each argument is mandatory.
     var syntax = {
         '$': {  // loop
@@ -799,12 +831,12 @@ TssCompiler.prototype._parseChannels = function () {
             }
         },
         '(': {  // volume relative up (down)
-            args: [],  // TODO
-            callback: notImplemented
+            args: [],
+            callback: processRelativeVolume
         },
         ')': {  // volume relative down (up)
-            args: [],  // TODO
-            callback: notImplemented
+            args: [],
+            callback: processRelativeVolume
         },
         '/': {  // local loop break
             sequence: ":",
@@ -928,10 +960,15 @@ TssCompiler.prototype._parseChannels = function () {
                 { def: 0, min: 0, max: 255 }
             ],
             callback: function (self, work, command, args) {
+                work.volumeShift = 0;
                 if (1 == args.length) {
+                    work.currentVolume.l = args[0];
+                    work.currentVolume.r = -1;
                     work.data.push(TsdPlayer.CMD_VOLUME_MONO);
                     work.data.push(args[0]);
                 } else {
+                    work.currentVolume.l = args[0];
+                    work.currentVolume.r = args[1];
                     work.data.push(TsdPlayer.CMD_VOLUME_LEFT);
                     work.data.push(args[0]);
                     work.data.push(TsdPlayer.CMD_VOLUME_RIGHT);
@@ -1245,23 +1282,27 @@ TssCompiler.prototype._parseChannels = function () {
                                     work.offset, "volume must be less than 4" +
                                             " for channel 2 in gameboy mode");
                 var base = 0;
-                var shift = 3;
+                work.volumeShift = 3;
                 if (TsdPlayer.HARDWARE_MODE_GAMEBOY == work.mode)
-                    shift = 0;
+                    work.volumeShift = 0;
                 else if (TssCompiler.VOLUME_RANGE_MODE_NORMAL ==
                         work.volumeRangeMode)
-                    shift = 4;
+                    work.volumeShift = 4;
                 else
                     base = 128;
                 if (1 == args.length) {
                     // mono
-                    work.currentVolume.l = base + (args[0] << shift);
+                    work.currentVolume.l =
+                            base + (args[0] << work.volumeShift);
+                    work.currentVolume.r = -1;
                     work.data.push(TsdPlayer.CMD_VOLUME_MONO);
                     work.data.push(work.currentVolume.l);
                 } else {
                     // stereo
-                    work.currentVolume.l = base + (args[0] << shift);
-                    work.currentVolume.r = base + (args[1] << shift);
+                    work.currentVolume.l =
+                            base + (args[0] << work.volumeShift);
+                    work.currentVolume.r =
+                            base + (args[1] << work.volumeShift);
                     work.data.push(TsdPlayer.CMD_VOLUME_LEFT);
                     work.data.push(work.currentVolume.l);
                     work.data.push(TsdPlayer.CMD_VOLUME_RIGHT);
@@ -1306,6 +1347,7 @@ TssCompiler.prototype._parseChannels = function () {
             mode: this.modes.hardware,
             volumeRangeMode: TssCompiler.VOLUME_RANGE_MODE_NORMAL,
             volumeRelativeMode: this.modes.volumeRelative,
+            volumeShift: 0,
             octaveMode: this.modes.octave,
             currentVolume: { l: 0, r: 0 },
             currentOctave: 4,
@@ -1542,6 +1584,7 @@ TssCompiler.prototype._compile = function () {
         this._parseChannels();
         return this._generateTsd();
     } catch (e) {
+        Log.getLog().error(e.stack);
         Log.getLog().error(e.toString());
         return null;
     }
