@@ -69,3 +69,16 @@ Manual
 
 [MML Manul](https://github.com/toyoshim/tss/wiki/MML-Manual) is available in English, but it is not completed.
 [Here](http://www.toyoshima-house.net/tss/) is very old document written in Japanese for ealier C++ version that may help.
+
+Import as a Polymer component
+-----------------------------
+```
+<link ref="import" href="../bower_components/tss/js/polymer/tss.html">
+<tss id="tss"></tss>
+<script>
+var tss = document.getElementById('tss');
+tss.use();
+tss.createAudioLooper(); // or new tss.AudioLooper()
+...
+</script>
+```

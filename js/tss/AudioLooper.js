@@ -39,10 +39,9 @@ var AudioLooper = function (bufferSize) {
                 this.bufferSize, 2, 2);
 
         // Register callback
-        this.jsNode.owner = this;
         this.jsNode['onaudioprocess'] = function (event) {
-            this.owner.onAudioProcess(event);
-        };
+            this.onAudioProcess(event);
+        }.bind(this);
 
         // Connect to output audio device.
         if (this.bufferSource['noteOn'])
