@@ -11,7 +11,7 @@
  *
  * @constructor
  */
-function TssChannel () {
+var TssChannel = function () {
     this.sampleRate = MasterChannel.DEFAULT_SAMPLE_FREQUENCY;
     this.buffer = null;
     this.fmBuffer = [ null, null, null, null ];

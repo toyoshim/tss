@@ -9,7 +9,7 @@
  * See http://www.vesta.dti.ne.jp/~tsato/arc/s98spec3.zip
  * @author Takashi Toyoshima <toyoshim@gmail.com>
  */
-function S98Player () {
+var S98Player = function () {
     this.data = null;
     this.dataOffset = 0;
     this.loopOffset = 0;

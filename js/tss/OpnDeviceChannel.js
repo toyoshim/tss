@@ -8,7 +8,7 @@
  * This prototype implements OPN sound device as Device and Channel.
  * @author Takashi Toyoshima <toyoshim@gmail.com>
  */
-function OpnDeviceChannel () {
+var OpnDeviceChannel = function () {
     this.sampleRate = MasterChannel.DEFAULT_SAMPLE_FREQUENCY;
     this.clock = OpnDeviceChannel.CLOCK_4MHZ;
     this.type = OpnDeviceChannel.DEVICE_YM2203;

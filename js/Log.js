@@ -21,7 +21,7 @@
  *     true: Newer logs will be added to tail.
  *     false: Newer logs will be added to head.
  */
-function Log (id, reverse) {
+var Log = function (id, reverse) {
     this.lastLevel = "";
     this.reverse = reverse;
 

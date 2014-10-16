@@ -9,7 +9,7 @@
  * @see http://www.smspower.org/uploads/Music/vgmspec161.txt
  * @author Takashi Toyoshima <toyoshim@gmail.com>
  */
-function VgmPlayer () {
+var VgmPlayer = function () {
     this.masterChannel = null;
     this.input = null;
     this.offset = 0;

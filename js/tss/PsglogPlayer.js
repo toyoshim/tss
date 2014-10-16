@@ -8,7 +8,7 @@
  * Play AY-3-8910 device control log files.
  * @author Takashi Toyoshima <toyoshim@gmail.com>
  */
-function PsglogPlayer () {
+var PsglogPlayer = function () {
     this.input = null;
     this.offset = 0;
     this.psg = null;

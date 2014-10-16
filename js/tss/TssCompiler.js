@@ -11,7 +11,7 @@
  *
  * @constructor
  */
-function TssCompiler () {
+var TssCompiler = function () {
     this.logMmlCompile = false;
     this.source = null;
     this.directives = [];

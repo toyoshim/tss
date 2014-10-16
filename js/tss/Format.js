@@ -9,7 +9,7 @@
  * TODO: Use this prototype from all files in the library.
  * @author Takashi Toyoshima <toyoshim@gmail.com>
  */
-function Format () {
+var Format = function () {
     this.endian = Format.BIG_ENDIAN;
 }
 

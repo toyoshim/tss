@@ -10,7 +10,7 @@
  *
  * @constructor
  */
-function SimpleSlaveChannel (frequency) {
+var SimpleSlaveChannel = function (frequency) {
     this.buffer = null;
     this.freq = frequency;
     this.phase = 0;

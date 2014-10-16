@@ -13,7 +13,7 @@
  * @constructor
  * @param port MIDIOutput interface
  */
-function WebMidiChannel (port) {
+var WebMidiChannel = function (port) {
     this.port = port;
 }
 

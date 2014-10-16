@@ -8,7 +8,7 @@
  * Play Standard MIDI Files.
  * @author Takashi Toyoshima <toyoshim@gmail.com>
  */
-function SmfPlayer () {
+var SmfPlayer = function () {
     this.masterChannel = null;
     this.defaultDevice = new MidiChannel();
     this.devices = [];

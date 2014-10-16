@@ -8,7 +8,7 @@
  * This prototype implements ES-5505 OTIS sound device as Device and Channel.
  * @author Takashi Toyoshima <toyoshim@gmail.com>
  */
-function OtisDeviceChannel () {
+var OtisDeviceChannel = function () {
     this.clock = OtisDeviceChannel.CLOCK_F3;
     this.buffer = null;
     this.page = 0;

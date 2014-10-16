@@ -9,7 +9,7 @@
  * @author Takashi Toyoshima <toyoshim@gmail.com>
  */
 
-function FmChannel () {
+var FmChannel = function () {
 }
 
 FmChannel._ENV_LENGTH = 1024;

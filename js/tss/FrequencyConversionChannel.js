@@ -8,7 +8,7 @@
  * This prototype implements frequency conversion channel.
  * @author Takashi Toyoshima <toyoshim@gmail.com>
  */
-function FrequencyConversionChannel () {
+var FrequencyConversionChannel = function () {
     this.type = FrequencyConversionChannel.TYPE_NO_CONVERSION;
     this.inFrequency = 44100;
     this.outFrequency = 44100;

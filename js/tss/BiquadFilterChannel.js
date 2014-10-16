@@ -8,7 +8,7 @@
  * This prototype implements biquad IIR filter channel.
  * @author Takashi Toyoshima <toyoshim@gmail.com>
  */
-function BiquadFilterChannel () {
+var BiquadFilterChannel = function () {
     this.zL = 0;
     this.zR = 0;
     this.zzL = 0;

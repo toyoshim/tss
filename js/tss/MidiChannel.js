@@ -8,7 +8,7 @@
  * Abstract MIDI device.
  * @author Takashi Toyoshima <toyoshim@gmail.com>
  */
-function MidiChannel () {
+var MidiChannel = function () {
     this.events = [];
 }
 

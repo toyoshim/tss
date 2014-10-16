@@ -8,7 +8,7 @@
  * Load SoundFont2 file.
  * @author Takashi Toyoshima <toyoshim@gmail.com>
  */
-function SoundFont2 () {
+var SoundFont2 = function () {
     this.riff = null;
 }
 

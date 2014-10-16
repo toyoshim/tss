@@ -8,7 +8,7 @@
  * This prototype implements virtual MIDI device using OTIS sound chip.
  * @author Takashi Toyoshima <toyoshim@gmail.com>
  */
-function OtisMidiChannel () {
+var OtisMidiChannel = function () {
     this.fconv = new FrequencyConversionChannel();
     this.fconv.setOutputFrequency(MasterChannel.DEFAULT_SAMPLE_FREQUENCY);
     this.fconv.setInputFrequency(29714.1975);

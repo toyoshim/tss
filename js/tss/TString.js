@@ -11,7 +11,7 @@
  *
  * @constructor
  */
-function TString () {
+var TString = function () {
     this.object = null;
 }
 

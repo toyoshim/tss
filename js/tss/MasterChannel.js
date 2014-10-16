@@ -10,7 +10,7 @@
  *
  * @constructor
  */
-function MasterChannel () {
+var MasterChannel = function () {
     this.channels = new Array();
     this.buffers = null;
     this.buffer = null;

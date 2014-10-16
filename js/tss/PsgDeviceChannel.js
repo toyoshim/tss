@@ -9,7 +9,7 @@
  * AY-3-8910 is a reference model.
  * @author Takashi Toyoshima <toyoshim@gmail.com>
  */
-function PsgDeviceChannel () {
+var PsgDeviceChannel = function () {
     this.clock = PsgDeviceChannel.CLOCK_3_58MHZ;
     this.mode = PsgDeviceChannel.MODE_UNSIGNED;
     this.device = PsgDeviceChannel.DEVICE_AY_3_8910;

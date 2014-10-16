@@ -9,7 +9,7 @@
  * See, http://www.g200kg.com/en/docs/webmidilink/ for details.
  * @author Takashi Toyoshima <toyoshim@gmail.com>
  */
-function WebMidiLinkMidiChannel (port) {
+var WebMidiLinkMidiChannel = function (port) {
     this.port = port;
 }
 

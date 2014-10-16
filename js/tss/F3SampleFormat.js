@@ -8,7 +8,7 @@
  * This prototype handles sampling format used in Taito F3 system.
  * @author Takashi Toyoshima <toyoshim@gmail.com>
  */
-function F3SampleFormat () {
+var F3SampleFormat function () {
     this.data = null;
     this.voice = [];
 }

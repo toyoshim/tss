@@ -8,7 +8,7 @@
  * Play mp3 format files.
  * @author Takashi Toyoshima <toyoshim@gmail.com>
  */
-function Mp3PlayerChannel () {
+var Mp3PlayerChannel = function () {
     this.input = null;
     this.byteOffset = 0;
     this.bitOffset = 0;

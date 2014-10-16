@@ -11,7 +11,7 @@
  *
  * @constructor
  */
-function AudioLooper (bufferSize) {
+var AudioLooper = function (bufferSize) {
     this.bufferSize = 4096;  // 92msec
     if (bufferSize !== undefined)
         this.bufferSize = bufferSize;

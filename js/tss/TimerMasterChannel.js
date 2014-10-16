@@ -8,7 +8,7 @@
  * This prototype provide timer-based loop.
  * @author Takashi Toyoshima <toyoshim@gmail.com>
  */
-function TimerMasterChannel (mode) {
+var TimerMasterChannel = function (mode) {
     this.player = null;
     this.timer = undefined;
     this.interval = 0;

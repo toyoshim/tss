@@ -10,7 +10,7 @@
  *
  * @constructor
  */
-function TsdPlayer () {
+var TsdPlayer = function () {
     this.device = null;
     this.input = null;
     this.header = null;
