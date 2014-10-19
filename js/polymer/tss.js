@@ -1,5 +1,5 @@
 Polymer('tss', {
-  use: function () {
+  ready: function () {
     var exports = {};
 /**
  * TOYOSHIMA-HOUSE Library for JavaScript

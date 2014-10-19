@@ -1,3 +1,3 @@
 Polymer('tss', {
-  use: function () {
+  ready: function () {
     var exports = {};

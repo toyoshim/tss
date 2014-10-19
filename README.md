@@ -73,12 +73,15 @@ Manual
 Import as a Polymer component
 -----------------------------
 ```
+<script src="../bower_components/platform/platform.js"></script>
+<script src="../bower_components/polymer/polymer.js"></script>
 <link ref="import" href="../bower_components/tss/js/polymer/tss.html">
-<tss id="tss"></tss>
+<tss></tss>
 <script>
-var tss = document.getElementById('tss');
-tss.use();
-tss.createAudioLooper(); // or new tss.AudioLooper()
-...
+window.addElementListener('polymer-ready', function () {
+  var tss = document.getElementsByTagName('tss')[0];
+  tss.createAudioLooper(); // or new tss.AudioLooper()
+  ...
+});
 </script>
 ```
