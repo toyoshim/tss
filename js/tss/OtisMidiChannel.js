@@ -151,7 +151,8 @@ OtisMidiChannel.prototype.processNoteOn = function (ch, note, velocity) {
 
     var fc;
     if (program.type == 'drum') {
-        program = this.programs.drum[program.name][note];
+        var keys = this.programs.drum[program.name];
+        program = keys[note % keys.length];
         if (!program)
             return;
         fc = program.fc;
