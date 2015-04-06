@@ -45,9 +45,11 @@ WebMidiChannel.initialize = function (callback) {
         WebMidiChannel.initialized = true;
         if (cb)
             cb(true);
-        WebMidiChannel.inputs = access.inputs();
+        for (var input of access.inputs.values())
+            WebMidiChannel.inputs.push(input);
         Log.getLog().info("MIDI inputs: " + WebMidiChannel.inputs.length);
-        WebMidiChannel.outputs = access.outputs();
+        for (var output of access.outputs.values())
+            WebMidiChannel.outputs.push(output);
         Log.getLog().info("MIDI outputs: " + WebMidiChannel.outputs.length);
         for (var i = 0; i < WebMidiChannel.outputs.length; ++i) {
             Log.getLog().info("<" + i + ">");
