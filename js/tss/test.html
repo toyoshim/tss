@@ -747,24 +747,25 @@
     //var device10 = new SimpleMidiChannel();
     var device10 = new OtisMidiChannel();
     var xh_req10 = new XMLHttpRequest();
-    xh_req10.open("get", "../../log/d87-01.bin", true);
+    xh_req10.open("get", "../../../log/d87-01.bin", true);
     xh_req10.responseType = "arraybuffer";
     xh_req10.onload = function () {
         device10.setROM(0, new Int8Array(xh_req10.response));
     };
     xh_req10.send();
     var xh_req10b = new XMLHttpRequest();
-    xh_req10b.open("get", "../../log/d87-02.bin", true);
+    xh_req10b.open("get", "../../../log/d87-02.bin", true);
     xh_req10b.responseType = "arraybuffer";
     xh_req10b.onload = function () {
         device10.setROM(1, new Int8Array(xh_req10b.response));
     };
     xh_req10b.send();
     var xh_req10c = new XMLHttpRequest();
-    xh_req10c.open("get", "../../log/voice_dg.json", true);
+    xh_req10c.open("get", "../../../log/voice_dg.json", true);
     xh_req10c.onload = function () {
-        if (xh_req10c.status == 200)
+        if (xh_req10c.status == 200) {
             device10.setVoice(JSON.parse(xh_req10c.response));
+        }
     };
     xh_req10c.send();
     master10.setVolume(1);
