@@ -38,6 +38,7 @@
     <script language="JavaScript" src="OtisMidiChannel.js"></script>
     <script language="JavaScript" src="FrequencyConversionChannel.js"></script>
     <script language="JavaScript" src="F3SampleFormat.js"></script>
+    <script language="JavaScript" src="ModulePlayer.js"></script>
     <!-- control callback scripts -->
     <script language="JavaScript">
         google.load("jquery", "1.7.1");
@@ -292,6 +293,19 @@
             filter.setChannel(master12);
             test = 12;
         }
+        function test13flash() {
+            flash = testxflash(flash, div13, test13flash);
+        }
+        function test13prog(e) {
+            testxprog(e, prog13);
+        }
+        function test13start(e) {
+            activate();
+            test13prog(e);
+            player13.play(player13.load(reader.result));
+            filter.setChannel(master13);
+            test = 13;
+        }
     </script>
 </head>
 <body>
@@ -508,6 +522,15 @@
     <pre>DRAG S98 FILE TO HERE</pre>
     <pre id="test12info"></pre>
     <pre id="test12prog"></pre>
+</div>
+<hr>
+<a name="mod"></a>
+<p class="title">13. MOD Player [work in progress]</p>
+<button onclick="testxstop()">STOP</button>
+<div id="test13drop" tabindex="0" style="width: 100%; height: 100pt; background-color: #000000; color: #ffffff;">
+    <pre>DRAG MOD FILE TO HERE</pre>
+    <pre id="test13info"></pre>
+    <pre id="test13prog"></pre>
 </div>
 <hr>
 <hr>
@@ -858,7 +881,30 @@
     var player12 = new S98Player();
     player12.setMasterChannel(master12);
 
-    // TEST 5, 6, 7, 9, 11, and 12
+    // TEST 13
+    var div13 = document.getElementById("test13drop");
+    var info13 = document.getElementById("test13info");
+    var prog13 = document.getElementById("test13prog");
+    var master13 = new MasterChannel();
+    master13.setVolume(1);
+    var player13 = new ModulePlayer();
+    player13.setMasterChannel(master13);
+    // for debug.
+    var xh_res13 = null;
+    var xh_req13 = new XMLHttpRequest();
+    xh_req13.open("get", "jmix/test.mod", true);
+    xh_req13.responseType = "arraybuffer";
+    xh_req13.onload = function () {
+        Log.getLog().info("TEST13 XHR done.");
+        if (xh_req13.response instanceof ArrayBuffer) {
+            Log.getLog().info("  as ArrayBuffer (response).");
+            player13.play(player13.load(xh_req13.response));
+            filter.setChannel(master13);
+        }
+    };
+    xh_req13.send();
+
+    // TEST 5, 6, 7, 9, 11, 12, and 13
     function isParent(id, node) {
         while (node) {
             if (node.id == id)
@@ -869,9 +915,9 @@
     }
     var parents = [
             "test5drop", "test6drop", "test7drop", "test9drop", "test11drop",
-            "test12drop"
+            "test12drop", "test13drop"
     ];
-    var divs = [ div5, div6, div7, div9, div11, div12 ];
+    var divs = [ div5, div6, div7, div9, div11, div12, div13 ];
     window.addEventListener("dragover", function (e) {
         e.preventDefault();
         for (var i = 0; parents[i]; i++) {
@@ -883,18 +929,18 @@
     }, false);
     var flash = 0;
     var reader = null;
-    var infos = [ info5, info6, info7, info9, info11, info12 ];
+    var infos = [ info5, info6, info7, info9, info11, info12, info13 ];
     var tests = [
             test5flash, test6flash, test7flash, test9flash, test11flash,
-            test12flash
+            test12flash, test13flash
     ];
     var progs = [
             test5prog, test6prog, test7prog, test9prog, test11prog,
-            test12prog
+            test12prog, test13prog
     ];
     var kicks = [
             test5start, test6start, test7start, test9start, test11start,
-            test12start
+            test12start, test13start
     ];
     window.addEventListener("drop", function (e) {
         for (var i = 0; parents[i]; i++) {
