@@ -22,9 +22,9 @@ var AudioLooper = function (bufferSize) {
     this.sampleRate = 44100;
 
     // Web Audio API on Chrome, Safari, and Firefox.
-    if (window['webkitAudioContext'] || window['AudioContext']) {
+    if (window['AudioContext']) {
         Log.getLog().info("AudioLooper: detect Web Audio API");
-        this.audioContext = new webkitAudioContext() || new AudioContext();
+        this.audioContext = new AudioContext();
         if (this.audioContext == null) {
             Log.getLog().fatal('AudioLooper: could not create AudioContext');
             this.initialized = false;
