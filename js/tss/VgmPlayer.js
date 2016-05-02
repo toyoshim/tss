@@ -15,11 +15,11 @@ var VgmPlayer = function () {
     this.offset = 0;
     this.psg = null;
     this.minorVersion = 0;
-    this.snClock = PsgDeviceChannel.CLOCK_3_58MHZ;
+    this.clock = PsgDeviceChannel.CLOCK_3_58MHZ;
     this.error = false;
     this.loop = false;
     this.loopSkipOffset = 0;
-    this.interval = VgmPlayer._PLAYER_INTERVAL_NTSC;
+    this.interval = VgmPlayer._WAIT_735;
     this.wait = 0;
     this.writtenSamples = 0;
 }
@@ -36,6 +36,7 @@ VgmPlayer._VERSION_1_00 = 0x00;
 VgmPlayer._VERSION_1_01 = 0x01;
 VgmPlayer._VERSION_1_10 = 0x10;
 VgmPlayer._VERSION_1_50 = 0x50;
+VgmPlayer._VERSION_1_51 = 0x51;
 VgmPlayer._UINT_SIZE = 4;
 VgmPlayer._BYTE_MASK = 0xff;
 VgmPlayer._OFFSET_0 = 0;
@@ -60,6 +61,23 @@ VgmPlayer._CMD_WAIT_NNNN = 0x61;
 VgmPlayer._CMD_WAIT_735 = 0x62;
 VgmPlayer._CMD_WAIT_882 =  0x63;
 VgmPlayer._CMD_EOD = 0x66;
+VgmPlayer._CMD_WAIT_1 =  0x70;
+VgmPlayer._CMD_WAIT_2 =  0x71;
+VgmPlayer._CMD_WAIT_3 =  0x72;
+VgmPlayer._CMD_WAIT_4 =  0x73;
+VgmPlayer._CMD_WAIT_5 =  0x74;
+VgmPlayer._CMD_WAIT_6 =  0x75;
+VgmPlayer._CMD_WAIT_7 =  0x76;
+VgmPlayer._CMD_WAIT_8 =  0x77;
+VgmPlayer._CMD_WAIT_9 =  0x78;
+VgmPlayer._CMD_WAIT_10 =  0x79;
+VgmPlayer._CMD_WAIT_11 =  0x7a;
+VgmPlayer._CMD_WAIT_12 =  0x7b;
+VgmPlayer._CMD_WAIT_13 =  0x7c;
+VgmPlayer._CMD_WAIT_14 =  0x7d;
+VgmPlayer._CMD_WAIT_15 =  0x7e;
+VgmPlayer._CMD_WAIT_16 =  0x7f;
+VgmPlayer._CMD_WRITE_AY8910 = 0xa0;
 VgmPlayer._WAIT_735 = 735;
 VgmPlayer._WAIT_882 = 882;
 
@@ -140,27 +158,33 @@ VgmPlayer.prototype.updateDevice = function () {
             case VgmPlayer._CMD_WAIT_NNNN:
                 argument1 = this.input[this.offset++];
                 argument2 = this.input[this.offset++];
-                this.wait = (argument1 & VgmPlayer._BYTE_MASK) | ((argument2 &
+                this.wait += (argument1 & VgmPlayer._BYTE_MASK) | ((argument2 &
                         VgmPlayer._BYTE_MASK) << VgmPlayer._LSHIFT_1_BYTE);
-                return;
+                if (this.wait > 0)
+                    return;
+                break;
             case VgmPlayer._CMD_WAIT_735:
                 this.wait += VgmPlayer._WAIT_735;
-                this.masterChannel.setPlayerInterval(
-                        VgmPlayer._PLAYER_INTERVAL_NTSC);
                 if (this.interval != VgmPlayer._WAIT_735) {
                     Log.getLog().info("VGM: detect as NTSC");
+                    this.masterChannel.setPlayerInterval(
+                            VgmPlayer._PLAYER_INTERVAL_NTSC);
                     this.interval = VgmPlayer._WAIT_735;
                 }
-                return;
+                if (this.wait > 0)
+                    return;
+                break;
             case VgmPlayer._CMD_WAIT_882:
                 this.wait += VgmPlayer._WAIT_882;
-                this.masterChannel.setPlayerInterval(
-                        VgmPlayer._PLAYER_INTERVAL_PAL);
                 if (this.interval != VgmPlayer._WAIT_882) {
                     Log.getLog().info("VGM: detect as PAL");
+                    this.masterChannel.setPlayerInterval(
+                            VgmPlayer._PLAYER_INTERVAL_PAL);
                     this.interval = VgmPlayer._WAIT_882;
                 }
-                return;
+                if (this.wait > 0)
+                    return;
+                break;
             case VgmPlayer._CMD_EOD:
                 if (this.loop) {
                     this.offset = this.loopSkipOffset;
@@ -171,10 +195,37 @@ VgmPlayer.prototype.updateDevice = function () {
                     return;
                 }
                 break;
+            case VgmPlayer._CMD_WAIT_1:
+            case VgmPlayer._CMD_WAIT_2:
+            case VgmPlayer._CMD_WAIT_3:
+            case VgmPlayer._CMD_WAIT_4:
+            case VgmPlayer._CMD_WAIT_5:
+            case VgmPlayer._CMD_WAIT_6:
+            case VgmPlayer._CMD_WAIT_7:
+            case VgmPlayer._CMD_WAIT_8:
+            case VgmPlayer._CMD_WAIT_9:
+            case VgmPlayer._CMD_WAIT_10:
+            case VgmPlayer._CMD_WAIT_11:
+            case VgmPlayer._CMD_WAIT_12:
+            case VgmPlayer._CMD_WAIT_13:
+            case VgmPlayer._CMD_WAIT_14:
+            case VgmPlayer._CMD_WAIT_15:
+            case VgmPlayer._CMD_WAIT_16:
+                this.wait += (command - VgmPlayer._CMD_WAIT_1 + 1);
+                if (this.wait > 0)
+                    return;
+                break;
+            case VgmPlayer._CMD_WRITE_AY8910:
+                argument1 = this.input[this.offset++] & VgmPlayer._BYTE_MASK;
+                argument2 = this.input[this.offset++] & VgmPlayer._BYTE_MASK;
+                this.psg.writeRegister(argument1, argument2);
+                this.writtenSamples++;
+                break;
             default:
                 Log.getLog().warn("VGM: unknown command 0x" + (command &
                         VgmPlayer._BYTE_MASK).toString(16));
                 Log.getLog().warn("written samples = " + this.writtenSamples);
+                this.error = true;
                 return;
             }
         }
@@ -255,9 +306,12 @@ VgmPlayer.prototype.play = function (newInput) {
         case VgmPlayer._VERSION_1_50:
             Log.getLog().info("VGM: version 1.50");
             break;
+        case VgmPlayer._VERSION_1_51:
+            Log.getLog().info("VGM: version 1.51");
+            break;
         default:
             Log.getLog().info("VGM: unknown version 1.["
-                    + this.minorVersion + "]");
+                    + this.minorVersion.toString(16) + "]");
             return false;
         }
 
@@ -265,21 +319,22 @@ VgmPlayer.prototype.play = function (newInput) {
         var clock;
         clock = this.readUInt(input, offset);
         offset += 4;
-        if (0 == clock) {
-            Log.getLog().warn("VGM: SN76489 is not used");
-            return false;
+        var useSN = false;
+        if (0 != clock) {
+            Log.getLog().info("VGM: SN76489 clock is " + clock + " Hz");
+            useSN = true;
+            if (clock != this.clock) {
+                Log.getLog().info("VGM:   not " + this.clock + " Hz");
+                this.clock = clock;
+            }
+            this.psg.setClock(this.clock);
         }
-        Log.getLog().info("VGM: SN76489 clock is " + clock + " Hz");
-        if (clock != this.snClock) {
-            Log.getLog().info("VGM:   not " + this.snClock + " Hz");
-            this.snClock = clock;
-        }
-        this.psg.setClock(this.snClock);
         clock = this.readUInt(input, offset);
         offset += 4;
         if (0 != clock) {
             // TODO: support YM2413
             Log.getLog().info("VGM: YM2413 clock is " + clock + " Hz");
+            Log.getLog().error("VGM: YM2413 is not supported.");
             return false;
         }
 
@@ -303,40 +358,66 @@ VgmPlayer.prototype.play = function (newInput) {
         Log.getLog().info("VGM: Loop # samples = " + loopSamples);
         offset += 4;
 
-        // 1.00 complete
-        if (this.minorVersion == VgmPlayer._VERSION_1_00) {
-            offset += VgmPlayer._VGM_DEFAULT_DATA_OFFSET -
-                    VgmPlayer._VGM_1_00_EOH;
-            this.offset = offset;
-            this.input = input;
-            return true;
+        this.input = input;
+
+        if (this.minorVersion >= VgmPlayer._VERSION_1_01) {
+            // 1.01 features
+            var rate = this.readUInt(input, offset);
+            if (rate != 0) {
+                Log.getLog().warn("VGM: rate is " + rate + ": not supported");
+            }
         }
+        offset += 4;
 
-        // 1.01 features
-        // TODO
-
-        // 1.10 features
-        // TODO
-        if (this.minorVersion <= VgmPlayer._VERSION_1_50) {
-            offset += VgmPlayer._VGM_DEFAULT_DATA_OFFSET -
-                    VgmPlayer._VGM_1_00_EOH;
-            this.offset = offset;
-            this.input = input;
-            return true;
+        if (this.minorVersion >= VgmPlayer._VERSION_1_10) {
+            // 1.10 features
+            // TODO: Handle 0x28: SN76489 feedback,
+            // 0x2A: SN76489 shift register.
         }
+        offset += 3;
 
-        // 1.50 features
-        // TODO
+        if (this.minorVersion >= VgmPlayer._VERSION_1_51) {
+            // 1.51 features
+            // TODO: Handle 0x2B: SN76489 Flags.
+        }
+        offset += 1;
+
+        if (this.minorVersion >= VgmPlayer._VERSION_1_10) {
+            // 1.10 features
+            // TODO: Handle 0x2C: YM2612 clock, 0x30: YM2151 clock.
+        }
+        offset += 8;
+
+        if (this.minorVersion < VgmPlayer._VERSION_1_50) {
+            this.offset = VgmPlayer._VGM_DEFAULT_DATA_OFFSET;
+        } else {
+            // 1.50 features
+            this.offset = VgmPlayer._VGM_DEFAULT_DATA_OFFSET +
+                          this.readUInt(input, offset) - 0x0c;
+        }
+        Log.getLog().info("VGM: Data offset is " + this.offset);
 
         // 1.51 features
-        // TODO
+        // TODO: Handle other information.
+        clock = this.readUInt(input, 0x74);
+        var useAY = false;
+        if (0 != clock ) {
+            Log.getLog().info("VGM: AY-8910 clock is " + clock * 2 + " Hz");
+            useAY = true;
+            this.psg.setDevice(PsgDeviceChannel.DEVICE_AY_3_8910);
+            if (clock != (this.clock / 2 + 0.5) | 0) {
+                Log.getLog().info("VGM:   not " + this.clock + " Hz");
+                this.clock = clock * 2;
+            }
+            this.psgSetClock(this.clock);
+        }
 
-        // 1.60 features
-        // TODO
+        if (!useSN && !useAY) {
+            Log.getLog().error("VGM: no supported device is used.");
+            return false;
+        }
 
-        // 1.61 feature
-        // TODO
-        return false;
+        return true;
     } catch (e) {
         return false;
     }
