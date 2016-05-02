@@ -14,6 +14,7 @@ var VgmPlayer = function () {
     this.input = null;
     this.offset = 0;
     this.psg = null;
+    this.scc = null;
     this.minorVersion = 0;
     this.clock = PsgDeviceChannel.CLOCK_3_58MHZ;
     this.error = false;
@@ -37,6 +38,7 @@ VgmPlayer._VERSION_1_01 = 0x01;
 VgmPlayer._VERSION_1_10 = 0x10;
 VgmPlayer._VERSION_1_50 = 0x50;
 VgmPlayer._VERSION_1_51 = 0x51;
+VgmPlayer._VERSION_1_61 = 0x61;
 VgmPlayer._UINT_SIZE = 4;
 VgmPlayer._BYTE_MASK = 0xff;
 VgmPlayer._OFFSET_0 = 0;
@@ -78,6 +80,7 @@ VgmPlayer._CMD_WAIT_14 =  0x7d;
 VgmPlayer._CMD_WAIT_15 =  0x7e;
 VgmPlayer._CMD_WAIT_16 =  0x7f;
 VgmPlayer._CMD_WRITE_AY8910 = 0xa0;
+VgmPlayer._CMD_WRITE_SCC = 0xd2;
 VgmPlayer._WAIT_735 = 735;
 VgmPlayer._WAIT_882 = 882;
 
@@ -112,8 +115,11 @@ VgmPlayer.prototype.setMasterChannel = function (channel) {
     this.psg = new PsgDeviceChannel();
     this.psg.setMode(PsgDeviceChannel.MODE_SIGNED);
     this.psg.setDevice(PsgDeviceChannel.DEVICE_SN76489);
+    this.scc = new SccDeviceChannel();
+    this.scc.setDevice(SccDeviceChannel.DEVICE_SCC_PLUS);
     channel.clearChannel();
     channel.addChannel(this.psg);
+    channel.addChannel(this.scc);
     channel.setPlayer(this);
     // TODO: msec is not sufficient for NTSC (16.6... is not 17!)
     channel.setPlayerInterval(VgmPlayer._PLAYER_INTERVAL_NTSC);
@@ -137,6 +143,7 @@ VgmPlayer.prototype.updateDevice = function () {
             var command = this.input[this.offset++];
             var argument1;
             var argument2;
+            var argument3;
             switch (command) {
             case VgmPlayer._CMD_WRITE_GG:
                 argument1 = this.input[this.offset++];
@@ -219,6 +226,32 @@ VgmPlayer.prototype.updateDevice = function () {
                 argument1 = this.input[this.offset++] & VgmPlayer._BYTE_MASK;
                 argument2 = this.input[this.offset++] & VgmPlayer._BYTE_MASK;
                 this.psg.writeRegister(argument1, argument2);
+                this.writtenSamples++;
+                break;
+            case VgmPlayer._CMD_WRITE_SCC:
+                argument1 = this.input[this.offset++] & VgmPlayer._BYTE_MASK;
+                argument2 = this.input[this.offset++] & VgmPlayer._BYTE_MASK;
+                argument3 = this.input[this.offset++] & VgmPlayer._BYTE_MASK;
+                switch (argument1) {
+                case 0:
+                    argument2 += 0;
+                    break;
+                case 1:
+                    argument2 += 0xa0;
+                    break;
+                case 2:
+                    argument2 += 0xaa;
+                    break;
+                case 3:
+                    argument2 += 0xaf;
+                    break;
+                case 4:
+                    argument2 += 0x80;
+                    break;
+                case 5:
+                    argument2 += 0xc0;
+                }
+                this.scc.writeRegister(argument2, argument3);
                 this.writtenSamples++;
                 break;
             default:
@@ -308,6 +341,9 @@ VgmPlayer.prototype.play = function (newInput) {
             break;
         case VgmPlayer._VERSION_1_51:
             Log.getLog().info("VGM: version 1.51");
+            break;
+        case VgmPlayer._VERSION_1_61:
+            Log.getLog().info("VGM: version 1.61");
             break;
         default:
             Log.getLog().info("VGM: unknown version 1.["
@@ -409,7 +445,8 @@ VgmPlayer.prototype.play = function (newInput) {
                 Log.getLog().info("VGM:   not " + this.clock + " Hz");
                 this.clock = clock * 2;
             }
-            this.psgSetClock(this.clock);
+            this.psg.setClock(this.clock);
+            this.scc.setClock(this.clock);
         }
 
         if (!useSN && !useAY) {
