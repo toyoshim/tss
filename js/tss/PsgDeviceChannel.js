@@ -117,8 +117,7 @@ PsgDeviceChannel._ENVELOPE_MASK = 0x10;
 PsgDeviceChannel._CH_A = 0;
 PsgDeviceChannel._CH_B = 1;
 PsgDeviceChannel._CH_C = 2;
-PsgDeviceChannel._CLOCK_BIAS = 16000;
-PsgDeviceChannel._STEP_BIAS = 18;
+PsgDeviceChannel._STEP_BIAS = 4;
 PsgDeviceChannel._VOLUME_BIAS = 3;
 PsgDeviceChannel._DEFAULT_AY_SEED = -1;
 PsgDeviceChannel._DEFAULT_SN_SEED = -32768;
@@ -160,8 +159,7 @@ PsgDeviceChannel._NOISE_TP_TABLE = new Int32Array([128, 256, 512, 0]);
  */
 PsgDeviceChannel.prototype.setClock = function (hz) {
     this.clock = hz; // tone frequency = clock / 32TP
-    this.baseStep = PsgDeviceChannel._CLOCK_BIAS * this.clock / this.sampleRate;
-    this.baseStep = ~~this.baseStep;
+    this.baseStep = this.clock;
 };
 
 /**
@@ -432,6 +430,7 @@ PsgDeviceChannel.prototype.writeRegisterSN = function (address, value) {
                         PsgDeviceChannel._HALF_SHIFT) |
                         this.register[PsgDeviceChannel.REGISTER_SN_CH_A_TP]) <<
                         PsgDeviceChannel._STEP_BIAS;
+        this.stepTone[PsgDeviceChannel._CH_A] *= this.sampleRate;
         break;
     case PsgDeviceChannel.REGISTER_SN_CH_A_VOLUME:
         this.volume[PsgDeviceChannel._CH_A] =
@@ -445,6 +444,7 @@ PsgDeviceChannel.prototype.writeRegisterSN = function (address, value) {
                         PsgDeviceChannel._HALF_SHIFT) |
                         this.register[PsgDeviceChannel.REGISTER_SN_CH_B_TP]) <<
                         PsgDeviceChannel._STEP_BIAS;
+        this.stepTone[PsgDeviceChannel._CH_B] *= this.sampleRate;
         break;
     case PsgDeviceChannel.REGISTER_SN_CH_B_VOLUME:
         this.volume[PsgDeviceChannel._CH_B] =
@@ -458,6 +458,7 @@ PsgDeviceChannel.prototype.writeRegisterSN = function (address, value) {
                         PsgDeviceChannel._HALF_SHIFT) |
                         this.register[PsgDeviceChannel.REGISTER_SN_CH_C_TP]) <<
                         PsgDeviceChannel._STEP_BIAS;
+        this.stepTone[PsgDeviceChannel._CH_C] *= this.sampleRate;
         break;
     case PsgDeviceChannel.REGISTER_SN_CH_C_VOLUME:
         this.volume[PsgDeviceChannel._CH_C] =
@@ -468,6 +469,7 @@ PsgDeviceChannel.prototype.writeRegisterSN = function (address, value) {
         this.stepNoise = PsgDeviceChannel._NOISE_TP_TABLE[value &
                 PsgDeviceChannel._LOWER_TWO_BITS_MASK] <<
                 PsgDeviceChannel._STEP_BIAS;
+        this.stepNoise *= this.sampleRate;
         this.feedback = 1 == (value >> 2);
         break;
     case PsgDeviceChannel.REGISTER_SN_NOISE_VOLUME:
@@ -501,6 +503,7 @@ PsgDeviceChannel.prototype.writeRegisterAY = function (address, value) {
                         (this.register[
                                 PsgDeviceChannel.REGISTER_AY_CH_A_TP_LOW])) <<
                         PsgDeviceChannel._STEP_BIAS;
+        this.stepTone[PsgDeviceChannel._CH_A] *= this.sampleRate;
         break;
     case PsgDeviceChannel.REGISTER_AY_CH_B_TP_LOW:
     case PsgDeviceChannel.REGISTER_AY_CH_B_TP_HIGH:
@@ -510,6 +513,7 @@ PsgDeviceChannel.prototype.writeRegisterAY = function (address, value) {
                         (this.register[
                                 PsgDeviceChannel.REGISTER_AY_CH_B_TP_LOW])) <<
                         PsgDeviceChannel._STEP_BIAS;
+        this.stepTone[PsgDeviceChannel._CH_B] *= this.sampleRate;
         break;
     case PsgDeviceChannel.REGISTER_AY_CH_C_TP_LOW:
     case PsgDeviceChannel.REGISTER_AY_CH_C_TP_HIGH:
@@ -519,10 +523,12 @@ PsgDeviceChannel.prototype.writeRegisterAY = function (address, value) {
                         (this.register[
                                 PsgDeviceChannel.REGISTER_AY_CH_C_TP_LOW])) <<
                         PsgDeviceChannel._STEP_BIAS;
+        this.stepTone[PsgDeviceChannel._CH_C] *= this.sampleRate;
         break;
     case PsgDeviceChannel.REGISTER_AY_NOISE_TP:
         this.stepNoise = ((value & PsgDeviceChannel._NOISE_TP_MASK) << 1) <<
                 (PsgDeviceChannel._STEP_BIAS + 1);
+        this.stepNoise *= this.sampleRate;
         if (this.stepNoise < this.baseStep) {
             this.stepNoise = this.baseStep;
         }
