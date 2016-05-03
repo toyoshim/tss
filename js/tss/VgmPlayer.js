@@ -441,13 +441,13 @@ VgmPlayer.prototype.play = function (newInput) {
 
         // 1.51 features
         // TODO: Handle other information.
-        clock = this.readUInt(input, 0x74);
+        clock = (this.offset >= 0x78) ? this.readUInt(input, 0x74) : 0;
         var useAY = false;
         if (0 != clock ) {
             Log.getLog().info("VGM: AY-8910 clock is " + clock * 2 + " Hz");
             useAY = true;
             this.psg.setDevice(PsgDeviceChannel.DEVICE_AY_3_8910);
-            if (clock != (this.clock / 2 + 0.5) | 0) {
+            if (clock != ((this.clock / 2) | 0)) {
                 Log.getLog().info("VGM:   not " + this.clock + " Hz");
                 this.clock = clock * 2;
             }
@@ -460,6 +460,7 @@ VgmPlayer.prototype.play = function (newInput) {
             return false;
         }
 
+        Log.getLog().info("VGM: parse OK.");
         return true;
     } catch (e) {
         return false;
