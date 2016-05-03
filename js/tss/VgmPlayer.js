@@ -254,8 +254,11 @@ VgmPlayer.prototype.updateDevice = function () {
                     break;
                 case 5:
                     argument2 += 0xc0;
+                    break;
                 }
                 this.scc.writeRegister(argument2, argument3);
+                if (argument1 == 0 && (0x60 <= argument2 && argument2 < 0x80))
+                    this.scc.writeRegister(argument2 + 0x20, argument3);
                 this.writtenSamples++;
                 break;
             default:
