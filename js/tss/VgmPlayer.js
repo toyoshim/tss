@@ -18,6 +18,7 @@ var VgmPlayer = function () {
     this.minorVersion = 0;
     this.clock = PsgDeviceChannel.CLOCK_3_58MHZ;
     this.error = false;
+    this.warn = {};
     this.loop = false;
     this.loopSkipOffset = 0;
     this.interval = VgmPlayer._WAIT_735;
@@ -159,9 +160,12 @@ VgmPlayer.prototype.updateDevice = function () {
             case VgmPlayer._CMD_WRITE_YM2612A:
             case VgmPlayer._CMD_WRITE_YM2612B:
             case VgmPlayer._CMD_WRITE_YM2151:
-                this.error = true;
-                Log.getLog().warn("VGM: FM sound is not supported");
-                return;
+                this.offset += 2;
+                if (!this.warn.FM) {
+                    Log.getLog().warn("VGM: FM sound is not supported");
+                    this.warn.FM = true;
+                }
+                break;
             case VgmPlayer._CMD_WAIT_NNNN:
                 argument1 = this.input[this.offset++];
                 argument2 = this.input[this.offset++];
@@ -371,7 +375,6 @@ VgmPlayer.prototype.play = function (newInput) {
             // TODO: support YM2413
             Log.getLog().info("VGM: YM2413 clock is " + clock + " Hz");
             Log.getLog().error("VGM: YM2413 is not supported.");
-            return false;
         }
 
         // GD3 tag (TODO: support GD3 tag)
