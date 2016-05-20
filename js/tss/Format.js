@@ -11,7 +11,7 @@
  */
 var Format = function () {
     this.endian = Format.BIG_ENDIAN;
-}
+};
 
 Format.BIG_ENDIAN = 0;
 Format.LITTLE_ENDIAN = 1;
@@ -43,7 +43,7 @@ Format.readU32LE = function (data, offset) {
 Format.stringLength = function (data, offset) {
     var length = 0;
     for (var i = offset; i < data.byteLength; i++) {
-        if (0 == data[offset])
+        if (0 === data[offset])
             break;
         length++;
     }
