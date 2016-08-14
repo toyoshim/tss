@@ -473,7 +473,7 @@ TssCompiler._checkChannelDirective = function (line) {
         index = n.alphabetIndex(offset++);
         if (index < 0)
             return;
-        channel = index * TssCompiler._ALPHABET_COUNT;
+        channel = (index + 1) * TssCompiler._ALPHABET_COUNT;
     }
     index = n.alphabetIndex(offset);
     if (index < 0)
