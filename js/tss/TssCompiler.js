@@ -473,7 +473,7 @@ TssCompiler._checkChannelDirective = function (line) {
         index = n.alphabetIndex(offset++);
         if (index < 0)
             return;
-        channel = index * TssCompiler._ALPHABET_COUNT;
+        channel = (index + 1) * TssCompiler._ALPHABET_COUNT;
     }
     index = n.alphabetIndex(offset);
     if (index < 0)
@@ -1547,7 +1547,7 @@ TssCompiler.prototype._generateTsd = function () {
 
     // Wave data
     offset = tsdWriter.setUint16(voiceOffset, this.validWaves);
-    for (i = 0; i < this.validWaves; i++) {
+    for (i = 0; i < this.waves.length; i++) {
         if (!this.waves[i])
             continue;
         tsdWriter.setAt(offset++, i);
@@ -1560,7 +1560,7 @@ TssCompiler.prototype._generateTsd = function () {
 
     // Table data
     offset = tsdWriter.setUint16(offset, this.validTables);
-    for (i = 0; i < this.validTables; i++) {
+    for (i = 0; i < this.tables.length; i++) {
         if (!this.tables[i])
             continue;
         tsdWriter.setAt(offset++, i);
