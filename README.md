@@ -18,28 +18,27 @@ Status
 ### Supported environment
 - Android (API Level 3 or later) / Java
 - J2SE (Java Sound API) / Java
-- Chrome (Web Audio API) / JavaScript
-- Firefox (Audio Data API / Web Audio API) / JavaScript
-- Safari (Web Audio API) / JavaScript
-- (Flash / ActionScript) - just a plan
+- Web Audio API / JavaScript
+- Audio Data API (Firefox) / JavaScript - will be deprecated soon
 - (POSIX / C++) - just a plan
 
 ### Emulated devices
 
-| Device                  | Java | JavaScript | ActionScript | C++ |
-|-------------------------|------|------------|--------------|-----|
-| AY-3-8910 (PSG)         |  OK  |     OK     |       -      |  -  |
-| YM2149 (PSG)            |  OK  |     OK     |       -      |  -  |
-| SN76489 (PSG)           |  OK  |     OK     |       -      |  -  |
-| pAPU                    |   -  |      -     |       -      |  -  |
-| SCC                     |   -  |      -     |       -      |  -  |
-| YM2413 (OPLL)           |   -  |      -     |       -      |  -  |
-| YM2203 (OPN)            |   -  |      -     |       -      |  -  |
-| YM2608 (OPNA)           |   -  |      -     |       -      |  -  |
-| YM2151 (OPM)            |   -  |      -     |       -      |  -  |
-| ES5505 (PCM - Taito F3) |   -  |     OK     |       -      |  -  |
-| TSS                     |   -  |     OK     |       -      |  -  |
-| SoundFont 2             |   -  |      -     |       -      |  -  |
+| Device                  | Java | JavaScript | C++ |
+|-------------------------|------|------------|-----|
+| AY-3-8910 (PSG)         |  OK  |     OK     |  -  |
+| YM2149 (PSG)            |  OK  |     OK     |  -  |
+| SN76489 (PSG)           |  OK  |     OK     |  -  |
+| pAPU                    |   -  |      -     |  -  |
+| SCC                     |   -  |     OK     |  -  |
+| YM2413 (OPLL)           |   -  |      -     |  -  |
+| YM2203 (OPN)            |   -  |      -     |  -  |
+| YM2608 (OPNA)           |   -  |      -     |  -  |
+| YM2151 (OPM)            |   -  |      -     |  -  |
+| ES5505 (PCM - Taito F3) |   -  |     OK     |  -  |
+| TSS                     |   -  |     OK     |  -  |
+| SoundFont 2             |   -  |      -     |  -  |
+| MOD                     |   -  |     OK     |  -  |
 
 ### playable format
 
@@ -54,6 +53,7 @@ Status
 | TSD    |   -  |     OK     |       -      |  -  |
 | TSS    |   -  |     OK     |       -      |  -  |
 | SMF    |   -  |     OK     |       -      |  -  |
+| MOD    |   -  |     OK     |       -      |  -  |
 
 ### misc features
 
@@ -78,7 +78,7 @@ Import as a Polymer component
 <link ref="import" href="../bower_components/tss/js/polymer/tss.html">
 <tss></tss>
 <script>
-window.addElementListener('polymer-ready', function () {
+window.addEventListener('polymer-ready', function () {
   var tss = document.getElementsByTagName('tss')[0];
   tss.createAudioLooper(); // or new tss.AudioLooper()
   ...
