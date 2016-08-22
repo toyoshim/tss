@@ -78,7 +78,7 @@ Import as a Polymer component
 <link ref="import" href="../bower_components/tss/js/polymer/tss.html">
 <tss></tss>
 <script>
-window.addEventListener('polymer-ready', function () {
+window.addEventListener('WebComponentsReady', function () {
   var tss = document.getElementsByTagName('tss')[0];
   tss.createAudioLooper(); // or new tss.AudioLooper()
   ...
