@@ -1046,7 +1046,7 @@ TssCompiler.prototype._parseChannels = function () {
         },
         'ml': {  // multiple
             args: [
-                { def: 1, min: 1, max: 15 }
+                { def: 1, min: 1, max: 255 }
             ],
             callback: function (self, work, command, args) {
                 work.data.push(TsdPlayer.CMD_MULTIPLE);
