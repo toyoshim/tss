@@ -212,6 +212,17 @@ TssChannel.prototype.setModuleFrequency = function (id, frequency) {
 };
 
 /**
+ * Set module multiple.
+ * @param id module id
+ * @param frequency multiple
+ * @throws RangeError module channel id is out of range of maxChannel
+ */
+TssChannel.prototype.setModuleMultiple = function (id, multiple) {
+    this._CheckId(id);
+    this.module[id].multiple = multiple;
+};
+
+/**
  * Set module volume.
  * @param id module id
  * @param ch channel

@@ -1041,10 +1041,17 @@ TssCompiler.prototype._parseChannels = function () {
                 }
             }
         },
-        'm': {  // multiple
-            sequence: "p",
-            args: [],  // TODO
-            callback: notImplemented
+        'm': {
+            sequence: "lp",
+        },
+        'ml': {  // multiple
+            args: [
+                { def: 1, min: 1, max: 15 }
+            ],
+            callback: function (self, work, command, args) {
+                work.data.push(TsdPlayer.CMD_MULTIPLE);
+                work.data.push(args[0]);
+            }
         },
         'mp': {  // pitch modulation
             args: [
