@@ -705,9 +705,8 @@ TsdPlayer.prototype._performSequencer = function () {
                 Log.getLog().info('TSD: key on phase');
                 // TODO
             } else if (cmd == TsdPlayer.CMD_MULTIPLE) {
-                ch.offset++;
-                Log.getLog().info('TSD: multiple');
-                // TODO
+                dt = this.input[ch.baseOffset + ch.offset++];
+                this._setMultiple(ch, dt);
             } else if (cmd == TsdPlayer.CMD_PITCH_MODULATION_DELAY) {
                 dt = this._readU16(ch.baseOffset + ch.offset);
                 ch.offset += 2;
@@ -939,6 +938,15 @@ TsdPlayer.prototype._setFmInPipe = function (ch, rate, pipe) {
  */
 TsdPlayer.prototype._setFmOutPipe = function (ch, mode, pipe) {
     this.device.setModuleFmOutPipe(ch.id, mode, pipe);
+};
+
+/**
+ * Set frequency multiple
+ * @param ch channel object to control
+ * @param multiple frequency multiple
+ */
+TsdPlayer.prototype._setMultiple = function (ch, multiple) {
+    this.device.setModuleMultiple(ch.id, multiple);
 };
 
 /**
