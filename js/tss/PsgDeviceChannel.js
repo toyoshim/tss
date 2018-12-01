@@ -336,6 +336,7 @@ PsgDeviceChannel.prototype.generateSN = function (length) {
                         PsgDeviceChannel._SHORT_MASK;
             }
             this.countNoise -= step;
+            this.countNoise |= 0; // truncate to 32-bit
         }
         if (0 != (this.seed & 1))
             value += this.volumeNoise;
