@@ -335,6 +335,7 @@ PsgDeviceChannel.prototype.generateSN = function (length) {
                         PsgDeviceChannel._UPDATE_SEED_LSHIFT) &
                         PsgDeviceChannel._SHORT_MASK;
             }
+            this.countNoise -= step;
         }
         if (0 != (this.seed & 1))
             value += this.volumeNoise;
@@ -470,7 +471,7 @@ PsgDeviceChannel.prototype.writeRegisterSN = function (address, value) {
                 PsgDeviceChannel._LOWER_TWO_BITS_MASK] <<
                 PsgDeviceChannel._STEP_BIAS;
         this.stepNoise *= this.sampleRate;
-        this.feedback = 1 == (value >> 2);
+        this.feedback = 0 !== (value & 4);
         break;
     case PsgDeviceChannel.REGISTER_SN_NOISE_VOLUME:
         this.volumeNoise = this.volumeTable[this.register[pseudoAddress]];
