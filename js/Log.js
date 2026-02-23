@@ -137,4 +137,6 @@ Log.prototype.info = function (message) {
     this.print(message);
 };
 
-exports.Log = Log;
+if (typeof exports !== 'undefined') {
+    exports.Log = Log;
+}
